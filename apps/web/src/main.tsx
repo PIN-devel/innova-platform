@@ -11,13 +11,12 @@ import "./styles.css";
 
 async function enableMocking() {
   if (!import.meta.env.DEV || import.meta.env.MODE === "api") return;
-
   const { worker } = await import("./mocks/browser");
-  return worker.start();
+  await worker.start();
 }
 
 enableMocking().then(() => {
-  const router = createAppRouter(queryClient);
+  const router = createAppRouter();
 
   createRoot(document.getElementById("root")!).render(
     <StrictMode>

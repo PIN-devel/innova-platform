@@ -26,9 +26,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (init.body !== undefined && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-
   const response = await fetch(`${baseUrl}${path.startsWith("/") ? path : `/${path}`}`, {
     ...init,
+    credentials: "include",
     headers,
   });
 
@@ -52,15 +52,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return data as T;
 }
 
-function withBody<T>(method: "POST" | "PUT" | "PATCH", body: unknown) {
+function withBody<T>(method: "POST" | "PUT" | "PATCH", body: unknown, init: RequestInit = {}) {
   return (path: string) =>
-    request<T>(path, { method, body: JSON.stringify(body) });
+    request<T>(path, { ...init, method, body: JSON.stringify(body) });
 }
 
 export const apiClient = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body: unknown) => withBody<T>("POST", body)(path),
-  put: <T>(path: string, body: unknown) => withBody<T>("PUT", body)(path),
-  patch: <T>(path: string, body: unknown) => withBody<T>("PATCH", body)(path),
-  delete: <T = void>(path: string) => request<T>(path, { method: "DELETE" }),
+  get: <T>(path: string, init?: RequestInit) => request<T>(path, init),
+  post: <T>(path: string, body: unknown, init?: RequestInit) => withBody<T>("POST", body, init)(path),
+  put: <T>(path: string, body: unknown, init?: RequestInit) => withBody<T>("PUT", body, init)(path),
+  patch: <T>(path: string, body: unknown, init?: RequestInit) => withBody<T>("PATCH", body, init)(path),
+  delete: <T = void>(path: string, init?: RequestInit) => request<T>(path, { ...init, method: "DELETE" }),
 };
