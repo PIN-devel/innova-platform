@@ -1,0 +1,14 @@
+{
+  "name": "innova-platform",
+  "private": true,
+  "packageManager": "pnpm@12.6.0",
+  "scripts": {
+    "dev": "pnpm --filter @innova/contracts build && pnpm -r --parallel --filter api --filter web dev",
+    "dev:web": "pnpm --filter @innova/contracts build && pnpm --filter web dev:mock",
+    "dev:api": "pnpm --filter @innova/contracts build && pnpm --filter api dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm --filter @innova/contracts build && pnpm -r --filter './apps/**' typecheck",
+    "test": "pnpm --filter @innova/contracts build && pnpm --filter api test",
+    "lint": "pnpm --filter web lint"
+  }
+}
