@@ -1,10 +1,10 @@
-type ApiErrorPayload = {
-  message?: string;
-};
+import { apiErrorResponseSchema, type ApiErrorCode, type ValidationErrorDetail } from "@innova/contracts";
 
 export class ApiError extends Error {
   readonly status: number;
   readonly data: unknown;
+  readonly code?: ApiErrorCode;
+  readonly details?: ValidationErrorDetail[];
 
   constructor(
     message: string,
@@ -15,6 +15,9 @@ export class ApiError extends Error {
     this.name = "ApiError";
     this.status = status;
     this.data = data;
+    const parsed = apiErrorResponseSchema.safeParse(data);
+    this.code = parsed.success ? parsed.data.error.code : undefined;
+    this.details = parsed.success ? parsed.data.error.details : undefined;
   }
 }
 
@@ -42,7 +45,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     : await response.text();
 
   if (!response.ok) {
-    const payloadMessage = (data as ApiErrorPayload | null)?.message;
+    const parsedError = apiErrorResponseSchema.safeParse(data);
+    const payloadMessage = parsedError.success ? parsedError.data.error.message : undefined;
     const message = payloadMessage ||
       (typeof data === "string" && data) ||
       `Request failed with status ${response.status}`;

@@ -6,6 +6,7 @@ import type { ExamRepository } from "../src/db/exam.js";
 import type { UserRecord, UserRepository } from "../src/db/users.js";
 
 const jwtSecret = "test-only-jwt-secret-with-at-least-32-characters";
+const errorTestUserId = "f5f8301d-996b-461b-95c9-9a72162023d6";
 const exams: ExamRepository = { async find() { return undefined; }, async create() { throw new Error("unused"); } };
 
 function fixture() {
@@ -40,7 +41,14 @@ test("signup validates input, stores Argon2 hash, and signs in with HttpOnly coo
     const response = await app.inject({ method: "POST", url: "/api/auth/signup", payload });
     assert.equal(response.statusCode, 400);
     assert.equal(response.json().error.code, "INVALID_INPUT");
+    assert.ok(Array.isArray(response.json().error.details));
+    assert.equal("issues" in response.json(), false);
   }
+  const missingFields = await app.inject({ method: "POST", url: "/api/auth/signup", payload: {} });
+  assert.deepEqual(missingFields.json().error.details, [
+    { field: "email", reason: "required" },
+    { field: "password", reason: "required" },
+  ]);
   const signup = await app.inject({ method: "POST", url: "/api/auth/signup", payload: { email: " User@Example.com ", password: "validpass123" } });
   assert.equal(signup.statusCode, 201);
   assert.equal(signup.json().user.email, "user@example.com");
@@ -92,9 +100,36 @@ test("login hides account existence, issues cookie, and me rejects invalid sessi
     assert.equal(denied.statusCode, 401);
     assert.equal(denied.json().error.code, "UNAUTHORIZED");
   }
+  const notFound = await app.inject({ method: "GET", url: "/api/auth/missing" });
+  assert.equal(notFound.statusCode, 404);
+  assert.equal(notFound.json().error.code, "NOT_FOUND");
+  const apiRootNotFound = await app.inject({ method: "GET", url: "/api" });
+  assert.equal(apiRootNotFound.statusCode, 404);
+  assert.equal(apiRootNotFound.json().error.code, "NOT_FOUND");
   records.delete("user@example.com");
   const deleted = await app.inject({ method: "GET", url: "/api/auth/me", headers: { cookie } });
   assert.equal(deleted.statusCode, 401);
+});
+
+test("Fastify parsing errors serialize as INVALID_INPUT and unexpected errors as INTERNAL_ERROR", async (t) => {
+  const failingExams: ExamRepository = {
+    async find() { throw new Error("private database detail"); },
+    async create() { throw new Error("private database detail"); },
+  };
+  const app = buildApp({ logger: false, examRepository: failingExams, userRepository: {
+    async findById(id) { return id === errorTestUserId ? { id, email: "exam@example.com", passwordHash: "unused" } : undefined; },
+    async findByEmail() { return undefined; },
+    async create() { return undefined; },
+  }, jwtSecret });
+  t.after(() => app.close());
+  await app.ready();
+  const cookie = `exam_drill_auth=${app.jwt.sign({ sub: errorTestUserId }, { expiresIn: "15m" })}`;
+  const malformed = await app.inject({ method: "POST", url: "/api/auth/login", headers: { "content-type": "application/json" }, payload: "{" });
+  assert.equal(malformed.statusCode, 400);
+  assert.equal(malformed.json().error.code, "INVALID_INPUT");
+  const failed = await app.inject({ method: "GET", url: "/api/exam/banks/default", headers: { cookie } });
+  assert.equal(failed.statusCode, 500);
+  assert.deepEqual(failed.json(), { error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
 });
 
 test("logout clears cookie and is idempotent", async (t) => {

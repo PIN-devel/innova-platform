@@ -7,6 +7,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RouterProvider } from "react-router/dom";
 import { queryClient } from "./app/query-client.ts";
 import { createAppRouter } from "./app/router.tsx";
+import { Toaster } from "@/shared/ui/sonner";
 import "./styles.css";
 
 async function enableMocking() {
@@ -22,6 +23,7 @@ enableMocking().then(() => {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
+        <Toaster />
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </StrictMode>,

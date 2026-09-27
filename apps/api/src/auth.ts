@@ -1,6 +1,7 @@
-import type { AuthUser, AuthErrorCode } from "@innova/contracts";
-import type { FastifyReply, FastifyRequest } from "fastify";
+import type { AuthUser } from "@innova/contracts";
+import type { FastifyRequest } from "fastify";
 import type { UserRepository } from "./db/users.js";
+import { AppError } from "./errors.js";
 
 export const AUTH_COOKIE_NAME = "exam_drill_auth";
 export const JWT_EXPIRES_IN = "15m";
@@ -19,10 +20,6 @@ declare module "fastify" {
   }
 }
 
-export function authError(reply: FastifyReply, status: 400 | 401 | 409 | 500, code: AuthErrorCode, message: string) {
-  return reply.code(status).send({ error: { code, message } });
-}
-
 export function authCookieOptions() {
   return {
     httpOnly: true,
@@ -34,14 +31,14 @@ export function authCookieOptions() {
 }
 
 export function createAuthGuard(users: UserRepository) {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
+  return async (request: FastifyRequest) => {
     try {
       await request.jwtVerify({ onlyCookie: true });
     } catch {
-      return authError(reply, 401, "UNAUTHORIZED", "Authentication required");
+      throw new AppError(401, "UNAUTHORIZED", "Authentication required");
     }
     const user = await users.findById(request.user.sub);
-    if (!user) return authError(reply, 401, "UNAUTHORIZED", "Authentication required");
+    if (!user) throw new AppError(401, "UNAUTHORIZED", "Authentication required");
     request.authUser = { id: user.id, email: user.email };
   };
 }

@@ -1,11 +1,13 @@
 import {
   authResponseSchema,
+  apiErrorResponseSchema,
   ExamBankRecordSchema,
   ExamBankSchema,
   loginRequestSchema,
   signupRequestSchema,
+  toValidationErrorDetails,
 } from "@innova/contracts";
-import type { AuthUser, ExamBankRecord } from "@innova/contracts";
+import type { ApiErrorCode, AuthUser, ExamBankRecord, ValidationErrorDetail } from "@innova/contracts";
 import { http, HttpResponse } from "msw";
 
 const seedBank = ExamBankSchema.parse({
@@ -67,8 +69,9 @@ export function resetAuthMock() {
 
 resetAuthMock();
 
-function authError(code: "INVALID_INPUT" | "EMAIL_ALREADY_EXISTS" | "INVALID_CREDENTIALS" | "UNAUTHORIZED", message: string, status: number) {
-  return HttpResponse.json({ error: { code, message } }, { status, headers });
+function apiError(status: number, code: ApiErrorCode, message: string, details?: ValidationErrorDetail[]) {
+  const body = apiErrorResponseSchema.parse({ error: { code, message, ...(details ? { details } : {}) } });
+  return HttpResponse.json(body, { status, headers });
 }
 
 function authSuccess(user: AuthUser, status = 200) {
@@ -78,10 +81,10 @@ function authSuccess(user: AuthUser, status = 200) {
 export const handlers = [
   http.post("*/api/auth/signup", async ({ request }) => {
     let body: unknown;
-    try { body = await request.json(); } catch { return authError("INVALID_INPUT", "Invalid signup input", 400); }
+    try { body = await request.json(); } catch { return apiError(400, "INVALID_INPUT", "Invalid signup input"); }
     const parsed = signupRequestSchema.safeParse(body);
-    if (!parsed.success) return authError("INVALID_INPUT", "Invalid signup input", 400);
-    if (mockUsers.has(parsed.data.email)) return authError("EMAIL_ALREADY_EXISTS", "Email already exists", 409);
+    if (!parsed.success) return apiError(400, "INVALID_INPUT", "Invalid signup input", toValidationErrorDetails(parsed.error, body));
+    if (mockUsers.has(parsed.data.email)) return apiError(409, "EMAIL_ALREADY_EXISTS", "Email already exists");
     const user: AuthUser = { id: crypto.randomUUID(), email: parsed.data.email };
     mockUsers.set(user.email, { user, password: parsed.data.password });
     currentMockUser = user;
@@ -90,12 +93,12 @@ export const handlers = [
 
   http.post("*/api/auth/login", async ({ request }) => {
     let body: unknown;
-    try { body = await request.json(); } catch { return authError("INVALID_INPUT", "Invalid login input", 400); }
+    try { body = await request.json(); } catch { return apiError(400, "INVALID_INPUT", "Invalid login input"); }
     const parsed = loginRequestSchema.safeParse(body);
-    if (!parsed.success) return authError("INVALID_INPUT", "Invalid login input", 400);
+    if (!parsed.success) return apiError(400, "INVALID_INPUT", "Invalid login input", toValidationErrorDetails(parsed.error, body));
     const credential = mockUsers.get(parsed.data.email);
     if (!credential || credential.password !== parsed.data.password) {
-      return authError("INVALID_CREDENTIALS", "Invalid email or password", 401);
+      return apiError(401, "INVALID_CREDENTIALS", "Invalid email or password");
     }
     currentMockUser = credential.user;
     return authSuccess(credential.user);
@@ -103,7 +106,7 @@ export const handlers = [
 
   http.get("*/api/auth/me", () => currentMockUser
     ? authSuccess(currentMockUser)
-    : authError("UNAUTHORIZED", "Authentication required", 401)),
+    : apiError(401, "UNAUTHORIZED", "Authentication required")),
 
   http.post("*/api/auth/logout", () => {
     currentMockUser = null;
@@ -111,30 +114,33 @@ export const handlers = [
   }),
 
   http.get("*/api/exam/banks/:id", ({ params }) => {
-    if (!currentMockUser) return authError("UNAUTHORIZED", "Authentication required", 401);
+    if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
     const id = String(params.id) === "default" ? "aws-sap" : String(params.id);
     const record = banks.get(id);
     return record
       ? HttpResponse.json(record, { headers })
-      : HttpResponse.json({ message: "Exam bank not found" }, { status: 404, headers });
+      : apiError(404, "NOT_FOUND", "Exam bank not found");
   }),
 
   http.post("*/api/exam/banks", async ({ request }) => {
-    if (!currentMockUser) return authError("UNAUTHORIZED", "Authentication required", 401);
+    if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
     let payload: unknown;
     try {
       payload = await request.json();
     } catch {
-      return HttpResponse.json({ message: "Invalid exam bank" }, { status: 400, headers });
+      return apiError(400, "INVALID_INPUT", "Invalid exam bank");
     }
 
     const parsed = ExamBankSchema.safeParse(payload);
     if (!parsed.success) {
-      return HttpResponse.json({ message: "Invalid exam bank" }, { status: 400, headers });
+      return apiError(400, "INVALID_INPUT", "Invalid exam bank", toValidationErrorDetails(parsed.error, payload));
     }
 
     const record = ExamBankRecordSchema.parse({ id: crypto.randomUUID(), bank: parsed.data });
     banks.set(record.id, record);
     return HttpResponse.json(record, { status: 201, headers });
   }),
+
+  http.all("*/api", () => apiError(404, "NOT_FOUND", "API route not found")),
+  http.all("*/api/*", () => apiError(404, "NOT_FOUND", "API route not found")),
 ];

@@ -2,8 +2,10 @@ import { loginRequestSchema, signupRequestSchema } from "@innova/contracts";
 import type { AuthUser } from "@innova/contracts";
 import type { FastifyPluginAsync } from "fastify";
 import * as argon2 from "argon2";
-import { AUTH_COOKIE_NAME, JWT_EXPIRES_IN, authCookieOptions, authError, createAuthGuard } from "../auth.js";
+import { AUTH_COOKIE_NAME, JWT_EXPIRES_IN, authCookieOptions, createAuthGuard } from "../auth.js";
 import type { UserRecord, UserRepository } from "../db/users.js";
+import { AppError, invalidInput } from "../errors.js";
+import { toValidationErrorDetails } from "@innova/contracts";
 
 function publicUser(user: UserRecord): AuthUser {
   return { id: user.id, email: user.email };
@@ -22,22 +24,22 @@ export const authRoutes: FastifyPluginAsync<{ users: UserRepository }> = async (
 
   app.post("/signup", async (request, reply) => {
     const parsed = signupRequestSchema.safeParse(request.body);
-    if (!parsed.success) return authError(reply, 400, "INVALID_INPUT", "Invalid signup input");
+    if (!parsed.success) throw invalidInput("Invalid signup input", toValidationErrorDetails(parsed.error, request.body));
     const { email, password } = parsed.data;
-    if (await users.findByEmail(email)) return authError(reply, 409, "EMAIL_ALREADY_EXISTS", "Email already exists");
+    if (await users.findByEmail(email)) throw new AppError(409, "EMAIL_ALREADY_EXISTS", "Email already exists");
     const passwordHash = await argon2.hash(password);
     const user = await users.create(email, passwordHash);
-    if (!user) return authError(reply, 409, "EMAIL_ALREADY_EXISTS", "Email already exists");
+    if (!user) throw new AppError(409, "EMAIL_ALREADY_EXISTS", "Email already exists");
     await issueCookie(user, reply);
     return reply.code(201).send({ user: publicUser(user) });
   });
 
   app.post("/login", async (request, reply) => {
     const parsed = loginRequestSchema.safeParse(request.body);
-    if (!parsed.success) return authError(reply, 400, "INVALID_INPUT", "Invalid login input");
+    if (!parsed.success) throw invalidInput("Invalid login input", toValidationErrorDetails(parsed.error, request.body));
     const user = await users.findByEmail(parsed.data.email);
     if (!user || !(await argon2.verify(user.passwordHash, parsed.data.password))) {
-      return authError(reply, 401, "INVALID_CREDENTIALS", "Invalid email or password");
+      throw new AppError(401, "INVALID_CREDENTIALS", "Invalid email or password");
     }
     await issueCookie(user, reply);
     return reply.send({ user: publicUser(user) });

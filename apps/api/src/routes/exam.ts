@@ -1,6 +1,7 @@
-import { ExamBankSchema } from "@innova/contracts";
+import { ExamBankSchema, toValidationErrorDetails } from "@innova/contracts";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { DEFAULT_EXAM_BANK_ID, type ExamRepository } from "../db/exam.js";
+import { AppError, invalidInput } from "../errors.js";
 
 export const examRoutes: FastifyPluginAsync<{ repository: ExamRepository; requireAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<unknown> }> = async (app, { repository, requireAuth }) => {
   app.addHook("onRequest", async (_request, reply) => {
@@ -9,15 +10,17 @@ export const examRoutes: FastifyPluginAsync<{ repository: ExamRepository; requir
   app.addHook("preHandler", requireAuth);
   app.get("/banks/default", async (_request, reply) => {
     const record = await repository.find(DEFAULT_EXAM_BANK_ID);
-    return record ?? reply.code(404).send({ message: "Default exam bank is not seeded" });
+    if (!record) throw new AppError(404, "NOT_FOUND", "Default exam bank is not seeded");
+    return record;
   });
   app.get<{ Params: { id: string } }>("/banks/:id", async (request, reply) => {
     const record = await repository.find(request.params.id);
-    return record ?? reply.code(404).send({ message: "Exam bank not found" });
+    if (!record) throw new AppError(404, "NOT_FOUND", "Exam bank not found");
+    return record;
   });
   app.post("/banks", async (request, reply) => {
     const parsed = ExamBankSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ message: "Invalid exam bank", issues: parsed.error.issues });
+    if (!parsed.success) throw invalidInput("Invalid exam bank", toValidationErrorDetails(parsed.error, request.body));
     return reply.code(201).send(await repository.create(parsed.data));
   });
 };
