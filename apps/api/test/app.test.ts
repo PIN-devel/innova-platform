@@ -64,6 +64,12 @@ test("exam bank API requires JWT cookie and preserves validated records", async 
   assert.deepEqual(stored.json().bank, created.json().bank);
   const duplicate = await app.inject({ method: "POST", url: "/api/exam/banks", headers: authenticated, payload: { ...sampleBank, concepts: [sampleBank.concepts[0], sampleBank.concepts[0]] } });
   assert.equal(duplicate.statusCode, 400);
+  assert.equal(duplicate.json().error.code, "INVALID_INPUT");
+  assert.ok(duplicate.json().error.details.some((detail: { reason: string }) => detail.reason === "invalid_value"));
+  assert.equal("issues" in duplicate.json(), false);
+  const missingBank = await app.inject({ method: "GET", url: "/api/exam/banks/missing", headers: authenticated });
+  assert.equal(missingBank.statusCode, 404);
+  assert.deepEqual(missingBank.json(), { error: { code: "NOT_FOUND", message: "Exam bank not found" } });
 });
 
 test("server fails closed without a configured JWT secret", () => {

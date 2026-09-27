@@ -1,7 +1,5 @@
 import {
-  authErrorResponseSchema,
   authResponseSchema,
-  type AuthErrorCode,
   type AuthUser,
   type LoginRequest,
   type SignupRequest,
@@ -16,7 +14,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     return parseUser(await apiClient.get("/auth/me", { cache: "no-store" }));
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) return null;
+    if (error instanceof ApiError && error.code === "UNAUTHORIZED") return null;
     throw error;
   }
 }
@@ -31,10 +29,4 @@ export async function signup(input: SignupRequest): Promise<AuthUser> {
 
 export async function logout(): Promise<void> {
   await apiClient.post<void>("/auth/logout", {});
-}
-
-export function getAuthErrorCode(error: unknown): AuthErrorCode | undefined {
-  if (!(error instanceof ApiError)) return undefined;
-  const parsed = authErrorResponseSchema.safeParse(error.data);
-  return parsed.success ? parsed.data.error.code : undefined;
 }

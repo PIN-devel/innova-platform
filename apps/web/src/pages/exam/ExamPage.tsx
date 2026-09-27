@@ -10,17 +10,35 @@ import { expectedLabel, getNoteResults, givenToString, gradeExercise } from "@/f
 import { createExamBank, getExamBank } from "@/entities/exam-bank/api";
 import { examBankQuery } from "@/entities/exam-bank/queries";
 import { ApiError } from "@/shared/api/client";
+import { Button } from "@/shared/ui/button";
+import { ErrorState } from "@/shared/ui/error-state";
+import { LoadingState } from "@/shared/ui/loading-state";
 import { authKeys } from "@/entities/auth/queries";
 import { useCurrentUser } from "@/features/auth/hooks";
 import { LogoutButton } from "@/features/auth/LogoutButton";
 import { chapterMastery, useProgress } from "@/entities/progress";
 import { todayKst } from "@/shared/lib/file";
 import { shuffle } from "@/shared/lib/shuffle";
+import { toast } from "sonner";
 import "./exam.css";
 
 const ACTIVE_KEY = "innova.exam.active-bank.v1";
 type View = "home" | "units" | "review" | "mock" | "settings" | "lesson" | "result";
 type Given = string | number | boolean | Array<{ leftId: string; rightId: string }> | null;
+
+function examApiErrorMessage(error: unknown) {
+  if (!(error instanceof ApiError)) return "문항 데이터를 확인해 주세요.";
+  switch (error.code) {
+    case "UNAUTHORIZED": return "로그인 상태를 확인해 주세요.";
+    case "FORBIDDEN": return "이 작업을 수행할 권한이 없습니다.";
+    case "NOT_FOUND": return "문항 은행을 찾지 못했습니다.";
+    case "INVALID_INPUT": return "문항 데이터를 확인해 주세요.";
+    case "CONFLICT": return "현재 상태에서는 문항 은행을 변경할 수 없습니다.";
+    case "BUSINESS_RULE_VIOLATION": return "문항 은행 규칙을 확인해 주세요.";
+    case "INTERNAL_ERROR": return "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+    default: return "문항 요청을 처리하지 못했습니다.";
+  }
+}
 
 export default function ExamPage() {
   const navigate = useNavigate();
@@ -37,7 +55,7 @@ export default function ExamPage() {
   const bank = data?.bank as BankFile | undefined;
 
   useEffect(() => {
-    if (error instanceof ApiError && error.status === 401) {
+    if (error instanceof ApiError && error.code === "UNAUTHORIZED") {
       queryClient.setQueryData(authKeys.me, null);
       navigate("/login", { replace: true, state: { from: "/exam" } });
     }
@@ -69,12 +87,29 @@ export default function ExamPage() {
       };
       const saved = await createExamBank(next);
       selectBank(saved.id);
-      setMessage(`DB에 개념 ${next.concepts.length}개, 사례 ${next.scenarios.length}개를 저장했습니다.`);
-    } catch (cause) { setMessage(`문항을 가져오지 못했습니다: ${cause instanceof Error ? cause.message : "형식을 확인하세요."}`); }
+      toast.success(`문항 은행을 저장했습니다. 개념 ${next.concepts.length}개, 사례 ${next.scenarios.length}개`);
+    } catch (cause) {
+      toast.error(cause instanceof ApiError
+        ? examApiErrorMessage(cause)
+        : "문항을 가져오지 못했습니다. 파일 형식과 내용을 확인해 주세요.");
+    }
   };
 
-  if (isPending) return <div className="exam-loading">문항 은행을 불러오는 중입니다…</div>;
-  if (isError || !bank) return <div className="exam-loading"><p>문항 은행을 불러오지 못했습니다. {error instanceof Error ? error.message : ""}</p><button onClick={() => selectBank("aws-sap")}>기본 은행 다시 열기</button></div>;
+  if (isPending) return <LoadingState label="문항 은행을 불러오는 중입니다." />;
+  if (isError || !bank) {
+    return (
+      <ErrorState
+        title="문항 은행을 불러오지 못했습니다"
+        description={examApiErrorMessage(error)}
+        action={(
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => void queryClient.invalidateQueries({ queryKey: examBankQuery(activeId).queryKey })}>다시 시도</Button>
+            <Button variant="outline" onClick={() => selectBank("aws-sap")}>기본 은행 열기</Button>
+          </div>
+        )}
+      />
+    );
+  }
 
   const wrong = progress.wrongIds.filter((id) => bank.concepts.some((note) => note.id === id) || bank.scenarios.some((note) => note.id === id));
   const primer = session?.kind === "lesson" ? selectPrimerConcepts(session.exercises, bank, progress.notes) : [];

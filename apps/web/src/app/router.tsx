@@ -4,11 +4,14 @@ import Home from "../pages/home";
 import ExamPage from "../pages/exam/ExamPage";
 import { PublicOnly, RequireAuth } from "@/features/auth/AuthBoundary";
 import { LoginPage, SignupPage } from "@/pages/auth/AuthPages";
+import { NotFoundPage } from "@/pages/not-found/NotFoundPage";
+import { RouteErrorBoundary } from "./RouteErrorBoundary";
 
 export const createAppRouter = () =>
   createBrowserRouter([
     {
       Component: RootLayout,
+      ErrorBoundary: RouteErrorBoundary,
       children: [
         {
           index: true,
@@ -25,6 +28,7 @@ export const createAppRouter = () =>
           Component: RequireAuth,
           children: [{ path: "exam", Component: ExamPage }],
         },
+        { path: "*", Component: NotFoundPage },
       ],
     },
   ]);

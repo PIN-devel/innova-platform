@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
-import { authErrorResponseSchema, authResponseSchema } from "@innova/contracts";
+import { apiErrorResponseSchema, authResponseSchema } from "@innova/contracts";
 import { setupServer } from "msw/node";
 import { handlers, resetAuthMock } from "../src/mocks/handlers.ts";
 
@@ -19,7 +19,7 @@ function authRequest(path, method = "GET", body) {
 }
 
 async function errorCode(response) {
-  return authErrorResponseSchema.parse(await response.json()).error.code;
+  return apiErrorResponseSchema.parse(await response.json()).error.code;
 }
 
 test("MSW signup validates, prevents duplicates, auto-authenticates, and resets", async () => {
@@ -38,7 +38,9 @@ test("MSW signup validates, prevents duplicates, auto-authenticates, and resets"
 
   const invalid = await authRequest("/signup", "POST", { email: "bad", password: "short" });
   assert.equal(invalid.status, 400);
-  assert.equal(await errorCode(invalid), "INVALID_INPUT");
+  const invalidPayload = apiErrorResponseSchema.parse(await invalid.json());
+  assert.equal(invalidPayload.error.code, "INVALID_INPUT");
+  assert.ok(invalidPayload.error.details.some((detail) => detail.field === "email" && detail.reason === "invalid_format"));
 
   resetAuthMock();
   const signedOut = await authRequest("/me");
@@ -87,4 +89,29 @@ test("MSW exam bank requires a signed-in user", async () => {
   await authRequest("/logout", "POST", {});
   const signedOutAgain = await fetch(bankUrl);
   assert.equal(signedOutAgain.status, 401);
+});
+
+test("MSW exam bank not-found and validation errors use the shared envelope", async () => {
+  await authRequest("/login", "POST", { email: "test@example.com", password: "password123" });
+  const missing = await fetch(`${baseUrl}/api/exam/banks/missing`);
+  assert.equal(missing.status, 404);
+  assert.deepEqual(apiErrorResponseSchema.parse(await missing.json()).error, {
+    code: "NOT_FOUND",
+    message: "Exam bank not found",
+  });
+
+  const invalid = await fetch(`${baseUrl}/api/exam/banks`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ schema: "unknown" }),
+  });
+  assert.equal(invalid.status, 400);
+  const body = apiErrorResponseSchema.parse(await invalid.json());
+  assert.equal(body.error.code, "INVALID_INPUT");
+  assert.ok(body.error.details?.length);
+  assert.equal("issues" in body, false);
+
+  const unknownRoute = await fetch(`${baseUrl}/api/unknown`);
+  assert.equal(unknownRoute.status, 404);
+  assert.equal(await errorCode(unknownRoute), "NOT_FOUND");
 });
