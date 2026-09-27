@@ -8,6 +8,7 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { getPostAuthPath } from "@/features/auth/route-access";
 
 type FieldErrors = Partial<Record<"email" | "password", string>>;
 
@@ -81,8 +82,8 @@ export function LoginPage() {
     }
     setFieldErrors({});
     try {
-      await mutation.mutateAsync(result.data satisfies LoginRequest);
-      navigate(redirectPath(location.state), { replace: true });
+      const user = await mutation.mutateAsync(result.data satisfies LoginRequest);
+      navigate(getPostAuthPath(user, redirectPath(location.state)), { replace: true });
     } catch {
       // The mutation error is rendered from its error code below.
     }
@@ -125,8 +126,8 @@ export function SignupPage() {
     }
     setFieldErrors({});
     try {
-      await mutation.mutateAsync(result.data satisfies SignupRequest);
-      navigate(redirectPath(location.state), { replace: true });
+      const user = await mutation.mutateAsync(result.data satisfies SignupRequest);
+      navigate(getPostAuthPath(user, redirectPath(location.state)), { replace: true });
     } catch {
       // The mutation error is rendered from its error code below.
     }

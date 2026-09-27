@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
-import { apiErrorResponseSchema, authResponseSchema } from "@innova/contracts";
+import { adminApprovalResponseSchema, apiErrorResponseSchema, authResponseSchema, pendingUsersResponseSchema } from "@innova/contracts";
 import { setupServer } from "msw/node";
 import { handlers, resetAuthMock } from "../src/mocks/handlers.ts";
 
@@ -27,7 +27,13 @@ test("MSW signup validates, prevents duplicates, auto-authenticates, and resets"
   assert.equal(signup.status, 201);
   const user = authResponseSchema.parse(await signup.json()).user;
   assert.equal(user.email, "new@example.com");
-  assert.deepEqual(Object.keys(user).sort(), ["email", "id"]);
+  assert.deepEqual(Object.keys(user).sort(), ["approvalStatus", "email", "id", "role"]);
+  assert.equal(user.approvalStatus, "pending");
+  assert.equal(user.role, "member");
+
+  const blockedExam = await fetch(`${baseUrl}/api/exam/banks/default`);
+  assert.equal(blockedExam.status, 403);
+  assert.equal(await errorCode(blockedExam), "APPROVAL_PENDING");
 
   const duplicate = await authRequest("/signup", "POST", { email: "new@example.com", password: "password123" });
   assert.equal(duplicate.status, 409);
@@ -46,6 +52,76 @@ test("MSW signup validates, prevents duplicates, auto-authenticates, and resets"
   const signedOut = await authRequest("/me");
   assert.equal(signedOut.status, 401);
   assert.equal(await errorCode(signedOut), "UNAUTHORIZED");
+});
+
+test("MSW pending login preserves the pending status and blocks exam reads and writes", async () => {
+  await authRequest("/signup", "POST", { email: "pending@example.com", password: "password123" });
+  await authRequest("/logout", "POST", {});
+
+  const login = await authRequest("/login", "POST", { email: "pending@example.com", password: "password123" });
+  assert.equal(login.status, 200);
+  assert.equal(authResponseSchema.parse(await login.json()).user.approvalStatus, "pending");
+
+  for (const response of [
+    await fetch(`${baseUrl}/api/exam/banks/default`),
+    await fetch(`${baseUrl}/api/exam/banks`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }),
+  ]) {
+    assert.equal(response.status, 403);
+    assert.equal(await errorCode(response), "APPROVAL_PENDING");
+  }
+});
+
+test("MSW admin list and approval mirror backend authorization and state changes", async () => {
+  const admin = {
+    id: "00000000-0000-4000-8000-000000000002",
+    email: "admin@example.com",
+    approvalStatus: "pending",
+    role: "admin",
+  };
+  resetAuthMock([{ user: admin, password: "password123" }]);
+
+  const signup = await authRequest("/signup", "POST", { email: "member@example.com", password: "password123" });
+  const member = authResponseSchema.parse(await signup.json()).user;
+  const deniedList = await fetch(`${baseUrl}/api/admin/users/pending`);
+  assert.equal(deniedList.status, 403);
+  assert.equal(await errorCode(deniedList), "FORBIDDEN");
+
+  await authRequest("/logout", "POST", {});
+  await authRequest("/login", "POST", { email: "admin@example.com", password: "password123" });
+  const list = await fetch(`${baseUrl}/api/admin/users/pending`);
+  assert.equal(list.status, 200);
+  const pendingUsers = pendingUsersResponseSchema.parse(await list.json()).users;
+  assert.equal(pendingUsers.some((user) => user.id === member.id), true);
+  assert.equal(JSON.stringify(pendingUsers).includes("password"), false);
+
+  const approval = await fetch(`${baseUrl}/api/admin/users/${member.id}/approve`, { method: "POST" });
+  assert.equal(approval.status, 200);
+  assert.deepEqual(adminApprovalResponseSchema.parse(await approval.json()).user, {
+    ...member,
+    approvalStatus: "approved",
+  });
+  assert.equal((await fetch(`${baseUrl}/api/admin/users/${member.id}/approve`, { method: "POST" })).status, 200);
+
+  const refreshedList = pendingUsersResponseSchema.parse(await (await fetch(`${baseUrl}/api/admin/users/pending`)).json()).users;
+  assert.equal(refreshedList.some((user) => user.id === member.id), false);
+
+  await authRequest("/logout", "POST", {});
+  await authRequest("/login", "POST", { email: "member@example.com", password: "password123" });
+  assert.equal(authResponseSchema.parse(await (await authRequest("/me")).json()).user.approvalStatus, "approved");
+  assert.equal((await fetch(`${baseUrl}/api/exam/banks/default`)).status, 200);
+  const examWrite = await fetch(`${baseUrl}/api/exam/banks`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      schema: "sap-drill-bank.v1",
+      subject: "Synthetic test",
+      source: "test",
+      generatedAt: "2026-01-01",
+      concepts: [{ id: "concept-1", chapter: 1, deck: "test", term: "Placeholder", definition: "Synthetic definition", rationale: "Synthetic explanation" }],
+      scenarios: [{ id: "scenario-1", chapter: 1, stem: "Synthetic prompt", choices: ["A", "B", "C"], answerIndex: 0, rationale: "Synthetic explanation" }],
+    }),
+  });
+  assert.equal(examWrite.status, 201);
 });
 
 test("MSW login returns the same credential error for unknown email and wrong password", async () => {

@@ -10,6 +10,7 @@ export const apiErrorCodeSchema = z.enum([
   "INTERNAL_ERROR",
   "INVALID_CREDENTIALS",
   "EMAIL_ALREADY_EXISTS",
+  "APPROVAL_PENDING",
 ]);
 
 export const validationErrorReasonSchema = z.enum([

@@ -4,12 +4,13 @@ import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { AUTH_COOKIE_NAME, createAuthGuard } from "./auth.js";
+import { AUTH_COOKIE_NAME, createAdminAuthGuard, createApprovedAuthGuard, createAuthGuard } from "./auth.js";
 import { createDatabase } from "./db/client.js";
 import { createExamRepository, type ExamRepository } from "./db/exam.js";
 import { createUserRepository, type UserRepository } from "./db/users.js";
 import { createApplicationLogger } from "./logger.js";
 import { authRoutes } from "./routes/auth.js";
+import { adminUserRoutes } from "./routes/admin-users.js";
 import { examRoutes } from "./routes/exam.js";
 import { AppError, apiErrorBody, invalidInput } from "./errors.js";
 
@@ -108,7 +109,8 @@ export function buildApp({
     }
   });
   app.register(authRoutes, { prefix: "/api/auth", users });
-  app.register(examRoutes, { prefix: "/api/exam", repository: exams, requireAuth: createAuthGuard(users) });
+  app.register(examRoutes, { prefix: "/api/exam", repository: exams, requireAuth: createApprovedAuthGuard(users) });
+  app.register(adminUserRoutes, { prefix: "/api/admin", users, requireAdmin: createAdminAuthGuard(users) });
 
   return app;
 }

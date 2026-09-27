@@ -1,9 +1,11 @@
 import {
   authResponseSchema,
+  adminApprovalResponseSchema,
   apiErrorResponseSchema,
   ExamBankRecordSchema,
   ExamBankSchema,
   loginRequestSchema,
+  pendingUsersResponseSchema,
   signupRequestSchema,
   toValidationErrorDetails,
 } from "@innova/contracts";
@@ -57,13 +59,15 @@ const headers = { "Cache-Control": "no-store" };
 const defaultMockUser: AuthUser = {
   id: "00000000-0000-4000-8000-000000000001",
   email: "test@example.com",
+  approvalStatus: "approved",
+  role: "member",
 };
 type MockCredential = { user: AuthUser; password: string };
 let mockUsers = new Map<string, MockCredential>();
 let currentMockUser: AuthUser | null = null;
 
-export function resetAuthMock() {
-  mockUsers = new Map([[defaultMockUser.email, { user: defaultMockUser, password: "password123" }]]);
+export function resetAuthMock(seedUsers: MockCredential[] = [{ user: defaultMockUser, password: "password123" }]) {
+  mockUsers = new Map(seedUsers.map(({ user, password }) => [user.email, { user: { ...user }, password }]));
   currentMockUser = null;
 }
 
@@ -85,7 +89,7 @@ export const handlers = [
     const parsed = signupRequestSchema.safeParse(body);
     if (!parsed.success) return apiError(400, "INVALID_INPUT", "Invalid signup input", toValidationErrorDetails(parsed.error, body));
     if (mockUsers.has(parsed.data.email)) return apiError(409, "EMAIL_ALREADY_EXISTS", "Email already exists");
-    const user: AuthUser = { id: crypto.randomUUID(), email: parsed.data.email };
+    const user: AuthUser = { id: crypto.randomUUID(), email: parsed.data.email, approvalStatus: "pending", role: "member" };
     mockUsers.set(user.email, { user, password: parsed.data.password });
     currentMockUser = user;
     return authSuccess(user, 201);
@@ -113,8 +117,29 @@ export const handlers = [
     return new HttpResponse(null, { status: 204, headers });
   }),
 
+  http.get("*/api/admin/users/pending", () => {
+    if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
+    if (currentMockUser.role !== "admin") return apiError(403, "FORBIDDEN", "Administrator access required");
+    const users = [...mockUsers.values()]
+      .map(({ user }) => user)
+      .filter((user) => user.approvalStatus === "pending")
+      .map(({ id, email, approvalStatus }) => ({ id, email, approvalStatus }));
+    return HttpResponse.json(pendingUsersResponseSchema.parse({ users }), { headers });
+  }),
+
+  http.post("*/api/admin/users/:id/approve", ({ params }) => {
+    if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
+    if (currentMockUser.role !== "admin") return apiError(403, "FORBIDDEN", "Administrator access required");
+    const credential = [...mockUsers.values()].find(({ user }) => user.id === String(params.id));
+    if (!credential) return apiError(404, "NOT_FOUND", "User not found");
+    credential.user = { ...credential.user, approvalStatus: "approved" };
+    if (currentMockUser.id === credential.user.id) currentMockUser = credential.user;
+    return HttpResponse.json(adminApprovalResponseSchema.parse({ user: credential.user }), { headers });
+  }),
+
   http.get("*/api/exam/banks/:id", ({ params }) => {
     if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
+    if (currentMockUser.approvalStatus !== "approved") return apiError(403, "APPROVAL_PENDING", "Account approval is pending");
     const id = String(params.id) === "default" ? "aws-sap" : String(params.id);
     const record = banks.get(id);
     return record
@@ -124,6 +149,7 @@ export const handlers = [
 
   http.post("*/api/exam/banks", async ({ request }) => {
     if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
+    if (currentMockUser.approvalStatus !== "approved") return apiError(403, "APPROVAL_PENDING", "Account approval is pending");
     let payload: unknown;
     try {
       payload = await request.json();
