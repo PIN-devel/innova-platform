@@ -1,5 +1,5 @@
 {
-  "name": "api",
+  "name": "@innova/api",
   "version": "1.0.0",
   "description": "Fastify API example for innova-platform",
   "private": true,
