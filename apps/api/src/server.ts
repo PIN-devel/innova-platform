@@ -3,8 +3,8 @@ import { buildApp } from "./app.js";
 import { createApplicationLogger } from "./logger.js";
 
 const port = Number(process.env.PORT ?? 3000);
-const host = process.env.HOST ?? "127.0.0.1";
 const environment = process.env.NODE_ENV ?? "development";
+const host = process.env.HOST ?? (environment === "production" ? "0.0.0.0" : "127.0.0.1");
 let logger: ReturnType<typeof createApplicationLogger>;
 
 try {

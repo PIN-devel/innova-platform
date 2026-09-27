@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1790422344946,
-      "tag": "0000_fast_morlocks",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1790480164509,
-      "tag": "0001_cool_jack_power",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1790483889835,
-      "tag": "0002_solid_eternity",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1790485674347,
-      "tag": "0003_flippant_magneto",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1790500909433,
-      "tag": "0004_steady_piledriver",
+      "when": 1790505158964,
+      "tag": "0000_abandoned_komodo",
       "breakpoints": true
     }
   ]
