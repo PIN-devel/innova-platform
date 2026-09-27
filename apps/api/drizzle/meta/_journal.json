@@ -29,6 +29,13 @@
       "when": 1790485674347,
       "tag": "0003_flippant_magneto",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790500909433,
+      "tag": "0004_steady_piledriver",
+      "breakpoints": true
     }
   ]
 }

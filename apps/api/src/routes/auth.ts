@@ -8,7 +8,7 @@ import { AppError, invalidInput } from "../errors.js";
 import { toValidationErrorDetails } from "@innova/contracts";
 
 function publicUser(user: UserRecord): AuthUser {
-  return { id: user.id, email: user.email };
+  return { id: user.id, email: user.email, approvalStatus: user.approvalStatus, role: user.role };
 }
 
 export const authRoutes: FastifyPluginAsync<{ users: UserRepository }> = async (app, { users }) => {

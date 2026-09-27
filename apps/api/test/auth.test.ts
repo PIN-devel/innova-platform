@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
+import { authResponseSchema } from "@innova/contracts";
 import { buildApp } from "../src/app.js";
 import type { ExamRepository } from "../src/db/exam.js";
 import type { UserRecord, UserRepository } from "../src/db/users.js";
@@ -16,9 +17,20 @@ function fixture() {
     async findByEmail(email) { return records.get(email); },
     async create(email, passwordHash) {
       if (records.has(email)) return undefined;
-      const user = { id: randomUUID(), email, passwordHash };
+      const user = { id: randomUUID(), email, passwordHash, approvalStatus: "pending" as const, role: "member" as const };
       records.set(email, user);
       return user;
+    },
+    async findPending() {
+      return [...records.values()].filter((user) => user.approvalStatus === "pending")
+        .map(({ id, email, approvalStatus }) => ({ id, email, approvalStatus }));
+    },
+    async approvePending(id) {
+      const user = [...records.values()].find((record) => record.id === id);
+      if (!user || user.approvalStatus !== "pending") return undefined;
+      const approved = { ...user, approvalStatus: "approved" as const };
+      records.set(user.email, approved);
+      return approved;
     },
   };
   const app = buildApp({ logger: false, examRepository: exams, userRepository: users, jwtSecret });
@@ -49,11 +61,14 @@ test("signup validates input, stores Argon2 hash, and signs in with HttpOnly coo
     { field: "email", reason: "required" },
     { field: "password", reason: "required" },
   ]);
-  const signup = await app.inject({ method: "POST", url: "/api/auth/signup", payload: { email: " User@Example.com ", password: "validpass123" } });
+  const signup = await app.inject({ method: "POST", url: "/api/auth/signup", payload: { email: " User@Example.com ", password: "validpass123", approvalStatus: "approved", role: "admin" } });
   assert.equal(signup.statusCode, 201);
+  authResponseSchema.parse(signup.json());
   assert.equal(signup.json().user.email, "user@example.com");
   assert.deepEqual(Object.keys(signup.json()), ["user"]);
-  assert.deepEqual(Object.keys(signup.json().user).sort(), ["email", "id"]);
+  assert.deepEqual(Object.keys(signup.json().user).sort(), ["approvalStatus", "email", "id", "role"]);
+  assert.equal(signup.json().user.approvalStatus, "pending");
+  assert.equal(signup.json().user.role, "member");
   const stored = records.get("user@example.com")!;
   assert.notEqual(stored.passwordHash, "validpass123");
   assert.match(stored.passwordHash, /^\$argon2id\$/);
@@ -82,11 +97,13 @@ test("login hides account existence, issues cookie, and me rejects invalid sessi
   }
   const login = await app.inject({ method: "POST", url: "/api/auth/login", payload: { email: "USER@example.com", password: "validpass123" } });
   assert.equal(login.statusCode, 200);
-  assert.deepEqual(login.json(), { user: { id: userId, email: "user@example.com" } });
+  authResponseSchema.parse(login.json());
+  assert.deepEqual(login.json(), { user: { id: userId, email: "user@example.com", approvalStatus: "pending", role: "member" } });
   assert.match(String(login.headers["set-cookie"]), /HttpOnly/i);
   const cookie = cookieFrom(login);
   const me = await app.inject({ method: "GET", url: "/api/auth/me", headers: { cookie } });
   assert.equal(me.statusCode, 200);
+  authResponseSchema.parse(me.json());
   assert.deepEqual(me.json(), login.json());
   for (const headers of [
     {},
@@ -117,9 +134,11 @@ test("Fastify parsing errors serialize as INVALID_INPUT and unexpected errors as
     async create() { throw new Error("private database detail"); },
   };
   const app = buildApp({ logger: false, examRepository: failingExams, userRepository: {
-    async findById(id) { return id === errorTestUserId ? { id, email: "exam@example.com", passwordHash: "unused" } : undefined; },
+    async findById(id) { return id === errorTestUserId ? { id, email: "exam@example.com", passwordHash: "unused", approvalStatus: "approved", role: "member" } : undefined; },
     async findByEmail() { return undefined; },
     async create() { return undefined; },
+    async findPending() { return []; },
+    async approvePending() { return undefined; },
   }, jwtSecret });
   t.after(() => app.close());
   await app.ready();

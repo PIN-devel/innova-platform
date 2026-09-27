@@ -39,6 +39,26 @@ export function createAuthGuard(users: UserRepository) {
     }
     const user = await users.findById(request.user.sub);
     if (!user) throw new AppError(401, "UNAUTHORIZED", "Authentication required");
-    request.authUser = { id: user.id, email: user.email };
+    request.authUser = { id: user.id, email: user.email, approvalStatus: user.approvalStatus, role: user.role };
+  };
+}
+
+export function createApprovedAuthGuard(users: UserRepository) {
+  const requireAuth = createAuthGuard(users);
+  return async (request: FastifyRequest) => {
+    await requireAuth(request);
+    if (request.authUser?.approvalStatus !== "approved") {
+      throw new AppError(403, "APPROVAL_PENDING", "Account approval is pending");
+    }
+  };
+}
+
+export function createAdminAuthGuard(users: UserRepository) {
+  const requireAuth = createAuthGuard(users);
+  return async (request: FastifyRequest) => {
+    await requireAuth(request);
+    if (request.authUser?.role !== "admin") {
+      throw new AppError(403, "FORBIDDEN", "Administrator access required");
+    }
   };
 }

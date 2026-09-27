@@ -7,9 +7,11 @@ import { ExamBankSchema } from "@innova/contracts";
 const jwtSecret = "test-only-jwt-secret-with-at-least-32-characters";
 const userId = "f5f8301d-996b-461b-95c9-9a72162023d6";
 const users: UserRepository = {
-  async findById(id) { return id === userId ? { id, email: "exam@example.com", passwordHash: "unused" } : undefined; },
+  async findById(id) { return id === userId ? { id, email: "exam@example.com", passwordHash: "unused", approvalStatus: "approved", role: "member" } : undefined; },
   async findByEmail() { return undefined; },
   async create() { return undefined; },
+  async findPending() { return []; },
+  async approvePending() { return undefined; },
 };
 const sampleBank = ExamBankSchema.parse({
   schema: "sap-drill-bank.v1", subject: "Synthetic test", source: "test", generatedAt: "2026-01-01",

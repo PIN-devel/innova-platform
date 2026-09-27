@@ -31,9 +31,11 @@ function repositories({ failFind = false } = {}): { exams: ExamRepository; users
       async create() { throw new Error("unused"); },
     },
     users: {
-      async findById(id) { return id === userId ? { id, email: "test@example.com", passwordHash: "unused" } : undefined; },
+      async findById(id) { return id === userId ? { id, email: "test@example.com", passwordHash: "unused", approvalStatus: "approved", role: "member" } : undefined; },
       async findByEmail() { return undefined; },
       async create() { return undefined; },
+      async findPending() { return []; },
+      async approvePending() { return undefined; },
     },
   };
 }
