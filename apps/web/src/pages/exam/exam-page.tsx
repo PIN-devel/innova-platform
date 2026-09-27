@@ -15,7 +15,7 @@ import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
 import { authKeys } from "@/entities/auth/queries";
 import { useCurrentUser } from "@/features/auth/hooks";
-import { LogoutButton } from "@/features/auth/LogoutButton";
+import { LogoutButton } from "@/features/auth/logout-button";
 import { chapterMastery, useProgress } from "@/entities/progress";
 import { todayKst } from "@/shared/lib/file";
 import { shuffle } from "@/shared/lib/shuffle";

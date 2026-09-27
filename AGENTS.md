@@ -11,6 +11,13 @@
 - 비밀 정보와 실제 연결 문자열을 코드, 지침, 커밋에 넣지 않는다. 환경 변수의 예시는 `.env.example`에만 작성한다.
 - 완료 시 변경 내용, 실행한 검증과 그 결과, 남은 제약을 간결하게 보고한다.
 
+## 파일 이름 규칙
+
+- 직접 관리하는 source file과 directory는 kebab-case를 사용한다.
+- 하나의 source file에 대응하는 unit test는 `<source>.test.ts(x)` 형식을 우선한다.
+- integration 또는 behavior-oriented test는 설명적인 `*.test.*` 이름을 사용할 수 있다.
+- ecosystem/tooling이 정한 이름, generated file, migration file, tool-managed file은 예외로 둔다.
+
 ## Git Flow
 
 - `main`은 배포 가능한 상태, `develop`은 다음 릴리스의 통합 브랜치다. 현재 저장소에는 `main`만 있으므로 Git Flow를 시작할 때 `main`에서 `develop`을 만든다. 기존 작업 트리의 변경 사항은 먼저 확인하고 보존한다.

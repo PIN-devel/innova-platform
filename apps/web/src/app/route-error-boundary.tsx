@@ -1,7 +1,7 @@
 import { isRouteErrorResponse, useRouteError } from "react-router";
 import { Button } from "@/shared/ui/button";
 import { ErrorState } from "@/shared/ui/error-state";
-import { NotFoundPage } from "@/pages/not-found/NotFoundPage";
+import { NotFoundPage } from "@/pages/not-found/not-found-page";
 
 function RouteErrorBoundary() {
   const error = useRouteError();

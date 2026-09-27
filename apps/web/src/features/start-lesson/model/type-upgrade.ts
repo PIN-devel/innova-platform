@@ -6,7 +6,7 @@ import {
   makeMcq,
   makeScenario,
   makeShort,
-} from "./fromNotes";
+} from "./from-notes";
 
 /**
  * DRILL-24 (G4) type-upgrade map — 재인 → 소환 → 사례 (one step harder)
