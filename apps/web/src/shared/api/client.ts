@@ -5,23 +5,26 @@ export class ApiError extends Error {
   readonly data: unknown;
   readonly code?: ApiErrorCode;
   readonly details?: ValidationErrorDetail[];
+  readonly requestId?: string;
 
   constructor(
     message: string,
     status: number,
     data: unknown,
+    requestId?: string,
   ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.data = data;
+    this.requestId = requestId;
     const parsed = apiErrorResponseSchema.safeParse(data);
     this.code = parsed.success ? parsed.data.error.code : undefined;
     this.details = parsed.success ? parsed.data.error.details : undefined;
   }
 }
 
-const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/$/, "");
+const baseUrl = (import.meta.env?.VITE_API_BASE_URL ?? "/api").replace(/\/$/, "");
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
@@ -50,7 +53,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const message = payloadMessage ||
       (typeof data === "string" && data) ||
       `Request failed with status ${response.status}`;
-    throw new ApiError(message, response.status, data);
+    throw new ApiError(message, response.status, data, response.headers.get("X-Request-Id") ?? undefined);
   }
 
   return data as T;
