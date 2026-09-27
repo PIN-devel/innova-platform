@@ -4,3 +4,10 @@ node_modules/
 **/*.tsbuildinfo
 *.log
 .DS_Store
+# Private exam bank imports and credentials must never be staged.
+**/private-data/
+**/sample-bank.json
+*.exam-bank.json
+**/.env
+**/.env.*
+!**/.env.example

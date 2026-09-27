@@ -1,11 +1,11 @@
 import { createBrowserRouter } from "react-router";
-import type { QueryClient } from "@tanstack/react-query";
 import RootLayout from "./root-layout";
 import Home from "../pages/home";
-import { createItemsAction } from "../features/items/action";
-import { homeLoader } from "../pages/home/loader";
+import ExamPage from "../pages/exam/ExamPage";
+import { PublicOnly, RequireAuth } from "@/features/auth/AuthBoundary";
+import { LoginPage, SignupPage } from "@/pages/auth/AuthPages";
 
-export const createAppRouter = (queryClient: QueryClient) =>
+export const createAppRouter = () =>
   createBrowserRouter([
     {
       Component: RootLayout,
@@ -13,8 +13,17 @@ export const createAppRouter = (queryClient: QueryClient) =>
         {
           index: true,
           Component: Home,
-          loader: () => homeLoader(queryClient),
-          action: createItemsAction(queryClient),
+        },
+        {
+          Component: PublicOnly,
+          children: [
+            { path: "login", Component: LoginPage },
+            { path: "signup", Component: SignupPage },
+          ],
+        },
+        {
+          Component: RequireAuth,
+          children: [{ path: "exam", Component: ExamPage }],
         },
       ],
     },

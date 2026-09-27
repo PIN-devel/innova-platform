@@ -1,36 +1,31 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import { buildApp } from "../src/app.js";
-import type { ItemRepository } from "../src/db/items.js";
-
-function createTestRepository(): ItemRepository {
-  const items = new Map([
-    ["item-1", { id: "item-1", name: "Notebook" }],
-    ["item-2", { id: "item-2", name: "Pen" }],
-    ["item-3", { id: "item-3", name: "Desk lamp" }],
-  ]);
-
+import type { ExamRepository } from "../src/db/exam.js";
+import type { UserRepository } from "../src/db/users.js";
+import { ExamBankSchema } from "@innova/contracts";
+const jwtSecret = "test-only-jwt-secret-with-at-least-32-characters";
+const userId = "f5f8301d-996b-461b-95c9-9a72162023d6";
+const users: UserRepository = {
+  async findById(id) { return id === userId ? { id, email: "exam@example.com", passwordHash: "unused" } : undefined; },
+  async findByEmail() { return undefined; },
+  async create() { return undefined; },
+};
+const sampleBank = ExamBankSchema.parse({
+  schema: "sap-drill-bank.v1", subject: "Synthetic test", source: "test", generatedAt: "2026-01-01",
+  concepts: [{ id: "concept-1", chapter: 1, deck: "test", term: "Placeholder", definition: "Synthetic definition", rationale: "Synthetic explanation" }],
+  scenarios: [{ id: "scenario-1", chapter: 1, stem: "Synthetic prompt", choices: ["A", "B", "C"], answerIndex: 0, rationale: "Synthetic explanation" }],
+});
+function createExamTestRepository(): ExamRepository {
+  const banks = new Map([["aws-sap", sampleBank]]);
   return {
-    async list() { return [...items.values()]; },
-    async find(id) { return items.get(id); },
-    async create(name) {
-      const item = { id: randomUUID(), name };
-      items.set(item.id, item);
-      return item;
-    },
-    async update(id, name) {
-      if (!items.has(id)) return undefined;
-      const item = { id, name };
-      items.set(id, item);
-      return item;
-    },
-    async remove(id) { return items.delete(id); },
+    async find(id) { const bank = banks.get(id); return bank ? { id, bank } : undefined; },
+    async create(bank) { const id = `bank-${banks.size}`; banks.set(id, bank); return { id, bank }; },
   };
 }
 
-test("basic routes and item CRUD", async (t) => {
-  const app = buildApp({ logger: false, repository: createTestRepository() });
+test("health routes", async (t) => {
+  const app = buildApp({ logger: false, examRepository: createExamTestRepository(), userRepository: users, jwtSecret });
   t.after(() => app.close());
 
   const root = await app.inject({ method: "GET", url: "/" });
@@ -39,36 +34,38 @@ test("basic routes and item CRUD", async (t) => {
 
   const health = await app.inject({ method: "GET", url: "/health" });
   assert.deepEqual(health.json(), { status: "ok" });
-
-  const initial = await app.inject({ method: "GET", url: "/api/items" });
-  assert.equal(initial.json().length, 3);
-
-  const created = await app.inject({ method: "POST", url: "/api/items", payload: { name: "  Ruler  " } });
-  assert.equal(created.statusCode, 201);
-  const item = created.json() as { id: string; name: string };
-  assert.equal(item.name, "Ruler");
-
-  const read = await app.inject({ method: "GET", url: `/api/items/${item.id}` });
-  assert.deepEqual(read.json(), item);
-
-  const updated = await app.inject({ method: "PUT", url: `/api/items/${item.id}`, payload: { name: "Pencil" } });
-  assert.equal(updated.statusCode, 200);
-  assert.deepEqual(updated.json(), { id: item.id, name: "Pencil" });
-
-  const deleted = await app.inject({ method: "DELETE", url: `/api/items/${item.id}` });
-  assert.equal(deleted.statusCode, 204);
-
-  const missing = await app.inject({ method: "GET", url: `/api/items/${item.id}` });
-  assert.equal(missing.statusCode, 404);
-  assert.deepEqual(missing.json(), { message: "Item not found" });
 });
 
-test("rejects invalid item names", async (t) => {
-  const app = buildApp({ logger: false, repository: createTestRepository() });
+test("exam bank API requires JWT cookie and preserves validated records", async (t) => {
+  const app = buildApp({ logger: false, examRepository: createExamTestRepository(), userRepository: users, jwtSecret });
   t.after(() => app.close());
+  await app.ready();
+  const cookie = `exam_drill_auth=${app.jwt.sign({ sub: userId }, { expiresIn: "15m" })}`;
+  const authenticated = { cookie };
+  const unauthorized = await app.inject({ method: "GET", url: "/api/exam/banks/default" });
+  assert.equal(unauthorized.statusCode, 401);
+  assert.equal(unauthorized.json().error.code, "UNAUTHORIZED");
+  assert.equal(unauthorized.headers["cache-control"], "no-store");
+  const wrongToken = await app.inject({ method: "GET", url: "/api/exam/banks/default", headers: { authorization: "Bearer wrong" } });
+  assert.equal(wrongToken.statusCode, 401);
+  const deniedWrite = await app.inject({ method: "POST", url: "/api/exam/banks", payload: sampleBank });
+  assert.equal(deniedWrite.statusCode, 401);
+  const defaultResponse = await app.inject({ method: "GET", url: "/api/exam/banks/default", headers: authenticated });
+  assert.equal(defaultResponse.statusCode, 200);
+  assert.equal(defaultResponse.headers["cache-control"], "no-store");
+  assert.equal(defaultResponse.json().bank.concepts.length, 1);
+  assert.equal(defaultResponse.json().bank.scenarios.length, 1);
+  assert.deepEqual(defaultResponse.json().bank.concepts.find((note: { id: string }) => note.id === sampleBank.concepts[0]?.id), sampleBank.concepts[0]);
 
-  for (const payload of [{ name: "   " }, { name: 123 }, {}]) {
-    const response = await app.inject({ method: "POST", url: "/api/items", payload });
-    assert.equal(response.statusCode, 400);
-  }
+  const created = await app.inject({ method: "POST", url: "/api/exam/banks", headers: authenticated, payload: sampleBank });
+  assert.equal(created.statusCode, 201);
+  const id = created.json().id as string;
+  const stored = await app.inject({ method: "GET", url: `/api/exam/banks/${id}`, headers: authenticated });
+  assert.deepEqual(stored.json().bank, created.json().bank);
+  const duplicate = await app.inject({ method: "POST", url: "/api/exam/banks", headers: authenticated, payload: { ...sampleBank, concepts: [sampleBank.concepts[0], sampleBank.concepts[0]] } });
+  assert.equal(duplicate.statusCode, 400);
+});
+
+test("server fails closed without a configured JWT secret", () => {
+  assert.throws(() => buildApp({ logger: false, examRepository: createExamTestRepository(), userRepository: users, jwtSecret: "" }), /JWT_SECRET/);
 });
