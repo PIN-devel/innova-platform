@@ -11,7 +11,7 @@ pnpm --filter @innova/api db:verify:exam
 pnpm dev
 ```
 
-기본 주소는 `http://127.0.0.1:3000`입니다. `HOST`와 `PORT` 환경 변수로 변경할 수 있습니다.
+개발 환경의 기본 주소는 `http://127.0.0.1:3000`입니다. 운영 환경에서는 `HOST`를 지정하지 않으면 `0.0.0.0`에 바인딩하며, Render가 제공하는 `PORT`를 사용합니다. `HOST`와 `PORT` 환경 변수로 변경할 수 있습니다.
 DB 연결은 `apps/api/.env`의 `DATABASE_URL`을 사용합니다. `JWT_SECRET`도 같은 파일에 32자 이상의 임의 문자열로 설정해야 API가 시작됩니다. 로그 수준은 `LOG_LEVEL`로 설정하며 기본값은 `info`입니다. 실제 `.env` 파일은 Git에서 제외됩니다. `/api/exam/*`는 로그인 후 발급된 HttpOnly 쿠키가 필요합니다. 응답은 `Cache-Control: no-store`입니다. 외부 배포에는 HTTPS가 필요합니다.
 
 개념, 문제, 정답, 해설 JSON은 저장소에 포함하지 않습니다. 새 DB로 이관할 때만 Git 밖의 비공개 원본 파일을 지정하세요: `EXAM_BANK_SEED_PATH=/absolute/private/path.json pnpm --filter @innova/api db:seed:exam`. 기본 은행이 이미 있으면 `pnpm --filter @innova/api db:verify:exam`으로 형식과 개수를 확인할 수 있습니다. 원본 파일과 DB를 필드별로 비교해야 하는 경우에는 비공개 파일을 별도로 검사하세요.
