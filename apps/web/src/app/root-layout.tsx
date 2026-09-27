@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from "react-router";
 import { useCurrentUser } from "@/features/auth/hooks";
-import { LogoutButton } from "@/features/auth/LogoutButton";
+import { LogoutButton } from "@/features/auth/logout-button";
 
 export default function RootLayout() {
   const exam = useLocation().pathname.startsWith("/exam");

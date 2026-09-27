@@ -1,10 +1,10 @@
 import type { BankFile, Exercise, LessonSession } from "@/entities/bank";
-import { makeScenario } from "./fromNotes";
+import { makeScenario } from "./from-notes";
 import {
   TYPE_UPGRADE_MAP,
   type WrongTypeMap,
   upgradeWrongExercise,
-} from "./typeUpgrade";
+} from "./type-upgrade";
 
 export { TYPE_UPGRADE_MAP };
 export type { WrongTypeMap };

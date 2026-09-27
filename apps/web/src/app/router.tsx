@@ -1,11 +1,11 @@
 import { createBrowserRouter } from "react-router";
 import RootLayout from "./root-layout";
 import Home from "../pages/home";
-import ExamPage from "../pages/exam/ExamPage";
-import { PublicOnly, RequireAuth } from "@/features/auth/AuthBoundary";
-import { LoginPage, SignupPage } from "@/pages/auth/AuthPages";
-import { NotFoundPage } from "@/pages/not-found/NotFoundPage";
-import { RouteErrorBoundary } from "./RouteErrorBoundary";
+import ExamPage from "../pages/exam/exam-page";
+import { PublicOnly, RequireAuth } from "@/features/auth/auth-boundary";
+import { LoginPage, SignupPage } from "@/pages/auth/auth-pages";
+import { NotFoundPage } from "@/pages/not-found/not-found-page";
+import { RouteErrorBoundary } from "./route-error-boundary";
 
 export const createAppRouter = () =>
   createBrowserRouter([

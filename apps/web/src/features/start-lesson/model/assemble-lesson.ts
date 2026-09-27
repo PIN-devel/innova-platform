@@ -3,7 +3,7 @@ import { UNITS, unitTitle } from "@/entities/bank";
 import type { ConceptNote } from "@/entities/concept";
 import type { ScenarioNote } from "@/entities/scenario";
 import { shuffle } from "@/shared/lib/shuffle";
-import { makeCloze, makeMcq, makeOx, makeScenario, makeShort } from "./fromNotes";
+import { makeCloze, makeMcq, makeOx, makeScenario, makeShort } from "./from-notes";
 
 export type AssembleOptions = {
   chapter?: number;

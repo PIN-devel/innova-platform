@@ -8,7 +8,7 @@ import {
   makePair,
   makeScenario,
   makeShort,
-} from "./fromNotes";
+} from "./from-notes";
 
 function sessionId(): string {
   return `s-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`;
