@@ -4,7 +4,7 @@
 
 ## 브랜드 마크
 
-- 확정된 Forward N의 SVG 원본은 `public/brand/innova-mark.svg`이며, favicon도 같은 파일을 사용한다. 향후 App Shell에서는 이 경로를 그대로 참조한다.
+- 확정된 Forward N의 SVG 원본은 `public/brand/innova-mark.svg`이며, favicon과 App Shell이 같은 파일을 참조한다.
 - 원본의 파란색(`#0750f9`)과 내부 화살표 모양, 투명한 여백을 유지한다. 이 색은 브랜드 자산 자체의 색이며 버튼·링크 등의 UI 색은 아래의 semantic token을 따른다.
 - 작은 크기에서 내부 여백이 사라지지 않도록 임의로 잘라내거나 장식·그림자를 추가하지 않는다. 밝은 표면에 사용하는 것을 기본으로 하고, 배경과의 대비를 확인한다.
 
