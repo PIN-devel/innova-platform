@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, afterEach, before, beforeEach, test } from "node:test";
-import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { QueryObserver } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { createServer } from "vite";
@@ -27,6 +27,8 @@ let logout;
 let cacheAuthenticatedUser;
 let clearProtectedQueries;
 let clearSessionCache;
+let createQueryClient;
+let userDecisionMutation;
 
 const adminA = { id: "00000000-0000-4000-8000-000000000010", email: "admin-a@example.com", approvalStatus: "approved", role: "admin" };
 const adminB = { id: "00000000-0000-4000-8000-000000000011", email: "admin-b@example.com", approvalStatus: "approved", role: "admin" };
@@ -43,12 +45,15 @@ before(async () => {
     if (method === "GET" && url.pathname === "/api/admin/users/pending") requests.admin++;
     return interceptedFetch(url.toString(), init);
   };
-  vite = await createServer({ server: { middlewareMode: true, hmr: false }, appType: "custom" });
+  vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom" });
   ({ examBankKeys, examBankQuery, createCachedExamBank, refreshDefaultExamBank } = await vite.ssrLoadModule("/src/entities/exam-bank/queries.ts"));
   ({ adminUserKeys, pendingUsersQuery, invalidatePendingUsers, approveUser, rejectUser } = await vite.ssrLoadModule("/src/entities/admin-users/queries.ts"));
   ({ authKeys, currentUserQuery } = await vite.ssrLoadModule("/src/entities/auth/queries.ts"));
   ({ login, logout } = await vite.ssrLoadModule("/src/entities/auth/api.ts"));
   ({ cacheAuthenticatedUser, clearProtectedQueries, clearSessionCache } = await vite.ssrLoadModule("/src/features/auth/clear-protected-queries.ts"));
+  const appQueries = await vite.ssrLoadModule("/src/app/query-client.ts");
+  createQueryClient = appQueries.createQueryClient;
+  ({ userDecisionMutation } = await vite.ssrLoadModule("/src/features/admin-users/hooks.ts"));
 });
 after(async () => { await vite?.close(); server.close(); globalThis.fetch = nativeFetch; });
 beforeEach(() => {
@@ -64,7 +69,7 @@ beforeEach(() => {
 afterEach(() => { for (const client of clients.splice(0)) client.clear(); server.resetHandlers(); });
 
 function makeClient() {
-  const client = new QueryClient();
+  const client = createQueryClient();
   clients.push(client);
   return client;
 }
@@ -112,6 +117,144 @@ test("exam bank uses one GET on first visit, reuses fresh data, and revalidates 
   await waitForQuery(stale, (result) => result.isSuccess && !result.isFetching);
   stopStale();
   assert.equal(requests.exam, 2);
+});
+
+test("auth revalidation clears protected data on expiry, account change, and permission change", async () => {
+  for (const next of [null, adminB, { ...adminA, role: "member" }, { ...adminA, approvalStatus: "rejected" }]) {
+    const client = makeClient();
+    cacheAuthenticatedUser(client, adminA);
+    client.setQueryData(adminUserKeys.pending, [memberA]);
+    client.setQueryData(examBankKeys.detail("aws-sap"), { bank: {} });
+    server.use(http.get("*/api/auth/me", () => next
+      ? HttpResponse.json({ user: next })
+      : HttpResponse.json({ error: { code: "UNAUTHORIZED", message: "Expired" } }, { status: 401 })));
+    await client.fetchQuery(currentUserQuery());
+    assert.equal(client.getQueryData(adminUserKeys.pending), undefined);
+    assert.equal(client.getQueryData(examBankKeys.detail("aws-sap")), undefined);
+  }
+});
+
+test("unchanged auth revalidation preserves fresh bank data", async () => {
+  const client = makeClient();
+  cacheAuthenticatedUser(client, await login({ email: adminA.email, password: "password123" }));
+  const bank = await client.fetchQuery(examBankQuery("aws-sap"));
+  await client.fetchQuery(currentUserQuery());
+  assert.deepEqual(client.getQueryData(examBankKeys.detail("aws-sap")), bank);
+  await client.fetchQuery(examBankQuery("aws-sap"));
+  assert.equal(requests.exam, 1);
+});
+
+test("a protected GET in flight is cancelled at logout and cannot restore its data", async () => {
+  const client = makeClient();
+  cacheAuthenticatedUser(client, adminA);
+  const started = Promise.withResolvers();
+  const response = Promise.withResolvers();
+  let requestSignal;
+  server.use(http.get("*/api/admin/users/pending", async ({ request }) => {
+    requestSignal = request.signal;
+    started.resolve();
+    await response.promise;
+    return HttpResponse.json({ users: [memberA] });
+  }));
+  const lookup = client.fetchQuery(pendingUsersQuery()).catch(() => null);
+  await started.promise;
+  clearSessionCache(client);
+  response.resolve();
+  await lookup;
+  assert.equal(requestSignal.aborted, true);
+  assert.equal(client.getQueryData(adminUserKeys.pending), undefined);
+});
+
+test("a late auth lookup cannot overwrite a newly authenticated account", async () => {
+  const client = makeClient();
+  cacheAuthenticatedUser(client, adminA);
+  const started = Promise.withResolvers();
+  const response = Promise.withResolvers();
+  server.use(http.get("*/api/auth/me", async () => {
+    started.resolve();
+    await response.promise;
+    return HttpResponse.json({ user: adminA });
+  }));
+  const lookup = client.fetchQuery(currentUserQuery()).catch(() => null);
+  await started.promise;
+  cacheAuthenticatedUser(client, adminB);
+  response.resolve();
+  await lookup;
+  assert.equal(client.getQueryData(authKeys.me).id, adminB.id);
+});
+
+test("an import completing after logout cannot repopulate protected cache", async () => {
+  const client = makeClient();
+  cacheAuthenticatedUser(client, adminA);
+  const started = Promise.withResolvers();
+  const response = Promise.withResolvers();
+  server.use(http.post("*/api/exam/banks", async () => {
+    started.resolve();
+    await response.promise;
+    return HttpResponse.json({ id: "late-import", bank: {} }, { status: 201 });
+  }));
+  const save = createCachedExamBank(client, {}).then(() => "saved", () => "cancelled");
+  await started.promise;
+  clearSessionCache(client);
+  response.resolve();
+  assert.equal(await save, "cancelled");
+  assert.equal(client.getQueryData(examBankKeys.detail("late-import")), undefined);
+});
+
+test("protected query errors update the session, but network failures retain usable data", async () => {
+  for (const code of ["UNAUTHORIZED", "SIGNUP_REJECTED", "FORBIDDEN", "INTERNAL_ERROR"]) {
+    const client = makeClient();
+    cacheAuthenticatedUser(client, adminA);
+    client.setQueryData(adminUserKeys.pending, [memberA]);
+    server.use(http.get("*/api/admin/users/pending", () => HttpResponse.json({ error: { code, message: code } }, { status: code === "UNAUTHORIZED" ? 401 : code === "INTERNAL_ERROR" ? 500 : 403 })));
+    await assert.rejects(client.fetchQuery(pendingUsersQuery()));
+    if (code === "INTERNAL_ERROR") assert.deepEqual(client.getQueryData(adminUserKeys.pending), [memberA]);
+    else assert.equal(client.getQueryData(adminUserKeys.pending), undefined);
+    if (code === "UNAUTHORIZED") assert.equal(client.getQueryData(authKeys.me), null);
+    if (code === "SIGNUP_REJECTED") assert.equal(client.getQueryData(authKeys.me).approvalStatus, "rejected");
+  }
+});
+
+test("successful rejection is retained when list refresh fails", async () => {
+  const client = makeClient();
+  cacheAuthenticatedUser(client, await login({ email: adminA.email, password: "password123" }));
+  const observer = new QueryObserver(client, pendingUsersQuery());
+  const stop = observer.subscribe(() => {});
+  await waitForQuery(observer, (result) => result.isSuccess && !result.isFetching);
+  server.use(http.get("*/api/admin/users/pending", () => HttpResponse.json({ error: { code: "INTERNAL_ERROR", message: "Unavailable" } }, { status: 500 })));
+  await client.getMutationCache().build(client, userDecisionMutation(client, rejectUser)).execute(memberA.id);
+  assert.equal(observer.getCurrentResult().isError, true);
+  assert.deepEqual(client.getQueryData(adminUserKeys.pending).map((user) => user.id), [memberB.id]);
+  stop();
+});
+
+test("self-rejection updates the shell identity immediately", async () => {
+  const client = makeClient();
+  const pendingAdmin = { ...adminA, approvalStatus: "pending" };
+  resetAuthMock([{ user: pendingAdmin, password: "password123" }]);
+  cacheAuthenticatedUser(client, await login({ email: adminA.email, password: "password123" }));
+  client.setQueryData(adminUserKeys.pending, [pendingAdmin]);
+  await client.getMutationCache().build(client, userDecisionMutation(client, rejectUser)).execute(adminA.id);
+  assert.equal(client.getQueryData(authKeys.me).approvalStatus, "rejected");
+  assert.equal(client.getQueryData(adminUserKeys.pending), undefined);
+});
+
+test("a late admin mutation error cannot sign out the next account", async () => {
+  const client = makeClient();
+  cacheAuthenticatedUser(client, adminA);
+  const started = Promise.withResolvers();
+  const response = Promise.withResolvers();
+  server.use(http.post("*/api/admin/users/:id/reject", async () => {
+    started.resolve();
+    await response.promise;
+    return HttpResponse.json({ error: { code: "UNAUTHORIZED", message: "Expired" } }, { status: 401 });
+  }));
+  const mutation = client.getMutationCache().build(client, userDecisionMutation(client, rejectUser)).execute(memberA.id).catch(() => null);
+  await started.promise;
+  cacheAuthenticatedUser(client, adminB);
+  response.resolve();
+  await mutation;
+  assert.equal(client.getQueryData(authKeys.me).id, adminB.id);
 });
 
 test("created bank and explicit default refresh use the Query cache without a second GET", async () => {

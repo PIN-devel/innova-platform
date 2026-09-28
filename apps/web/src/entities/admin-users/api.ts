@@ -8,8 +8,8 @@ import {
 } from "@innova/contracts";
 import { apiClient } from "@/shared/api/client";
 
-export async function getPendingUsers(): Promise<PendingUsersResponse["users"]> {
-  return pendingUsersResponseSchema.parse(await apiClient.get("/admin/users/pending", { cache: "no-store" })).users;
+export async function getPendingUsers(signal?: AbortSignal): Promise<PendingUsersResponse["users"]> {
+  return pendingUsersResponseSchema.parse(await apiClient.get("/admin/users/pending", { cache: "no-store", signal })).users;
 }
 
 export async function approveUser(id: string): Promise<AdminApprovalResponse["user"]> {

@@ -10,9 +10,9 @@ function parseUser(value: unknown): AuthUser {
   return authResponseSchema.parse(value).user;
 }
 
-export async function getCurrentUser(): Promise<AuthUser | null> {
+export async function getCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> {
   try {
-    return parseUser(await apiClient.get("/auth/me", { cache: "no-store" }));
+    return parseUser(await apiClient.get("/auth/me", { cache: "no-store", signal }));
   } catch (error) {
     if (error instanceof ApiError && error.code === "UNAUTHORIZED") return null;
     throw error;

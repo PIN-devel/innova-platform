@@ -7,7 +7,7 @@ export const adminUserKeys = {
 
 export const pendingUsersQuery = () => queryOptions({
   queryKey: adminUserKeys.pending,
-  queryFn: getPendingUsers,
+  queryFn: ({ signal }) => getPendingUsers(signal),
   staleTime: 0,
   retry: false,
 });

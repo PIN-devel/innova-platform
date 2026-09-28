@@ -169,3 +169,26 @@ test("admin approval is role-protected and activates an existing pending session
   const missingRejection = await app.inject({ method: "POST", url: "/api/admin/users/11111111-1111-4111-8111-111111111111/reject", headers: { cookie: adminCookie } });
   assert.equal(missingRejection.statusCode, 404);
 });
+
+test("rejection cannot be undone by stale approval, and rejected admins lose every admin endpoint", async (t) => {
+  const { app, records, cookieFor } = fixture();
+  t.after(() => app.close());
+  await app.ready();
+  const headers = { cookie: cookieFor(adminId) };
+  const staleApproval = await app.inject({ method: "POST", url: `/api/admin/users/${rejectedId}/approve`, headers });
+  assert.equal(staleApproval.statusCode, 409);
+  assert.equal(staleApproval.json().error.code, "BUSINESS_RULE_VIOLATION");
+  assert.equal(records.get(rejectedId)?.approvalStatus, "rejected");
+
+  records.set(adminId, { ...records.get(adminId)!, approvalStatus: "rejected" });
+  for (const [method, url] of [
+    ["GET", "/api/admin/users/pending"],
+    ["POST", `/api/admin/users/${pendingId}/approve`],
+    ["POST", `/api/admin/users/${pendingId}/reject`],
+  ] as const) {
+    const response = await app.inject({ method, url, headers });
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().error.code, "SIGNUP_REJECTED");
+    assert.equal(response.headers["cache-control"], "no-store");
+  }
+});
