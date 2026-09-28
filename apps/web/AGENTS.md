@@ -10,3 +10,4 @@
 - React component symbol은 PascalCase를 유지하고 component filename은 kebab-case를 사용한다.
 - 단일 hook module은 `use-*.ts(x)`를 우선하며, 하나의 feature에서 관련 hook 여러 개를 관리하는 module은 `hooks.ts`를 사용할 수 있다.
 - shadcn/ui generated filename은 생성 도구의 convention을 유지한다.
+- 플랫폼 UI를 수정할 때 `DESIGN.md`의 사용 원칙을 확인한다. 실제 token 값은 `src/styles.css`, 공통 구현은 `src/shared/ui/`를 기준으로 한다.

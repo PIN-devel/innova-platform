@@ -37,7 +37,7 @@ export default function AdminUsersPage() {
     <CardHeader>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
-          <p className="text-sm font-semibold uppercase tracking-widest text-blue-700">관리자</p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-primary">관리자</p>
           <CardTitle className="text-2xl">승인 대기 사용자</CardTitle>
           <CardDescription>승인하면 해당 사용자가 서비스를 이용할 수 있습니다.</CardDescription>
         </div>
@@ -47,12 +47,12 @@ export default function AdminUsersPage() {
       {approval.isError && <Alert variant="destructive"><AlertDescription>{approvalError(approval.error)}</AlertDescription></Alert>}
       {rejection.isError && <Alert variant="destructive"><AlertDescription>{rejectionError(rejection.error)}</AlertDescription></Alert>}
       {pendingUsers.data.length === 0
-        ? <p className="rounded-lg border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-600">현재 승인 대기 중인 사용자가 없습니다.</p>
-        : <ul className="divide-y divide-slate-200">
+        ? <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">현재 승인 대기 중인 사용자가 없습니다.</p>
+        : <ul className="divide-y divide-border">
           {pendingUsers.data.map((user) => <li key={user.id} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
             <div className="grid gap-1">
-              <span className="font-medium text-slate-900">{user.email}</span>
-              <span className="text-xs text-slate-500">승인 대기</span>
+              <span className="font-medium text-foreground">{user.email}</span>
+              <span className="text-xs text-muted-foreground">승인 대기</span>
             </div>
             <div className="flex items-center gap-2">
             <Button onClick={() => approval.mutate(user.id)} disabled={approval.isPending || rejection.isPending}>

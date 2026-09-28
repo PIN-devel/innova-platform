@@ -15,9 +15,7 @@ type FieldErrors = Partial<Record<"email" | "password" | "passwordConfirm", stri
 function SessionNotice() {
   const query = useCurrentUser();
   if (!query.isError) return null;
-  return <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-    기존 로그인 상태를 확인하지 못했습니다. 계속하려면 다시 로그인해 주세요.
-  </p>;
+  return <Alert variant="warning"><AlertDescription>기존 로그인 상태를 확인하지 못했습니다. 계속하려면 다시 로그인해 주세요.</AlertDescription></Alert>;
 }
 
 function submitError(error: unknown, kind: "login" | "signup") {
@@ -53,7 +51,7 @@ function redirectPath(state: unknown) {
 function AuthCard({ children, title, description }: { children: React.ReactNode; title: string; description: string }) {
   return <Card className="mx-auto w-full max-w-md gap-6 p-6 shadow-sm sm:p-8">
     <CardHeader className="px-0">
-      <p className="text-sm font-semibold uppercase tracking-widest text-blue-700">Innova Platform</p>
+      <p className="text-sm font-semibold uppercase tracking-widest text-primary">Innova Platform</p>
       <CardTitle className="text-3xl tracking-tight">{title}</CardTitle>
       <CardDescription>{description}</CardDescription>
     </CardHeader>
@@ -104,7 +102,7 @@ export function LoginPage() {
       {mutation.isError && <Alert variant="destructive"><AlertDescription>{submitError(mutation.error, "login")}</AlertDescription></Alert>}
       <Button type="submit" disabled={mutation.isPending} className="mt-1 w-full py-2.5 font-semibold">{mutation.isPending ? "로그인 중…" : "로그인"}</Button>
     </form>
-    <p className="text-center text-sm text-slate-600">계정이 없으신가요? <Link className="font-semibold text-blue-700 hover:underline" to="/signup">회원가입</Link></p>
+    <p className="text-center text-sm text-muted-foreground">계정이 없으신가요? <Link className="font-semibold text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" to="/signup">회원가입</Link></p>
   </AuthCard>;
 }
 
@@ -171,6 +169,6 @@ export function SignupPage() {
       {mutation.isError && <Alert variant="destructive"><AlertDescription>{submitError(mutation.error, "signup")}</AlertDescription></Alert>}
       <Button type="submit" disabled={mutation.isPending} className="mt-1 w-full py-2.5 font-semibold">{mutation.isPending ? "가입 중…" : "회원가입"}</Button>
     </form>
-    <p className="text-center text-sm text-slate-600">이미 계정이 있으신가요? <Link className="font-semibold text-blue-700 hover:underline" to="/login">로그인</Link></p>
+    <p className="text-center text-sm text-muted-foreground">이미 계정이 있으신가요? <Link className="font-semibold text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" to="/login">로그인</Link></p>
   </AuthCard>;
 }
