@@ -1,4 +1,4 @@
-import { adminApprovalResponseSchema, pendingUsersResponseSchema } from "@innova/contracts";
+import { adminApprovalResponseSchema, adminRejectionResponseSchema, pendingUsersResponseSchema } from "@innova/contracts";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import type { UserRepository } from "../db/users.js";
 import { AppError } from "../errors.js";
@@ -24,6 +24,19 @@ export const adminUserRoutes: FastifyPluginAsync<{
 
     return adminApprovalResponseSchema.parse({
       user: { id: user.id, email: user.email, approvalStatus: user.approvalStatus, role: user.role },
+    });
+  });
+
+  app.post<{ Params: { id: string } }>("/users/:id/reject", async (request) => {
+    const rejected = await users.rejectPending(request.params.id);
+    if (!rejected) {
+      const user = await users.findById(request.params.id);
+      if (!user) throw new AppError(404, "NOT_FOUND", "User not found");
+      throw new AppError(409, "BUSINESS_RULE_VIOLATION", "Only pending users can be rejected");
+    }
+
+    return adminRejectionResponseSchema.parse({
+      user: { id: rejected.id, email: rejected.email, approvalStatus: rejected.approvalStatus, role: rejected.role },
     });
   });
 };

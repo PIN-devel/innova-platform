@@ -48,6 +48,9 @@ export function createApprovedAuthGuard(users: UserRepository) {
   return async (request: FastifyRequest) => {
     await requireAuth(request);
     if (request.authUser?.approvalStatus !== "approved") {
+      if (request.authUser?.approvalStatus === "rejected") {
+        throw new AppError(403, "SIGNUP_REJECTED", "Signup request was rejected");
+      }
       throw new AppError(403, "APPROVAL_PENDING", "Account approval is pending");
     }
   };
@@ -59,6 +62,9 @@ export function createAdminAuthGuard(users: UserRepository) {
     await requireAuth(request);
     if (request.authUser?.role !== "admin") {
       throw new AppError(403, "FORBIDDEN", "Administrator access required");
+    }
+    if (request.authUser.approvalStatus === "rejected") {
+      throw new AppError(403, "SIGNUP_REJECTED", "Signup request was rejected");
     }
   };
 }
