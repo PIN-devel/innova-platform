@@ -11,14 +11,15 @@ import { createExamBank, getExamBank } from "@/entities/exam-bank/api";
 import { examBankQuery } from "@/entities/exam-bank/queries";
 import { ApiError } from "@/shared/api/client";
 import { Button } from "@/shared/ui/button";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { ErrorState } from "@/shared/ui/error-state";
-import { LoadingState } from "@/shared/ui/loading-state";
 import { authKeys } from "@/entities/auth/queries";
 import { useCurrentUser } from "@/features/auth/hooks";
 import { chapterMastery, useProgress } from "@/entities/progress";
 import { todayKst } from "@/shared/lib/file";
 import { shuffle } from "@/shared/lib/shuffle";
 import { toast } from "sonner";
+import { ExamLoading } from "./exam-loading";
 import "./exam.css";
 
 const ACTIVE_KEY = "innova.exam.active-bank.v1";
@@ -44,7 +45,7 @@ export default function ExamPage() {
   const queryClient = useQueryClient();
   const currentUser = useCurrentUser();
   const [activeId, setActiveId] = useState(() => localStorage.getItem(ACTIVE_KEY) ?? "aws-sap");
-  const { data, isPending, isError, error } = useQuery(examBankQuery(activeId));
+  const { data, isPending, isFetching, isError, error, refetch } = useQuery(examBankQuery(activeId));
   const { progress, record, setGoal, reset } = useProgress(currentUser.data!.id);
   const [view, setView] = useState<View>("home");
   const [session, setSession] = useState<LessonSession | null>(null);
@@ -112,8 +113,8 @@ export default function ExamPage() {
     }
   };
 
-  if (isPending) return <LoadingState label="문항 은행을 불러오는 중입니다." />;
-  if (isError || !bank) {
+  if (isPending && !bank) return <ExamLoading />;
+  if (!bank || (isError && error instanceof ApiError && ["UNAUTHORIZED", "APPROVAL_PENDING", "SIGNUP_REJECTED", "FORBIDDEN"].includes(error.code ?? ""))) {
     return (
       <ErrorState
         title="문항 은행을 불러오지 못했습니다"
@@ -130,11 +131,15 @@ export default function ExamPage() {
 
   const wrong = progress.wrongIds.filter((id) => bank.concepts.some((note) => note.id === id) || bank.scenarios.some((note) => note.id === id));
   const primer = session?.kind === "lesson" ? selectPrimerConcepts(session.exercises, bank, progress.notes) : [];
-  return <div className="exam-shell">
+  const hasContent = bank.concepts.length + bank.scenarios.length > 0;
+  return <div className="exam-shell" aria-busy={isFetching}>
     <header className="exam-head"><div><strong>Exam Drill</strong><span>{bank.subject} · {bank.concepts.length}개 개념 · {bank.scenarios.length}개 사례</span></div></header>
     <div className="exam-main">
+      {isFetching && <p role="status" className="mb-4 text-sm text-muted-foreground">문항 은행 갱신 중…</p>}
+      {isError && !isFetching && <Alert variant="warning" className="mb-4"><AlertDescription className="flex flex-wrap items-center gap-2">문항 은행을 갱신하지 못했습니다. 마지막 조회 결과를 표시합니다. <Button variant="outline" onClick={() => void refetch()}>다시 시도</Button></AlertDescription></Alert>}
       {message && <div className="exam-message" role="status">{message}<button onClick={() => setMessage("")} aria-label="닫기">×</button></div>}
-      {view === "home" && <section className="exam-stack">
+      {view === "home" && !hasContent && <section className="exam-stack"><div className="exam-panel"><h1>학습할 문항이 없습니다</h1><p>문항 은행에 학습 콘텐츠가 등록되면 레슨과 모의고사를 시작할 수 있습니다.</p><div className="exam-actions"><button onClick={() => setView("settings")}>문항 은행 설정</button></div></div></section>}
+      {view === "home" && hasContent && <section className="exam-stack">
         <div className="exam-hero"><p className="exam-eyebrow">AWS SAP · 오늘 학습</p><h1>오늘 이어서</h1><p>짧은 레슨으로 개념을 익히고, 바로 문제에 적용하세요.</p><button className="exam-primary" onClick={() => startLesson(recommendLesson(bank, progress.notes, todayKst()))}>레슨 시작</button></div>
         <div className="exam-summary"><div><strong>{progress.todayDate === todayKst() ? progress.todayMinutes : 0}분</strong><span>오늘 학습 · 목표 {progress.dailyGoalMin}분</span></div><div><strong>{progress.streakDays}일</strong><span>연속 학습</span></div><div><strong>{wrong.length}개</strong><span>오답 노트</span></div></div>
         <div className="exam-actions"><button onClick={() => setView("units")}>유닛 선택</button><button onClick={() => setView("review")}>오답 복습</button><button onClick={() => startMock(10)}>미니 모의 · 10문항</button></div>

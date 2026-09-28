@@ -20,7 +20,7 @@
   border-bottom: 1px solid var(--border);
   background: var(--card);
 }
-.exam-head div { display: flex; align-items: baseline; gap: 12px; }
+.exam-head > div { display: flex; align-items: baseline; gap: 12px; }
 .exam-head strong { color: var(--primary); font-size: 19px; }
 .exam-head span { color: var(--muted-foreground); font-size: 13px; }
 .exam-main { padding-top: 24px; }
@@ -54,7 +54,7 @@
 }
 .exam-actions button:hover, .exam-panel button:hover, .exam-unit:hover { border-color: var(--primary); }
 .exam-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.exam-summary div {
+.exam-summary > div {
   display: grid;
   padding: 18px;
   border: 1px solid var(--border);
@@ -215,10 +215,10 @@
 @media (max-width: 640px) {
   .exam-main { padding-top: 22px; }
   .exam-head { padding: 14px 16px; }
-  .exam-head div { display: grid; gap: 0; }
+  .exam-head > div { display: grid; gap: 0; }
   .exam-hero { padding: 28px; }
   .exam-summary { grid-template-columns: repeat(3, 1fr); }
-  .exam-summary div { padding: 12px; }
+  .exam-summary > div { padding: 12px; }
   .exam-summary strong { font-size: 23px; }
   .exam-summary span { font-size: 11px; }
   .exam-unit-grid { grid-template-columns: 1fr; }
