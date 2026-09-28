@@ -10,6 +10,7 @@ import {
 const memberPending = { id: "1", email: "pending@example.com", approvalStatus: "pending", role: "member" };
 const memberApproved = { ...memberPending, approvalStatus: "approved" };
 const adminPending = { ...memberPending, role: "admin" };
+const memberRejected = { ...memberPending, approvalStatus: "rejected" };
 
 test("post-auth navigation and protected route decisions distinguish approval from role", () => {
   assert.equal(getPostAuthPath(memberPending), "/approval-pending");
@@ -18,13 +19,17 @@ test("post-auth navigation and protected route decisions distinguish approval fr
   assert.equal(getPostAuthPath(adminPending), "/approval-pending");
   assert.equal(getPostAuthPath(memberApproved), "/exam");
   assert.equal(getPostAuthPath(memberApproved, "/exam?tab=review"), "/exam?tab=review");
+  assert.equal(getPostAuthPath(memberRejected), "/signup-rejected");
 
   assert.equal(getExamRedirect(memberPending), "/approval-pending");
   assert.equal(getExamRedirect(memberApproved), null);
+  assert.equal(getExamRedirect(memberRejected), "/signup-rejected");
   assert.equal(getApprovalPendingRedirect(memberPending), null);
   assert.equal(getApprovalPendingRedirect(memberApproved), "/exam");
+  assert.equal(getApprovalPendingRedirect(memberRejected), "/signup-rejected");
 
   assert.equal(getAdminRedirect(memberPending), "/approval-pending");
   assert.equal(getAdminRedirect(memberApproved), "/exam");
   assert.equal(getAdminRedirect(adminPending), null);
+  assert.equal(getAdminRedirect(memberRejected), "/signup-rejected");
 });

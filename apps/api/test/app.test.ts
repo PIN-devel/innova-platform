@@ -12,6 +12,7 @@ const users: UserRepository = {
   async create() { return undefined; },
   async findPending() { return []; },
   async approvePending() { return undefined; },
+  async rejectPending() { return undefined; },
 };
 const sampleBank = ExamBankSchema.parse({
   schema: "sap-drill-bank.v1", subject: "Synthetic test", source: "test", generatedAt: "2026-01-01",

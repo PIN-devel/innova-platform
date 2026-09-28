@@ -9,12 +9,16 @@ const jwtSecret = "test-only-jwt-secret-with-at-least-32-characters";
 const pendingId = "f5f8301d-996b-461b-95c9-9a72162023d6";
 const memberId = "be016cb7-11c1-49c0-b899-809e5d9f34bc";
 const adminId = "408313a2-d56e-4238-a6ee-30ac46ad19a5";
+const rejectedId = "5a1d69e2-5631-4a47-90e0-564fcac75000";
+const rejectionTargetId = "99e80a77-411d-405a-9b69-060fd7deceda";
 
 function fixture() {
   const records = new Map<string, UserRecord>([
     [pendingId, { id: pendingId, email: "pending@example.com", passwordHash: "private-hash", approvalStatus: "pending", role: "member" }],
     [memberId, { id: memberId, email: "member@example.com", passwordHash: "private-hash", approvalStatus: "approved", role: "member" }],
     [adminId, { id: adminId, email: "admin@example.com", passwordHash: "private-hash", approvalStatus: "pending", role: "admin" }],
+    [rejectedId, { id: rejectedId, email: "rejected@example.com", passwordHash: "private-hash", approvalStatus: "rejected", role: "member" }],
+    [rejectionTargetId, { id: rejectionTargetId, email: "reject-target@example.com", passwordHash: "private-hash", approvalStatus: "pending", role: "member" }],
   ]);
   const users: UserRepository = {
     async findById(id) { return records.get(id); },
@@ -30,6 +34,13 @@ function fixture() {
       const approved = { ...user, approvalStatus: "approved" as const };
       records.set(id, approved);
       return approved;
+    },
+    async rejectPending(id) {
+      const user = records.get(id);
+      if (!user || user.approvalStatus !== "pending") return undefined;
+      const rejected = { ...user, approvalStatus: "rejected" as const };
+      records.set(id, rejected);
+      return rejected;
     },
   };
   const bank = ExamBankSchema.parse({
@@ -84,6 +95,7 @@ test("admin approval is role-protected and activates an existing pending session
   assert.deepEqual(adminList.json(), { users: [
     { id: pendingId, email: "pending@example.com", approvalStatus: "pending" },
     { id: adminId, email: "admin@example.com", approvalStatus: "pending" },
+    { id: rejectionTargetId, email: "reject-target@example.com", approvalStatus: "pending" },
   ] });
   assert.equal(adminList.body.includes("private-hash"), false);
 
@@ -107,7 +119,10 @@ test("admin approval is role-protected and activates an existing pending session
   assert.deepEqual(repeatedApproval.json(), approved.json());
 
   const approvedList = await app.inject({ method: "GET", url: "/api/admin/users/pending", headers: { cookie: adminCookie } });
-  assert.deepEqual(approvedList.json(), { users: [{ id: adminId, email: "admin@example.com", approvalStatus: "pending" }] });
+  assert.deepEqual(approvedList.json(), { users: [
+    { id: adminId, email: "admin@example.com", approvalStatus: "pending" },
+    { id: rejectionTargetId, email: "reject-target@example.com", approvalStatus: "pending" },
+  ] });
 
   // Reuse the cookie issued before approval; no login or token renewal occurs here.
   const examRead = await app.inject({ method: "GET", url: "/api/exam/banks/default", headers: { cookie: pendingCookie } });
@@ -125,4 +140,32 @@ test("admin approval is role-protected and activates an existing pending session
   const adminStillPendingExam = await app.inject({ method: "GET", url: "/api/exam/banks/default", headers: { cookie: adminCookie } });
   assert.equal(adminStillPendingExam.statusCode, 403);
   assert.equal(adminStillPendingExam.json().error.code, "APPROVAL_PENDING");
+
+  const rejectedCookie = cookieFor(rejectedId);
+  const rejectedExam = await app.inject({ method: "GET", url: "/api/exam/banks/default", headers: { cookie: rejectedCookie } });
+  assert.equal(rejectedExam.statusCode, 403);
+  assert.equal(rejectedExam.json().error.code, "SIGNUP_REJECTED");
+
+  const rejected = await app.inject({ method: "POST", url: `/api/admin/users/${rejectedId}/reject`, headers: { cookie: adminCookie } });
+  assert.equal(rejected.statusCode, 409);
+  assert.equal(rejected.json().error.code, "BUSINESS_RULE_VIOLATION");
+
+  const rejectionUrl = `/api/admin/users/${rejectionTargetId}/reject`;
+  const rejection = await app.inject({ method: "POST", url: rejectionUrl, headers: { cookie: adminCookie } });
+  assert.equal(rejection.statusCode, 200);
+  assert.deepEqual(rejection.json().user, {
+    id: rejectionTargetId,
+    email: "reject-target@example.com",
+    approvalStatus: "rejected",
+    role: "member",
+  });
+  assert.equal(records.get(rejectionTargetId)?.approvalStatus, "rejected");
+  const rejectedPendingList = await app.inject({ method: "GET", url: "/api/admin/users/pending", headers: { cookie: adminCookie } });
+  assert.deepEqual(rejectedPendingList.json(), { users: [{ id: adminId, email: "admin@example.com", approvalStatus: "pending" }] });
+  const rejectionTargetCookie = cookieFor(rejectionTargetId);
+  const rejectedFromExistingSession = await app.inject({ method: "GET", url: "/api/exam/banks/default", headers: { cookie: rejectionTargetCookie } });
+  assert.equal(rejectedFromExistingSession.statusCode, 403);
+  assert.equal(rejectedFromExistingSession.json().error.code, "SIGNUP_REJECTED");
+  const missingRejection = await app.inject({ method: "POST", url: "/api/admin/users/11111111-1111-4111-8111-111111111111/reject", headers: { cookie: adminCookie } });
+  assert.equal(missingRejection.statusCode, 404);
 });

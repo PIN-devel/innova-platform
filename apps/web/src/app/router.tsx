@@ -2,10 +2,11 @@ import { createBrowserRouter } from "react-router";
 import RootLayout from "./root-layout";
 import Home from "../pages/home";
 import ExamPage from "../pages/exam/exam-page";
-import { PublicOnly, RequireAdmin, RequireApprovalPending, RequireAuth } from "@/features/auth/auth-boundary";
+import { PublicOnly, RequireAdmin, RequireApprovalPending, RequireAuth, RequireSignupRejected } from "@/features/auth/auth-boundary";
 import { LoginPage, SignupPage } from "@/pages/auth/auth-pages";
 import ApprovalPendingPage from "@/pages/approval-pending";
 import AdminUsersPage from "@/pages/admin-users";
+import SignupRejectedPage from "@/pages/signup-rejected";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
 import { RouteErrorBoundary } from "./route-error-boundary";
 
@@ -33,6 +34,10 @@ export const createAppRouter = () =>
         {
           Component: RequireApprovalPending,
           children: [{ path: "approval-pending", Component: ApprovalPendingPage }],
+        },
+        {
+          Component: RequireSignupRejected,
+          children: [{ path: "signup-rejected", Component: SignupRejectedPage }],
         },
         {
           Component: RequireAdmin,

@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { approveUser, getPendingUsers } from "./api";
+import { approveUser, getPendingUsers, rejectUser } from "./api";
 
 export const adminUserKeys = {
   pending: ["admin", "users", "pending"] as const,
@@ -13,3 +13,4 @@ export const pendingUsersQuery = () => queryOptions({
 });
 
 export { approveUser };
+export { rejectUser };

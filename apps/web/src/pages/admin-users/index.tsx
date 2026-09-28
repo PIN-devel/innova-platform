@@ -4,7 +4,7 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
-import { useApproveUser, usePendingUsers } from "@/features/admin-users/hooks";
+import { useApproveUser, usePendingUsers, useRejectUser } from "@/features/admin-users/hooks";
 
 function approvalError(error: unknown) {
   if (error instanceof ApiError && error.code === "FORBIDDEN") return "관리자 권한을 확인해 주세요.";
@@ -12,9 +12,17 @@ function approvalError(error: unknown) {
   return "승인 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
 
+function rejectionError(error: unknown) {
+  if (error instanceof ApiError && error.code === "FORBIDDEN") return "관리자 권한을 확인해 주세요.";
+  if (error instanceof ApiError && error.code === "NOT_FOUND") return "사용자 정보를 찾지 못했습니다. 목록을 새로고침해 주세요.";
+  if (error instanceof ApiError && error.code === "BUSINESS_RULE_VIOLATION") return "승인 대기 상태인 사용자만 거절할 수 있습니다. 목록을 새로고침해 주세요.";
+  return "거절 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+}
+
 export default function AdminUsersPage() {
   const pendingUsers = usePendingUsers();
   const approval = useApproveUser();
+  const rejection = useRejectUser();
 
   if (pendingUsers.isPending) return <LoadingState label="승인 대기 사용자를 불러오는 중입니다." />;
   if (pendingUsers.isError) {
@@ -37,6 +45,7 @@ export default function AdminUsersPage() {
     </CardHeader>
     <CardContent className="grid gap-4">
       {approval.isError && <Alert variant="destructive"><AlertDescription>{approvalError(approval.error)}</AlertDescription></Alert>}
+      {rejection.isError && <Alert variant="destructive"><AlertDescription>{rejectionError(rejection.error)}</AlertDescription></Alert>}
       {pendingUsers.data.length === 0
         ? <p className="rounded-lg border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-600">현재 승인 대기 중인 사용자가 없습니다.</p>
         : <ul className="divide-y divide-slate-200">
@@ -45,9 +54,18 @@ export default function AdminUsersPage() {
               <span className="font-medium text-slate-900">{user.email}</span>
               <span className="text-xs text-slate-500">승인 대기</span>
             </div>
-            <Button onClick={() => approval.mutate(user.id)} disabled={approval.isPending}>
+            <div className="flex items-center gap-2">
+            <Button onClick={() => approval.mutate(user.id)} disabled={approval.isPending || rejection.isPending}>
               {approval.isPending && approval.variables === user.id ? "승인 중…" : "승인"}
             </Button>
+            <Button variant="outline" onClick={() => {
+              if (window.confirm(`${user.email}의 가입 요청을 거절할까요? 거절된 계정은 서비스를 이용할 수 없습니다.`)) {
+                rejection.mutate(user.id);
+              }
+            }} disabled={approval.isPending || rejection.isPending}>
+              {rejection.isPending && rejection.variables === user.id ? "거절 중…" : "거절"}
+            </Button>
+            </div>
           </li>)}
         </ul>}
     </CardContent>

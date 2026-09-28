@@ -32,6 +32,13 @@ function fixture() {
       records.set(user.email, approved);
       return approved;
     },
+    async rejectPending(id) {
+      const user = [...records.values()].find((entry) => entry.id === id);
+      if (!user || user.approvalStatus !== "pending") return undefined;
+      const rejected = { ...user, approvalStatus: "rejected" as const };
+      records.set(user.email, rejected);
+      return rejected;
+    },
   };
   const app = buildApp({ logger: false, examRepository: exams, userRepository: users, jwtSecret });
   return { app, records };

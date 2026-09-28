@@ -11,7 +11,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
-  check("users_approval_status_check", sql`${table.approvalStatus} in ('pending', 'approved')`),
+  check("users_approval_status_check", sql`${table.approvalStatus} in ('pending', 'approved', 'rejected')`),
   check("users_role_check", sql`${table.role} in ('member', 'admin')`),
 ]);
 
