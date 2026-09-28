@@ -1,6 +1,6 @@
 # Innova Platform UI 규칙
 
-이 문서는 일반 플랫폼 화면의 디자인 사용 원칙이다. 토큰의 실제 값과 Tailwind 매핑은 `src/styles.css`, 재사용 가능한 구현은 `src/shared/ui/`가 기준이다. `/exam`의 전용 UI는 현재 별도 스타일을 유지한다.
+이 문서는 모든 기능에 적용하는 공통 디자인 원칙이다. 토큰의 실제 값과 Tailwind 매핑은 `src/styles.css`, 재사용 가능한 구현은 `src/shared/ui/`가 기준이다.
 
 ## 원칙
 
@@ -20,6 +20,7 @@
 | `accent` / `accent-foreground` | 강조 표면 및 해당 표면의 텍스트 |
 | `border`, `input`, `ring` | 경계, 입력 필드, 키보드 포커스 |
 | `destructive` | 오류·위험 상태와 검증 메시지 |
+| `success` / `success-foreground` / `success-border` | 완료·정답 상태와 그 배경·경계 |
 | `warning` / `warning-foreground` / `warning-border` | 확인이 필요한 상태 안내와 그 배경·경계 |
 
 기본 상태는 컴포넌트 기본 스타일을 따른다. hover는 의미를 유지하면서 표면이나 경계를 변화시키고, focus-visible은 `ring`으로 식별한다. disabled는 동작을 막고 시각적으로 낮추되 텍스트를 읽을 수 있게 한다. 오류는 `destructive`와 메시지, 필드에는 `aria-invalid`를 함께 사용한다. 경고는 오류와 구별해 `Alert`의 `warning` variant를 사용한다. 로딩은 기존 `LoadingState`·`Skeleton` 및 동작 중 버튼 문구를 활용한다.
@@ -35,4 +36,4 @@
 
 버튼은 `shared/ui/button`, 카드형 표면은 `card`, 입력과 레이블은 `input`·`label`, 상태 메시지는 `alert`를 우선 재사용한다. 페이지에서 변형이 필요하면 기존 variant와 semantic token을 조합한다. 동일한 의미의 색과 상태를 페이지별 팔레트 값으로 다시 만들지 않는다.
 
-차트, 콘텐츠 고유 시각화 또는 `/exam`처럼 독립된 화면은 직접 팔레트가 필요할 수 있다. 이유와 범위를 해당 코드에 명확히 두고 플랫폼 공통 UI로 전파하지 않는다. 새 semantic token은 여러 곳에서 반복되는 역할이 확인될 때만 `styles.css`에 정의한다. 현재는 light theme만 제공하며 테마 전환은 이 문서의 범위 밖이다.
+기능별 고유 레이아웃과 학습 상태 표현은 허용하되, 색상·텍스트·테두리·포커스의 공통 의미는 semantic token을 따른다. 기능별 상태가 공통 역할에 없는 색을 필요로 하면 해당 의미에 맞는 semantic token을 사용하고, 새 token은 반복되는 공통 역할이 확인될 때만 `styles.css`에 정의한다. 현재는 light theme만 제공하며 테마 전환은 이 문서의 범위 밖이다.
