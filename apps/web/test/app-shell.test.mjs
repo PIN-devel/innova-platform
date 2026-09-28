@@ -14,7 +14,7 @@ let pendingUsersQuery;
 let ApiError;
 
 before(async () => {
-  vite = await createServer({ server: { middlewareMode: true }, appType: "custom" });
+  vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom" });
   ({ createAppRoutes } = await vite.ssrLoadModule("/src/app/router.tsx"));
   ({ currentUserQuery } = await vite.ssrLoadModule("/src/entities/auth/queries.ts"));
   ({ examBankQuery } = await vite.ssrLoadModule("/src/entities/exam-bank/queries.ts"));
@@ -174,4 +174,17 @@ test("auth check and nested route errors render within the common shell", () => 
   assert.match(rootFailed, /페이지를 표시하지 못했습니다/);
   assert.match(rootFailed, /aria-label="주요 탐색"/);
   assert.equal((rootFailed.match(/<main\b/g) ?? []).length, 1);
+});
+
+
+test("rejected admin responses hide cached pending users inside the shell", () => {
+  const user = { id: "1", email: "admin@example.com", role: "admin", approvalStatus: "approved" };
+  const rejected = new ApiError("rejected", 403, { error: { code: "SIGNUP_REJECTED", message: "rejected" } });
+  const html = renderRoute("/admin/users", user, undefined, undefined, (client) => {
+    client.setQueryData(pendingUsersQuery().queryKey, [{ id: "2", email: "private@example.com" }]);
+    client.getQueryCache().find({ queryKey: pendingUsersQuery().queryKey }).setState({ status: "error", error: rejected });
+  });
+  assert.match(html, /Innova Platform/);
+  assert.match(html, /승인 대기 사용자를 불러오지 못했습니다/);
+  assert.doesNotMatch(html, /private@example.com/);
 });

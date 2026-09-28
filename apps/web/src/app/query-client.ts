@@ -1,9 +1,30 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryCache, QueryClient } from "@tanstack/react-query";
+import type { AuthUser } from "@innova/contracts";
+import { authKeys } from "@/entities/auth/queries";
+import { clearProtectedQueries, handleSessionApiError, isProtectedQueryKey } from "@/features/auth/clear-protected-queries";
 
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
+export function createQueryClient() {
+  const cache = new QueryCache({
+    onError: (error, query) => {
+      if (isProtectedQueryKey(query.queryKey)) handleSessionApiError(client, error);
     },
-  },
-});
+  });
+  const client = new QueryClient({
+    queryCache: cache,
+    defaultOptions: { queries: { staleTime: 1000 * 60 * 5 } },
+  });
+  let previousUser: AuthUser | null | undefined;
+  cache.subscribe((event) => {
+    if (event.type !== "updated" || event.action.type !== "success"
+      || !authKeys.me.every((part, index) => event.query.queryKey[index] === part)) return;
+    const user = event.query.state.data as AuthUser | null;
+    const changed = user?.id !== previousUser?.id || user?.role !== previousUser?.role
+      || user?.approvalStatus !== previousUser?.approvalStatus;
+    previousUser = user;
+    // Includes /auth/me revalidation and explicit login/logout updates, before React renders.
+    if (changed) clearProtectedQueries(client);
+  });
+  return client;
+}
+
+export const queryClient = createQueryClient();

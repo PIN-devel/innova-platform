@@ -21,6 +21,9 @@ export const adminUserRoutes: FastifyPluginAsync<{
     const approved = await users.approvePending(request.params.id);
     const user = approved ?? await users.findById(request.params.id);
     if (!user) throw new AppError(404, "NOT_FOUND", "User not found");
+    if (user.approvalStatus !== "approved") {
+      throw new AppError(409, "BUSINESS_RULE_VIOLATION", "Only pending users can be approved");
+    }
 
     return adminApprovalResponseSchema.parse({
       user: { id: user.id, email: user.email, approvalStatus: user.approvalStatus, role: user.role },

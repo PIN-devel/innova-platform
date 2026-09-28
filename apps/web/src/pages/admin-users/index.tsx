@@ -9,6 +9,7 @@ import { AdminUsersLoading } from "./admin-users-loading";
 function approvalError(error: unknown) {
   if (error instanceof ApiError && error.code === "FORBIDDEN") return "관리자 권한을 확인해 주세요.";
   if (error instanceof ApiError && error.code === "NOT_FOUND") return "사용자 정보를 찾지 못했습니다. 목록을 새로고침해 주세요.";
+  if (error instanceof ApiError && error.code === "BUSINESS_RULE_VIOLATION") return "이미 거절된 요청은 승인할 수 없습니다. 목록을 새로고침해 주세요.";
   return "승인 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
 
@@ -25,7 +26,7 @@ export default function AdminUsersPage() {
   const rejection = useRejectUser();
 
   if (pendingUsers.isPending && !pendingUsers.data) return <AdminUsersLoading />;
-  if (!pendingUsers.data || (pendingUsers.isError && pendingUsers.error instanceof ApiError && ["FORBIDDEN", "UNAUTHORIZED"].includes(pendingUsers.error.code ?? ""))) {
+  if (!pendingUsers.data || (pendingUsers.isError && pendingUsers.error instanceof ApiError && ["FORBIDDEN", "UNAUTHORIZED", "SIGNUP_REJECTED", "APPROVAL_PENDING"].includes(pendingUsers.error.code ?? ""))) {
     return <ErrorState
       title="승인 대기 사용자를 불러오지 못했습니다"
       description="관리자 권한과 네트워크 연결을 확인한 뒤 다시 시도해 주세요."

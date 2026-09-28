@@ -23,7 +23,7 @@ export function RequireAuth() {
   }
   const redirect = getExamRedirect(currentUser.data);
   if (redirect) return <Navigate to={redirect} replace />;
-  return <Outlet />;
+  return <Outlet key={`${currentUser.data.id}:${currentUser.data.role}:${currentUser.data.approvalStatus}`} />;
 }
 
 export function PublicOnly() {
@@ -47,7 +47,7 @@ export function RequireSignupRejected() {
   if (!currentUser.data) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   const redirect = getSignupRejectedRedirect(currentUser.data);
   if (redirect) return <Navigate to={redirect} replace />;
-  return <Outlet />;
+  return <Outlet key={`${currentUser.data.id}:${currentUser.data.role}:${currentUser.data.approvalStatus}`} />;
 }
 
 export function RequireApprovalPending() {
@@ -60,7 +60,7 @@ export function RequireApprovalPending() {
   if (!currentUser.data) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   const redirect = getApprovalPendingRedirect(currentUser.data);
   if (redirect) return <Navigate to={redirect} replace />;
-  return <Outlet />;
+  return <Outlet key={`${currentUser.data.id}:${currentUser.data.role}:${currentUser.data.approvalStatus}`} />;
 }
 
 export function RequireAdmin() {
@@ -73,5 +73,5 @@ export function RequireAdmin() {
   if (!currentUser.data) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   const redirect = getAdminRedirect(currentUser.data);
   if (redirect) return <Navigate to={redirect} replace />;
-  return <Outlet />;
+  return <Outlet key={`${currentUser.data.id}:${currentUser.data.role}:${currentUser.data.approvalStatus}`} />;
 }

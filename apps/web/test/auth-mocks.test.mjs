@@ -164,6 +164,22 @@ test("MSW login returns the same credential error for unknown email and wrong pa
   }
 });
 
+test("MSW rejects stale approvals and blocks a rejected admin on all admin routes", async () => {
+  const admin = { id: "00000000-0000-4000-8000-000000000002", email: "admin@example.com", approvalStatus: "pending", role: "admin" };
+  const rejected = { id: "00000000-0000-4000-8000-000000000003", email: "rejected@example.com", approvalStatus: "rejected", role: "member" };
+  resetAuthMock([{ user: admin, password: "password123" }, { user: rejected, password: "password123" }]);
+  await authRequest("/login", "POST", { email: admin.email, password: "password123" });
+  const approval = await fetch(`${baseUrl}/api/admin/users/${rejected.id}/approve`, { method: "POST" });
+  assert.equal(approval.status, 409);
+  assert.equal(await errorCode(approval), "BUSINESS_RULE_VIOLATION");
+  await fetch(`${baseUrl}/api/admin/users/${admin.id}/reject`, { method: "POST" });
+  for (const [path, method] of [["pending", "GET"], [`${rejected.id}/approve`, "POST"], [`${rejected.id}/reject`, "POST"]]) {
+    const response = await fetch(`${baseUrl}/api/admin/users/${path}`, { method });
+    assert.equal(response.status, 403);
+    assert.equal(await errorCode(response), "SIGNUP_REJECTED");
+  }
+});
+
 test("MSW logout is idempotent and clears the current mock user", async () => {
   await authRequest("/login", "POST", { email: "test@example.com", password: "password123" });
   const logout = await authRequest("/logout", "POST", {});
