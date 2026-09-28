@@ -2,6 +2,7 @@
 
 이 파일은 `apps/web/` 작업에 적용되며 루트 `AGENTS.md`를 함께 따른다.
 
+- 데이터 흐름·라우팅·세션 구조를 변경할 때 `ARCHITECTURE.md`를 먼저 읽는다. PIN-20 통합 리팩터링의 목표 설계와 현행 감사가 구분되어 있으며, 구현 단계에서 달라진 설계는 같은 문서에 갱신한다. 비교 기준선은 `architecture-baseline.md`를 참조한다.
 - React, TypeScript, Vite, React Router, TanStack Query의 현재 구조를 따른다. 라우트와 공통 레이아웃은 `src/app/`, 화면은 `src/pages/`, 기능 동작은 `src/features/`, 도메인 API와 조회 정의는 `src/entities/*/`에 둔다. HTTP 전송과 공통 오류 해석은 `src/shared/api/client.ts`를 재사용한다.
 - 서버 데이터는 `entities/*/queries.ts`의 Query Key factory와 query options를 조회·갱신·무효화에서 함께 사용한다. 신선도는 데이터 성격별로 정하고 인증·관리자 데이터에 장기 캐시 정책을 일괄 적용하지 않는다. 변경 성공 응답으로 확정된 결과는 캐시에 반영한 뒤 재검증해, 재조회 실패로 이미 처리된 항목이 되살아나지 않도록 한다.
 - QueryClient는 `app/query-client.ts`의 인증 경계 처리를 유지한다. 계정·권한 변경 및 세션 만료 시 보호된 캐시를 제거하고, 조회의 `signal`을 HTTP 호출에 전달한다. 신규 보호 데이터는 `features/auth/clear-protected-queries.ts`의 정리 대상에도 반영한다. QueryClient 밖에서 완료되는 비동기 변경 작업은 `entities/auth/session-version.ts`로 이전 세션의 결과가 새 세션에 적용되지 않게 한다.
