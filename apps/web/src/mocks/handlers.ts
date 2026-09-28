@@ -121,6 +121,7 @@ export const handlers = [
   http.get("*/api/admin/users/pending", () => {
     if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
     if (currentMockUser.role !== "admin") return apiError(403, "FORBIDDEN", "Administrator access required");
+    if (currentMockUser.approvalStatus === "rejected") return apiError(403, "SIGNUP_REJECTED", "Signup request was rejected");
     const users = [...mockUsers.values()]
       .map(({ user }) => user)
       .filter((user) => user.approvalStatus === "pending")
@@ -131,8 +132,10 @@ export const handlers = [
   http.post("*/api/admin/users/:id/approve", ({ params }) => {
     if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
     if (currentMockUser.role !== "admin") return apiError(403, "FORBIDDEN", "Administrator access required");
+    if (currentMockUser.approvalStatus === "rejected") return apiError(403, "SIGNUP_REJECTED", "Signup request was rejected");
     const credential = [...mockUsers.values()].find(({ user }) => user.id === String(params.id));
     if (!credential) return apiError(404, "NOT_FOUND", "User not found");
+    if (credential.user.approvalStatus === "rejected") return apiError(409, "BUSINESS_RULE_VIOLATION", "Only pending users can be approved");
     credential.user = { ...credential.user, approvalStatus: "approved" };
     if (currentMockUser.id === credential.user.id) currentMockUser = credential.user;
     return HttpResponse.json(adminApprovalResponseSchema.parse({ user: credential.user }), { headers });
@@ -141,6 +144,7 @@ export const handlers = [
   http.post("*/api/admin/users/:id/reject", ({ params }) => {
     if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
     if (currentMockUser.role !== "admin") return apiError(403, "FORBIDDEN", "Administrator access required");
+    if (currentMockUser.approvalStatus === "rejected") return apiError(403, "SIGNUP_REJECTED", "Signup request was rejected");
     const credential = [...mockUsers.values()].find(({ user }) => user.id === String(params.id));
     if (!credential) return apiError(404, "NOT_FOUND", "User not found");
     if (credential.user.approvalStatus !== "pending") return apiError(409, "BUSINESS_RULE_VIOLATION", "Only pending users can be rejected");
