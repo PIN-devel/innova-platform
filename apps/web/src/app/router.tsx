@@ -1,5 +1,6 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, type RouteObject } from "react-router";
 import RootLayout from "./root-layout";
+import { ExamContentLayout, StandardContentLayout } from "./content-layouts";
 import Home from "../pages/home";
 import ExamPage from "../pages/exam/exam-page";
 import { PublicOnly, RequireAdmin, RequireApprovalPending, RequireAuth, RequireSignupRejected } from "@/features/auth/auth-boundary";
@@ -8,42 +9,53 @@ import ApprovalPendingPage from "@/pages/approval-pending";
 import AdminUsersPage from "@/pages/admin-users";
 import SignupRejectedPage from "@/pages/signup-rejected";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
-import { RouteErrorBoundary } from "./route-error-boundary";
+import { ExamContentErrorBoundary, RootRouteErrorBoundary, StandardContentErrorBoundary } from "./route-error-boundary";
 
-export const createAppRouter = () =>
-  createBrowserRouter([
+export const createAppRoutes = (): RouteObject[] =>
+  ([
     {
       Component: RootLayout,
-      ErrorBoundary: RouteErrorBoundary,
+      ErrorBoundary: RootRouteErrorBoundary,
       children: [
         {
-          index: true,
-          Component: Home,
-        },
-        {
-          Component: PublicOnly,
+          Component: StandardContentLayout,
+          ErrorBoundary: StandardContentErrorBoundary,
           children: [
-            { path: "login", Component: LoginPage },
-            { path: "signup", Component: SignupPage },
+            { index: true, Component: Home },
+            {
+              Component: PublicOnly,
+              children: [
+                { path: "login", Component: LoginPage },
+                { path: "signup", Component: SignupPage },
+              ],
+            },
+            {
+              Component: RequireApprovalPending,
+              children: [{ path: "approval-pending", Component: ApprovalPendingPage }],
+            },
+            {
+              Component: RequireSignupRejected,
+              children: [{ path: "signup-rejected", Component: SignupRejectedPage }],
+            },
+            {
+              Component: RequireAdmin,
+              children: [{ path: "admin/users", Component: AdminUsersPage }],
+            },
+            { path: "*", Component: NotFoundPage },
           ],
         },
         {
-          Component: RequireAuth,
-          children: [{ path: "exam", Component: ExamPage }],
+          Component: ExamContentLayout,
+          ErrorBoundary: ExamContentErrorBoundary,
+          children: [
+            {
+              Component: RequireAuth,
+              children: [{ path: "exam", Component: ExamPage }],
+            },
+          ],
         },
-        {
-          Component: RequireApprovalPending,
-          children: [{ path: "approval-pending", Component: ApprovalPendingPage }],
-        },
-        {
-          Component: RequireSignupRejected,
-          children: [{ path: "signup-rejected", Component: SignupRejectedPage }],
-        },
-        {
-          Component: RequireAdmin,
-          children: [{ path: "admin/users", Component: AdminUsersPage }],
-        },
-        { path: "*", Component: NotFoundPage },
       ],
     },
   ]);
+
+export const createAppRouter = () => createBrowserRouter(createAppRoutes());

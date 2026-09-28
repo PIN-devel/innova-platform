@@ -27,7 +27,7 @@ export function LogoutButton() {
   }
 
   return <span className="inline-flex flex-wrap items-center gap-3">
-    <button type="button" onClick={() => void handleLogout()} disabled={mutation.isPending} className="text-sm font-medium text-blue-700 hover:text-blue-900 disabled:opacity-50">
+    <button type="button" onClick={() => void handleLogout()} disabled={mutation.isPending} className="text-sm font-medium text-primary hover:text-primary/80 disabled:opacity-50 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
       {mutation.isPending ? "로그아웃 중…" : "로그아웃"}
     </button>
   </span>;

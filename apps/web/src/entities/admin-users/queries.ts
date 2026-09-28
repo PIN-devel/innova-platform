@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { approveUser, getPendingUsers, rejectUser } from "./api";
 
 export const adminUserKeys = {
@@ -7,10 +7,14 @@ export const adminUserKeys = {
 
 export const pendingUsersQuery = () => queryOptions({
   queryKey: adminUserKeys.pending,
-  queryFn: getPendingUsers,
+  queryFn: ({ signal }) => getPendingUsers(signal),
   staleTime: 0,
   retry: false,
 });
+
+export function invalidatePendingUsers(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({ queryKey: adminUserKeys.pending });
+}
 
 export { approveUser };
 export { rejectUser };

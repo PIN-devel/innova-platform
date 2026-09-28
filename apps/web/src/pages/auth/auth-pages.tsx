@@ -10,14 +10,12 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { getPostAuthPath } from "@/features/auth/route-access";
 
-type FieldErrors = Partial<Record<"email" | "password" | "passwordConfirm", string>>;
+type FieldErrors = Partial<Record<"email" | "password", string>>;
 
 function SessionNotice() {
   const query = useCurrentUser();
   if (!query.isError) return null;
-  return <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-    기존 로그인 상태를 확인하지 못했습니다. 계속하려면 다시 로그인해 주세요.
-  </p>;
+  return <Alert variant="warning"><AlertDescription>기존 로그인 상태를 확인하지 못했습니다. 계속하려면 다시 로그인해 주세요.</AlertDescription></Alert>;
 }
 
 function submitError(error: unknown, kind: "login" | "signup") {
@@ -53,7 +51,7 @@ function redirectPath(state: unknown) {
 function AuthCard({ children, title, description }: { children: React.ReactNode; title: string; description: string }) {
   return <Card className="mx-auto w-full max-w-md gap-6 p-6 shadow-sm sm:p-8">
     <CardHeader className="px-0">
-      <p className="text-sm font-semibold uppercase tracking-widest text-blue-700">Innova Platform</p>
+      <p className="text-sm font-semibold uppercase tracking-widest text-primary">Innova Platform</p>
       <CardTitle className="text-3xl tracking-tight">{title}</CardTitle>
       <CardDescription>{description}</CardDescription>
     </CardHeader>
@@ -104,7 +102,7 @@ export function LoginPage() {
       {mutation.isError && <Alert variant="destructive"><AlertDescription>{submitError(mutation.error, "login")}</AlertDescription></Alert>}
       <Button type="submit" disabled={mutation.isPending} className="mt-1 w-full py-2.5 font-semibold">{mutation.isPending ? "로그인 중…" : "로그인"}</Button>
     </form>
-    <p className="text-center text-sm text-slate-600">계정이 없으신가요? <Link className="font-semibold text-blue-700 hover:underline" to="/signup">회원가입</Link></p>
+    <p className="text-center text-sm text-muted-foreground">계정이 없으신가요? <Link className="font-semibold text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" to="/signup">회원가입</Link></p>
   </AuthCard>;
 }
 
@@ -122,12 +120,7 @@ export function SignupPage() {
     return value === password ? undefined : "비밀번호가 일치하지 않습니다.";
   }
 
-  function updateConfirmError(value: string) {
-    setFieldErrors((old) => ({
-      ...old,
-      passwordConfirm: passwordConfirmValidated ? confirmPasswordError(value) : undefined,
-    }));
-  }
+  const passwordConfirmError = passwordConfirmValidated ? confirmPasswordError(passwordConfirm) : undefined;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -137,7 +130,6 @@ export function SignupPage() {
     if (!result.success || passwordConfirmErrorMessage) {
       setFieldErrors({
         ...(!result.success ? validationErrors(result.error.issues, "signup") : {}),
-        ...(passwordConfirmErrorMessage ? { passwordConfirm: passwordConfirmErrorMessage } : {}),
       });
       mutation.reset();
       return;
@@ -160,17 +152,17 @@ export function SignupPage() {
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="password">비밀번호</Label>
-        <Input id="password" type="password" name="password" autoComplete="new-password" minLength={8} maxLength={128} required value={password} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "password-error" : undefined} onChange={(event) => { setPassword(event.target.value); setFieldErrors((old) => ({ ...old, password: undefined, ...(passwordConfirmValidated ? { passwordConfirm: confirmPasswordError(passwordConfirm) } : {}) })); mutation.reset(); }}/>
+        <Input id="password" type="password" name="password" autoComplete="new-password" minLength={8} maxLength={128} required value={password} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "password-error" : undefined} onChange={(event) => { setPassword(event.target.value); setFieldErrors((old) => ({ ...old, password: undefined })); mutation.reset(); }}/>
         {fieldErrors.password && <span id="password-error" className="text-sm text-destructive">{fieldErrors.password}</span>}
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="password-confirm">비밀번호 확인</Label>
-        <Input id="password-confirm" type="password" name="passwordConfirm" autoComplete="new-password" required value={passwordConfirm} aria-invalid={Boolean(fieldErrors.passwordConfirm)} aria-describedby={fieldErrors.passwordConfirm ? "password-confirm-error" : undefined} onBlur={() => { setPasswordConfirmValidated(true); setFieldErrors((old) => ({ ...old, passwordConfirm: confirmPasswordError(passwordConfirm) })); }} onChange={(event) => { setPasswordConfirm(event.target.value); updateConfirmError(event.target.value); mutation.reset(); }}/>
-        {fieldErrors.passwordConfirm && <span id="password-confirm-error" className="text-sm text-destructive">{fieldErrors.passwordConfirm}</span>}
+        <Input id="password-confirm" type="password" name="passwordConfirm" autoComplete="new-password" required value={passwordConfirm} aria-invalid={Boolean(passwordConfirmError)} aria-describedby={passwordConfirmError ? "password-confirm-error" : undefined} onBlur={() => setPasswordConfirmValidated(true)} onChange={(event) => { setPasswordConfirm(event.target.value); mutation.reset(); }}/>
+        {passwordConfirmError && <span id="password-confirm-error" className="text-sm text-destructive">{passwordConfirmError}</span>}
       </div>
       {mutation.isError && <Alert variant="destructive"><AlertDescription>{submitError(mutation.error, "signup")}</AlertDescription></Alert>}
       <Button type="submit" disabled={mutation.isPending} className="mt-1 w-full py-2.5 font-semibold">{mutation.isPending ? "가입 중…" : "회원가입"}</Button>
     </form>
-    <p className="text-center text-sm text-slate-600">이미 계정이 있으신가요? <Link className="font-semibold text-blue-700 hover:underline" to="/login">로그인</Link></p>
+    <p className="text-center text-sm text-muted-foreground">이미 계정이 있으신가요? <Link className="font-semibold text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" to="/login">로그인</Link></p>
   </AuthCard>;
 }

@@ -1,25 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router";
-import { ExamBankSchema, type AuthUser } from "@innova/contracts";
+import { isCancelledError, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ExamBankSchema } from "@innova/contracts";
 import type { BankFile, Exercise, LessonSession } from "@/entities/bank";
 import { UNITS } from "@/entities/bank";
 import type { FinishedSession, SessionAnswer } from "@/entities/progress";
 import { assembleLesson, assembleMock, assembleReview, recommendLesson, selectPrimerConcepts } from "@/features/start-lesson";
 import { expectedLabel, getNoteResults, givenToString, gradeExercise } from "@/features/answer-exercise";
-import { createExamBank, getExamBank } from "@/entities/exam-bank/api";
-import { examBankQuery } from "@/entities/exam-bank/queries";
+import { createCachedExamBank, examBankKeys, examBankQuery, refreshDefaultExamBank } from "@/entities/exam-bank/queries";
 import { ApiError } from "@/shared/api/client";
 import { Button } from "@/shared/ui/button";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { ErrorState } from "@/shared/ui/error-state";
-import { LoadingState } from "@/shared/ui/loading-state";
-import { authKeys } from "@/entities/auth/queries";
 import { useCurrentUser } from "@/features/auth/hooks";
-import { LogoutButton } from "@/features/auth/logout-button";
+import { handleSessionApiError } from "@/features/auth/clear-protected-queries";
+import { assertSessionVersion, getSessionVersion } from "@/entities/auth/session-version";
 import { chapterMastery, useProgress } from "@/entities/progress";
 import { todayKst } from "@/shared/lib/file";
 import { shuffle } from "@/shared/lib/shuffle";
 import { toast } from "sonner";
+import { ExamLoading } from "./exam-loading";
 import "./exam.css";
 
 const ACTIVE_KEY = "innova.exam.active-bank.v1";
@@ -41,11 +40,10 @@ function examApiErrorMessage(error: unknown) {
 }
 
 export default function ExamPage() {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = useCurrentUser();
   const [activeId, setActiveId] = useState(() => localStorage.getItem(ACTIVE_KEY) ?? "aws-sap");
-  const { data, isPending, isError, error } = useQuery(examBankQuery(activeId));
+  const { data, isPending, isFetching, isError, error, refetch } = useQuery(examBankQuery(activeId));
   const { progress, record, setGoal, reset } = useProgress(currentUser.data!.id);
   const [view, setView] = useState<View>("home");
   const [session, setSession] = useState<LessonSession | null>(null);
@@ -53,29 +51,6 @@ export default function ExamPage() {
   const [message, setMessage] = useState("");
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
   const bank = data?.bank as BankFile | undefined;
-
-  const handleAuthApiError = useCallback((cause: unknown) => {
-    if (cause instanceof ApiError && cause.code === "UNAUTHORIZED") {
-      queryClient.setQueryData(authKeys.me, null);
-      navigate("/login", { replace: true, state: { from: "/exam" } });
-      return true;
-    }
-    if (cause instanceof ApiError && cause.code === "APPROVAL_PENDING") {
-      queryClient.setQueryData<AuthUser | null>(authKeys.me, (user) => user ? { ...user, approvalStatus: "pending" } : user);
-      void queryClient.invalidateQueries({ queryKey: authKeys.me });
-      navigate("/approval-pending", { replace: true });
-      return true;
-    }
-    if (cause instanceof ApiError && cause.code === "SIGNUP_REJECTED") {
-      queryClient.setQueryData<AuthUser | null>(authKeys.me, (user) => user ? { ...user, approvalStatus: "rejected" } : user);
-      void queryClient.invalidateQueries({ queryKey: authKeys.me });
-      navigate("/signup-rejected", { replace: true });
-      return true;
-    }
-    return false;
-  }, [navigate, queryClient]);
-
-  useEffect(() => { handleAuthApiError(error); }, [error, handleAuthApiError]);
 
   const selectBank = (id: string) => { localStorage.setItem(ACTIVE_KEY, id); setActiveId(id); setSession(null); setView("home"); };
   const start = (next: LessonSession | null, empty: string) => {
@@ -94,18 +69,22 @@ export default function ExamPage() {
   };
   const importBank = async (file: File | undefined) => {
     if (!file || !bank) return;
+    const version = getSessionVersion(queryClient);
     try {
       const incoming = ExamBankSchema.parse(JSON.parse(await file.text()));
+      assertSessionVersion(queryClient, version);
       const next = importMode === "replace" ? incoming : {
         ...incoming,
         concepts: [...new Map([...bank.concepts, ...incoming.concepts].map((note) => [note.id, note])).values()],
         scenarios: [...new Map([...bank.scenarios, ...incoming.scenarios].map((note) => [note.id, note])).values()],
       };
-      const saved = await createExamBank(next);
+      const saved = await createCachedExamBank(queryClient, next);
+      assertSessionVersion(queryClient, version);
       selectBank(saved.id);
       toast.success(`문항 은행을 저장했습니다. 개념 ${next.concepts.length}개, 사례 ${next.scenarios.length}개`);
     } catch (cause) {
-      if (!handleAuthApiError(cause)) {
+      if (isCancelledError(cause)) return;
+      if (!handleSessionApiError(queryClient, cause)) {
         toast.error(cause instanceof ApiError
           ? examApiErrorMessage(cause)
           : "문항을 가져오지 못했습니다. 파일 형식과 내용을 확인해 주세요.");
@@ -113,15 +92,15 @@ export default function ExamPage() {
     }
   };
 
-  if (isPending) return <LoadingState label="문항 은행을 불러오는 중입니다." />;
-  if (isError || !bank) {
+  if (isPending && !bank) return <ExamLoading />;
+  if (!bank || (isError && error instanceof ApiError && ["UNAUTHORIZED", "APPROVAL_PENDING", "SIGNUP_REJECTED", "FORBIDDEN"].includes(error.code ?? ""))) {
     return (
       <ErrorState
         title="문항 은행을 불러오지 못했습니다"
         description={examApiErrorMessage(error)}
         action={(
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => void queryClient.invalidateQueries({ queryKey: examBankQuery(activeId).queryKey })}>다시 시도</Button>
+            <Button onClick={() => void queryClient.invalidateQueries({ queryKey: examBankKeys.detail(activeId) })}>다시 시도</Button>
             <Button variant="outline" onClick={() => selectBank("aws-sap")}>기본 은행 열기</Button>
           </div>
         )}
@@ -131,11 +110,15 @@ export default function ExamPage() {
 
   const wrong = progress.wrongIds.filter((id) => bank.concepts.some((note) => note.id === id) || bank.scenarios.some((note) => note.id === id));
   const primer = session?.kind === "lesson" ? selectPrimerConcepts(session.exercises, bank, progress.notes) : [];
-  return <div className="exam-shell">
-    <header className="exam-head"><div><strong>Exam Drill</strong><span>{bank.subject} · {bank.concepts.length}개 개념 · {bank.scenarios.length}개 사례</span></div><span>{currentUser.data?.email}</span>{currentUser.data?.role === "admin" && <Link to="/admin/users">사용자 승인</Link>}<LogoutButton /><a href="/">Innova Platform</a></header>
-    <main className="exam-main">
+  const hasContent = bank.concepts.length + bank.scenarios.length > 0;
+  return <div className="exam-shell" aria-busy={isFetching}>
+    <header className="exam-head"><div><strong>Exam Drill</strong><span>{bank.subject} · {bank.concepts.length}개 개념 · {bank.scenarios.length}개 사례</span></div></header>
+    <div className="exam-main">
+      {isFetching && <p role="status" className="mb-4 text-sm text-muted-foreground">문항 은행 갱신 중…</p>}
+      {isError && !isFetching && <Alert variant="warning" className="mb-4"><AlertDescription className="flex flex-wrap items-center gap-2">문항 은행을 갱신하지 못했습니다. 마지막 조회 결과를 표시합니다. <Button variant="outline" onClick={() => void refetch()}>다시 시도</Button></AlertDescription></Alert>}
       {message && <div className="exam-message" role="status">{message}<button onClick={() => setMessage("")} aria-label="닫기">×</button></div>}
-      {view === "home" && <section className="exam-stack">
+      {view === "home" && !hasContent && <section className="exam-stack"><div className="exam-panel"><h1>학습할 문항이 없습니다</h1><p>문항 은행에 학습 콘텐츠가 등록되면 레슨과 모의고사를 시작할 수 있습니다.</p><div className="exam-actions"><button onClick={() => setView("settings")}>문항 은행 설정</button></div></div></section>}
+      {view === "home" && hasContent && <section className="exam-stack">
         <div className="exam-hero"><p className="exam-eyebrow">AWS SAP · 오늘 학습</p><h1>오늘 이어서</h1><p>짧은 레슨으로 개념을 익히고, 바로 문제에 적용하세요.</p><button className="exam-primary" onClick={() => startLesson(recommendLesson(bank, progress.notes, todayKst()))}>레슨 시작</button></div>
         <div className="exam-summary"><div><strong>{progress.todayDate === todayKst() ? progress.todayMinutes : 0}분</strong><span>오늘 학습 · 목표 {progress.dailyGoalMin}분</span></div><div><strong>{progress.streakDays}일</strong><span>연속 학습</span></div><div><strong>{wrong.length}개</strong><span>오답 노트</span></div></div>
         <div className="exam-actions"><button onClick={() => setView("units")}>유닛 선택</button><button onClick={() => setView("review")}>오답 복습</button><button onClick={() => startMock(10)}>미니 모의 · 10문항</button></div>
@@ -148,8 +131,8 @@ export default function ExamPage() {
       {view === "mock" && <section className="exam-stack"><div><h1>모의고사</h1><p>종료할 때 일괄 채점합니다. 제한 시간이 지나면 자동 제출됩니다.</p></div><div className="exam-actions"><button onClick={() => startMock(10)}>10문항 · 15분</button><button onClick={() => startMock(40)}>40문항 · 60분</button></div>{progress.lastMock && <p>최근 모의: {progress.lastMock.answers.filter((answer) => answer.correct).length}/{progress.lastMock.answers.length}</p>}</section>}
       {view === "lesson" && session && (primer.length && !primerDone ? <section className="exam-stack"><div><p className="exam-eyebrow">먼저 알아보기</p><h1>이번 레슨의 개념</h1></div><div className="exam-list">{primer.map((note) => <div key={note.id}><strong>{note.term}</strong><p>{note.definition}</p></div>)}</div><div className="exam-actions"><button onClick={() => { setSession(null); setView("home"); }}>나가기</button><button className="exam-primary" onClick={() => setPrimerDone(true)}>문제 풀기</button></div></section> : <ExamPlayer key={session.sessionId} session={session} onFinish={finish} onExit={() => { setSession(null); setView("home"); }} />)}
       {view === "result" && <section className="exam-stack"><div><p className="exam-eyebrow">학습 결과</p><h1>{progress.lastSession?.title ?? "결과"}</h1></div><div className="exam-score">{progress.lastSession?.answers.filter((answer) => answer.correct).length ?? 0}<span> / {progress.lastSession?.answers.length ?? 0}</span></div><div className="exam-list">{progress.lastSession?.answers.filter((answer) => !answer.correct).map((answer) => <div key={answer.exerciseId}><strong>{answer.prompt}</strong><p>정답: {answer.expected}</p></div>)}</div><div className="exam-actions"><button onClick={startReview}>오답 다시 풀기</button><button onClick={() => startLesson(recommendLesson(bank, progress.notes, todayKst()))}>다음 레슨</button><button onClick={() => setView("home")}>홈</button></div></section>}
-      {view === "settings" && <section className="exam-stack"><div><h1>설정 · 데이터</h1><p>문항 은행은 PostgreSQL에 저장됩니다. 학습 기록의 통계와 ID만 현재 브라우저에 저장됩니다.</p></div><div className="exam-panel"><h2>오늘 목표</h2><div className="exam-actions"><button aria-pressed={progress.dailyGoalMin === 5} onClick={() => setGoal(5)}>5분</button><button aria-pressed={progress.dailyGoalMin === 15} onClick={() => setGoal(15)}>15분</button></div></div><div className="exam-panel"><h2>문항 은행</h2><label>불러오기 방식 <select value={importMode} onChange={(event) => setImportMode(event.target.value as "merge" | "replace")}><option value="merge">병합</option><option value="replace">교체</option></select></label><input type="file" accept=".json,application/json" aria-label="문항 JSON 불러오기" onChange={(event) => void importBank(event.target.files?.[0])}/><div className="exam-actions"><button onClick={() => void getExamBank("aws-sap").then(() => selectBank("aws-sap")).catch((cause: unknown) => { if (!handleAuthApiError(cause)) toast.error(examApiErrorMessage(cause)); })}>기본 은행으로 돌아가기</button></div></div><div className="exam-panel"><h2>학습 기록</h2><p>문제 본문과 정답은 브라우저에 영구 저장하지 않습니다.</p><button className="exam-danger" onClick={() => { if (window.confirm("학습 기록을 지울까요? 문항 은행은 유지됩니다.")) reset(); }}>학습 기록 초기화</button></div></section>}
-    </main>
+      {view === "settings" && <section className="exam-stack"><div><h1>설정 · 데이터</h1><p>문항 은행은 PostgreSQL에 저장됩니다. 학습 기록의 통계와 ID만 현재 브라우저에 저장됩니다.</p></div><div className="exam-panel"><h2>오늘 목표</h2><div className="exam-actions"><button aria-pressed={progress.dailyGoalMin === 5} onClick={() => setGoal(5)}>5분</button><button aria-pressed={progress.dailyGoalMin === 15} onClick={() => setGoal(15)}>15분</button></div></div><div className="exam-panel"><h2>문항 은행</h2><label>불러오기 방식 <select value={importMode} onChange={(event) => setImportMode(event.target.value as "merge" | "replace")}><option value="merge">병합</option><option value="replace">교체</option></select></label><input type="file" accept=".json,application/json" aria-label="문항 JSON 불러오기" onChange={(event) => void importBank(event.target.files?.[0])}/><div className="exam-actions"><button onClick={() => void refreshDefaultExamBank(queryClient).then(() => selectBank("aws-sap")).catch((cause: unknown) => { if (!isCancelledError(cause) && !handleSessionApiError(queryClient, cause)) toast.error(examApiErrorMessage(cause)); })}>기본 은행으로 돌아가기</button></div></div><div className="exam-panel"><h2>학습 기록</h2><p>문제 본문과 정답은 브라우저에 영구 저장하지 않습니다.</p><button className="exam-danger" onClick={() => { if (window.confirm("학습 기록을 지울까요? 문항 은행은 유지됩니다.")) reset(); }}>학습 기록 초기화</button></div></section>}
+    </div>
     {view !== "lesson" && <nav className="exam-tabs" aria-label="Exam Drill 메뉴">{([ ["home", "홈"], ["units", "유닛"], ["review", "오답"], ["mock", "모의"], ["settings", "설정"] ] as const).map(([id, label]) => <button key={id} aria-current={view === id ? "page" : undefined} onClick={() => { setMessage(""); setView(id); }}>{label}</button>)}</nav>}
   </div>;
 }
@@ -203,7 +186,7 @@ function ExamPlayer({ session, onFinish, onExit }: { session: LessonSession; onF
   const next = () => { setFeedback(null); itemStarted.current = Date.now(); if (index + 1 === session.exercises.length) finish(); else setIndex(index + 1); };
   const hasAnswer = exercise.type === "pair" ? Array.isArray(given) && given.length === exercise.pairs.length : given !== null && String(given).trim() !== "";
   return <section className="exam-stack exam-player"><div className="exam-player-head"><div><button className="exam-link" onClick={onExit}>← 나가기</button><p>{session.title} · {index + 1}/{session.exercises.length}</p></div>{mock && <strong>{String(Math.floor(remain / 60)).padStart(2, "0")}:{String(remain % 60).padStart(2, "0")}</strong>}</div>
-    {mock && <div className="exam-dots">{session.exercises.map((ex, position) => <button key={ex.id} aria-current={position === index ? "step" : undefined} className={drafts[ex.id] !== undefined ? "answered" : ""} onClick={() => { setIndex(position); itemStarted.current = Date.now(); }}>{position + 1}</button>)}</div>}
+    {mock && <div className="exam-dots">{session.exercises.map((ex, position) => { const answered = drafts[ex.id] !== undefined; return <button key={ex.id} aria-label={`${position + 1}번 문항${answered ? ", 답변 완료" : ", 미응답"}`} aria-current={position === index ? "step" : undefined} className={answered ? "answered" : ""} onClick={() => { setIndex(position); itemStarted.current = Date.now(); }}>{position + 1}{answered && <span aria-hidden="true">✓</span>}</button>; })}</div>}
     <div className="exam-question"><p className="exam-eyebrow">{exercise.type === "scenario_mcq" ? "사례" : exercise.type === "pair" ? "짝맞추기" : exercise.type === "cloze" ? "빈칸" : exercise.type === "short" ? "짧은 답" : exercise.type === "ox" ? "참 · 거짓" : "객관식"}</p><h1>{exercise.type === "pair" ? "용어와 설명을 연결하세요" : exercise.type === "cloze" ? exercise.template.replace(/\{\{[^}]+\}\}/g, "______") : exercise.type === "short" ? exercise.prompt : exercise.type === "ox" ? exercise.statement : exercise.stem}</h1></div>
     {(exercise.type === "mcq" || exercise.type === "scenario_mcq") && <div className="exam-choices">{exercise.choices.map((choice, choiceIndex) => <button key={choiceIndex} aria-pressed={given === choiceIndex} disabled={!!feedback && !mock} onClick={() => update(choiceIndex)}><span>{choiceIndex + 1}</span>{choice}</button>)}</div>}
     {exercise.type === "ox" && <div className="exam-actions"><button aria-pressed={given === true} onClick={() => update(true)}>참</button><button aria-pressed={given === false} onClick={() => update(false)}>거짓</button></div>}
