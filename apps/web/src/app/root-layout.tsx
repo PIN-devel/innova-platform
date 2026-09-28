@@ -15,7 +15,7 @@ export default function RootLayout() {
             <nav className="flex items-center gap-4 text-sm" aria-label="계정 메뉴">
               {currentUser.isPending ? <span role="status" className="text-xs text-slate-500">계정 확인 중…</span>
                 : currentUser.isError ? <><span role="status" className="text-xs text-amber-800">계정 상태 확인 오류</span><Link className="font-medium text-blue-700 hover:underline" to="/login">로그인</Link><Link className="font-medium text-blue-700 hover:underline" to="/signup">회원가입</Link></>
-                : currentUser.data ? <><span className="max-w-48 truncate text-slate-600">{currentUser.data.email}</span>{currentUser.data.role === "admin" && <Link className="font-medium text-blue-700 hover:underline" to="/admin/users">사용자 승인</Link>}<LogoutButton /></>
+                : currentUser.data ? <><span className="max-w-48 truncate text-slate-600">{currentUser.data.email}</span>{currentUser.data.role === "admin" && currentUser.data.approvalStatus !== "rejected" && <Link className="font-medium text-blue-700 hover:underline" to="/admin/users">사용자 승인</Link>}{currentUser.data.approvalStatus === "rejected" && <Link className="font-medium text-blue-700 hover:underline" to="/signup-rejected">가입 결과</Link>}<LogoutButton /></>
                   : <><Link className="font-medium text-blue-700 hover:underline" to="/login">로그인</Link><Link className="font-medium text-blue-700 hover:underline" to="/signup">회원가입</Link></>}
             </nav>
           </div>

@@ -78,4 +78,10 @@ test("user repository creates and returns a pending member", async () => {
   assert.ok(updateCondition);
   assert.deepEqual(updateValues, { approvalStatus: "approved" });
   assert.equal(await users.approvePending(created!.id), undefined);
+
+  inserted = { ...created!, approvalStatus: "pending" };
+  const rejected = await users.rejectPending(created!.id);
+  assert.equal(rejected?.approvalStatus, "rejected");
+  assert.deepEqual(updateValues, { approvalStatus: "rejected" });
+  assert.equal(await users.rejectPending(created!.id), undefined);
 });

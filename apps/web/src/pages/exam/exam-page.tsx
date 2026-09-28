@@ -66,6 +66,12 @@ export default function ExamPage() {
       navigate("/approval-pending", { replace: true });
       return true;
     }
+    if (cause instanceof ApiError && cause.code === "SIGNUP_REJECTED") {
+      queryClient.setQueryData<AuthUser | null>(authKeys.me, (user) => user ? { ...user, approvalStatus: "rejected" } : user);
+      void queryClient.invalidateQueries({ queryKey: authKeys.me });
+      navigate("/signup-rejected", { replace: true });
+      return true;
+    }
     return false;
   }, [navigate, queryClient]);
 

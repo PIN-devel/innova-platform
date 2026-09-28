@@ -1,0 +1,2 @@
+ALTER TABLE "users" DROP CONSTRAINT "users_approval_status_check";--> statement-breakpoint
+ALTER TABLE "users" ADD CONSTRAINT "users_approval_status_check" CHECK ("users"."approval_status" in ('pending', 'approved', 'rejected'));
