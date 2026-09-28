@@ -2,6 +2,8 @@ import { isRouteErrorResponse, useRouteError } from "react-router";
 import { Button } from "@/shared/ui/button";
 import { ErrorState } from "@/shared/ui/error-state";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
+import RootLayout from "./root-layout";
+import { ExamContentLayout, StandardContentLayout } from "./content-layouts";
 
 function RouteErrorBoundary() {
   const error = useRouteError();
@@ -24,4 +26,14 @@ function RouteErrorBoundary() {
   );
 }
 
-export { RouteErrorBoundary };
+export function StandardContentErrorBoundary() {
+  return <StandardContentLayout><RouteErrorBoundary /></StandardContentLayout>;
+}
+
+export function ExamContentErrorBoundary() {
+  return <ExamContentLayout><RouteErrorBoundary /></ExamContentLayout>;
+}
+
+export function RootRouteErrorBoundary() {
+  return <RootLayout><StandardContentErrorBoundary /></RootLayout>;
+}
