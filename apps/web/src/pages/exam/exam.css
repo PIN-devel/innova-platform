@@ -1,8 +1,6 @@
 .exam-shell {
-  min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
-  padding-bottom: 74px;
   font-size: 15px;
   line-height: 1.55;
 }
@@ -25,9 +23,7 @@
 .exam-head div { display: flex; align-items: baseline; gap: 12px; }
 .exam-head strong { color: var(--primary); font-size: 19px; }
 .exam-head span { color: var(--muted-foreground); font-size: 13px; }
-.exam-head a { color: var(--primary); font-size: 13px; }
-.exam-head a:hover { text-decoration: underline; }
-.exam-main { max-width: 880px; margin: auto; padding: 36px 24px 80px; }
+.exam-main { padding-top: 24px; }
 .exam-stack { display: grid; gap: 24px; }
 .exam-stack h1 { margin: 3px 0 10px; font-size: clamp(26px, 4vw, 38px); line-height: 1.24; letter-spacing: -0.035em; }
 .exam-stack h2 { margin: 0 0 14px; font-size: 19px; }
@@ -217,10 +213,9 @@
 .exam-score span { color: var(--muted-foreground); font-size: 28px; }
 
 @media (max-width: 640px) {
-  .exam-main { padding: 22px 16px 86px; }
+  .exam-main { padding-top: 22px; }
   .exam-head { padding: 14px 16px; }
   .exam-head div { display: grid; gap: 0; }
-  .exam-head a:last-child { display: none; }
   .exam-hero { padding: 28px; }
   .exam-summary { grid-template-columns: repeat(3, 1fr); }
   .exam-summary div { padding: 12px; }
