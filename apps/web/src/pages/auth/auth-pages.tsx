@@ -10,7 +10,7 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { getPostAuthPath } from "@/features/auth/route-access";
 
-type FieldErrors = Partial<Record<"email" | "password", string>>;
+type FieldErrors = Partial<Record<"email" | "password" | "passwordConfirm", string>>;
 
 function SessionNotice() {
   const query = useCurrentUser();
@@ -114,13 +114,31 @@ export function SignupPage() {
   const mutation = useSignup();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [passwordConfirmValidated, setPasswordConfirmValidated] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  function confirmPasswordError(value: string) {
+    return value === password ? undefined : "비밀번호가 일치하지 않습니다.";
+  }
+
+  function updateConfirmError(value: string) {
+    setFieldErrors((old) => ({
+      ...old,
+      passwordConfirm: passwordConfirmValidated ? confirmPasswordError(value) : undefined,
+    }));
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setPasswordConfirmValidated(true);
     const result = signupRequestSchema.safeParse({ email, password });
-    if (!result.success) {
-      setFieldErrors(validationErrors(result.error.issues, "signup"));
+    const passwordConfirmErrorMessage = confirmPasswordError(passwordConfirm);
+    if (!result.success || passwordConfirmErrorMessage) {
+      setFieldErrors({
+        ...(!result.success ? validationErrors(result.error.issues, "signup") : {}),
+        ...(passwordConfirmErrorMessage ? { passwordConfirm: passwordConfirmErrorMessage } : {}),
+      });
       mutation.reset();
       return;
     }
@@ -142,8 +160,13 @@ export function SignupPage() {
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="password">비밀번호</Label>
-        <Input id="password" type="password" name="password" autoComplete="new-password" minLength={8} maxLength={128} required value={password} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "password-error" : undefined} onChange={(event) => { setPassword(event.target.value); setFieldErrors((old) => ({ ...old, password: undefined })); mutation.reset(); }}/>
+        <Input id="password" type="password" name="password" autoComplete="new-password" minLength={8} maxLength={128} required value={password} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "password-error" : undefined} onChange={(event) => { setPassword(event.target.value); setFieldErrors((old) => ({ ...old, password: undefined, ...(passwordConfirmValidated ? { passwordConfirm: confirmPasswordError(passwordConfirm) } : {}) })); mutation.reset(); }}/>
         {fieldErrors.password && <span id="password-error" className="text-sm text-destructive">{fieldErrors.password}</span>}
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="password-confirm">비밀번호 확인</Label>
+        <Input id="password-confirm" type="password" name="passwordConfirm" autoComplete="new-password" required value={passwordConfirm} aria-invalid={Boolean(fieldErrors.passwordConfirm)} aria-describedby={fieldErrors.passwordConfirm ? "password-confirm-error" : undefined} onBlur={() => { setPasswordConfirmValidated(true); setFieldErrors((old) => ({ ...old, passwordConfirm: confirmPasswordError(passwordConfirm) })); }} onChange={(event) => { setPasswordConfirm(event.target.value); updateConfirmError(event.target.value); mutation.reset(); }}/>
+        {fieldErrors.passwordConfirm && <span id="password-confirm-error" className="text-sm text-destructive">{fieldErrors.passwordConfirm}</span>}
       </div>
       {mutation.isError && <Alert variant="destructive"><AlertDescription>{submitError(mutation.error, "signup")}</AlertDescription></Alert>}
       <Button type="submit" disabled={mutation.isPending} className="mt-1 w-full py-2.5 font-semibold">{mutation.isPending ? "가입 중…" : "회원가입"}</Button>

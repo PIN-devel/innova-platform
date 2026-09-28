@@ -11,6 +11,7 @@ export const apiErrorCodeSchema = z.enum([
   "INVALID_CREDENTIALS",
   "EMAIL_ALREADY_EXISTS",
   "APPROVAL_PENDING",
+  "SIGNUP_REJECTED",
 ]);
 
 export const validationErrorReasonSchema = z.enum([

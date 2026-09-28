@@ -18,6 +18,7 @@ export interface UserRepository {
   create(email: string, passwordHash: string): Promise<UserRecord | undefined>;
   findPending(): Promise<Array<Pick<UserRecord, "id" | "email" | "approvalStatus">>>;
   approvePending(id: string): Promise<UserRecord | undefined>;
+  rejectPending(id: string): Promise<UserRecord | undefined>;
 }
 
 export function createUserRepository(db: ReturnType<typeof createDatabase>): UserRepository {
@@ -45,6 +46,13 @@ export function createUserRepository(db: ReturnType<typeof createDatabase>): Use
     async approvePending(id) {
       const [user] = await db.update(users)
         .set({ approvalStatus: "approved" })
+        .where(and(eq(users.id, id), eq(users.approvalStatus, "pending")))
+        .returning({ id: users.id, email: users.email, passwordHash: users.passwordHash, approvalStatus: users.approvalStatus, role: users.role });
+      return user;
+    },
+    async rejectPending(id) {
+      const [user] = await db.update(users)
+        .set({ approvalStatus: "rejected" })
         .where(and(eq(users.id, id), eq(users.approvalStatus, "pending")))
         .returning({ id: users.id, email: users.email, passwordHash: users.passwordHash, approvalStatus: users.approvalStatus, role: users.role });
       return user;

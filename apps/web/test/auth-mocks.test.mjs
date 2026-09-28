@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
-import { adminApprovalResponseSchema, apiErrorResponseSchema, authResponseSchema, pendingUsersResponseSchema } from "@innova/contracts";
+import { adminApprovalResponseSchema, adminRejectionResponseSchema, apiErrorResponseSchema, authResponseSchema, pendingUsersResponseSchema } from "@innova/contracts";
 import { setupServer } from "msw/node";
 import { handlers, resetAuthMock } from "../src/mocks/handlers.ts";
 
@@ -122,6 +122,28 @@ test("MSW admin list and approval mirror backend authorization and state changes
     }),
   });
   assert.equal(examWrite.status, 201);
+});
+
+test("MSW admin rejection preserves rejected accounts and blocks service access", async () => {
+  const admin = { id: "00000000-0000-4000-8000-000000000002", email: "admin@example.com", approvalStatus: "pending", role: "admin" };
+  resetAuthMock([{ user: admin, password: "password123" }]);
+  await authRequest("/signup", "POST", { email: "rejected@example.com", password: "password123" });
+  await authRequest("/logout", "POST", {});
+  await authRequest("/login", "POST", { email: "admin@example.com", password: "password123" });
+
+  const pending = pendingUsersResponseSchema.parse(await (await fetch(`${baseUrl}/api/admin/users/pending`)).json()).users;
+  const rejectedUser = pending.find((user) => user.email === "rejected@example.com");
+  assert.ok(rejectedUser);
+  const response = await fetch(`${baseUrl}/api/admin/users/${rejectedUser.id}/reject`, { method: "POST" });
+  assert.equal(response.status, 200);
+  assert.equal(adminRejectionResponseSchema.parse(await response.json()).user.approvalStatus, "rejected");
+  const refreshed = pendingUsersResponseSchema.parse(await (await fetch(`${baseUrl}/api/admin/users/pending`)).json()).users;
+  assert.equal(refreshed.some((user) => user.id === rejectedUser.id), false);
+
+  await authRequest("/logout", "POST", {});
+  await authRequest("/login", "POST", { email: "rejected@example.com", password: "password123" });
+  assert.equal(authResponseSchema.parse(await (await authRequest("/me")).json()).user.approvalStatus, "rejected");
+  assert.equal(await errorCode(await fetch(`${baseUrl}/api/exam/banks/default`)), "SIGNUP_REJECTED");
 });
 
 test("MSW login returns the same credential error for unknown email and wrong password", async () => {

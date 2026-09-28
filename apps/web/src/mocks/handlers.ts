@@ -1,6 +1,7 @@
 import {
   authResponseSchema,
   adminApprovalResponseSchema,
+  adminRejectionResponseSchema,
   apiErrorResponseSchema,
   ExamBankRecordSchema,
   ExamBankSchema,
@@ -137,8 +138,20 @@ export const handlers = [
     return HttpResponse.json(adminApprovalResponseSchema.parse({ user: credential.user }), { headers });
   }),
 
+  http.post("*/api/admin/users/:id/reject", ({ params }) => {
+    if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
+    if (currentMockUser.role !== "admin") return apiError(403, "FORBIDDEN", "Administrator access required");
+    const credential = [...mockUsers.values()].find(({ user }) => user.id === String(params.id));
+    if (!credential) return apiError(404, "NOT_FOUND", "User not found");
+    if (credential.user.approvalStatus !== "pending") return apiError(409, "BUSINESS_RULE_VIOLATION", "Only pending users can be rejected");
+    credential.user = { ...credential.user, approvalStatus: "rejected" };
+    if (currentMockUser.id === credential.user.id) currentMockUser = credential.user;
+    return HttpResponse.json(adminRejectionResponseSchema.parse({ user: credential.user }), { headers });
+  }),
+
   http.get("*/api/exam/banks/:id", ({ params }) => {
     if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
+    if (currentMockUser.approvalStatus === "rejected") return apiError(403, "SIGNUP_REJECTED", "Signup request was rejected");
     if (currentMockUser.approvalStatus !== "approved") return apiError(403, "APPROVAL_PENDING", "Account approval is pending");
     const id = String(params.id) === "default" ? "aws-sap" : String(params.id);
     const record = banks.get(id);
@@ -149,6 +162,7 @@ export const handlers = [
 
   http.post("*/api/exam/banks", async ({ request }) => {
     if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
+    if (currentMockUser.approvalStatus === "rejected") return apiError(403, "SIGNUP_REJECTED", "Signup request was rejected");
     if (currentMockUser.approvalStatus !== "approved") return apiError(403, "APPROVAL_PENDING", "Account approval is pending");
     let payload: unknown;
     try {
