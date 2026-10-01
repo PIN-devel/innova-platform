@@ -15,6 +15,13 @@
       "when": 1790566829679,
       "tag": "0001_add_signup_rejection_status",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790863873546,
+      "tag": "0002_powerful_mandrill",
+      "breakpoints": true
     }
   ]
 }
