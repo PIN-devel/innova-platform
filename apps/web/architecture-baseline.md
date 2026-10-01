@@ -102,3 +102,51 @@ corepack pnpm lint
 | 통합 | 루트 4개 gate, 잠금 파일/버전 기록, production 청크 전후 비교, 실API cookie/no-store/배포 SPA fallback |
 
 실브라우저와 운영 환경 QA는 이번 설계 단계에서 실행하지 않았다. 후속 결과는 이 기준선을 덮어써서 과거 수치를 잃지 않도록 전후 열 또는 별도 검증 절에 기록한다.
+
+## PIN-20 구현 후 통합 검증 (2026-10-01 KST)
+
+사용자 요청에 따라 신규 `refactor/pin-20-data-flow`를 최신 develop에서 생성하고 PIN-21 설계 커밋을 이어받았다. 최초 main/develop 이력 비교는 main-only 16 / develop-only 1이었지만 `git diff origin/main origin/develop`는 비어 있어 tree는 같았다.
+
+### 동일 소스/설치 기준의 번들 비교
+
+develop `f7f259ca61dc16a2a22206f116b74d490f6b55e6`를 `/private/tmp/pin20-baseline`에 git archive로 추출하고 저장소 lockfile/pnpm 12.6.0으로 다시 빌드했다. 과거 PIN-21의 595.36 kB/gzip 183.97 kB를 이번 측정값으로 재사용하지 않는다. 이번 Vite 출력은 develop 603.58 kB/gzip 186.69 kB였다.
+
+다음 표는 HTML의 module script와 modulepreload JS 파일을 합산한 **초기 dependency 합계**, 모든 production JS의 합계다. gzip은 양쪽 모두 Python gzip.compress(compresslevel=6, mtime=0)로 개별 파일을 동일 방식으로 압축해 합산했다. Vite가 출력한 gzip 추정과 혼합하지 않는다. 단위는 decimal kB다.
+
+| 측정 | develop | PIN-20 |
+| --- | ---: | ---: |
+| 초기 JS 원본 | 603.58 | 542.74 |
+| 초기 JS gzip | 184.54 | 168.03 |
+| 전체 JS 원본 (lazy 포함) | 603.58 | 606.5 |
+| 전체 JS gzip (lazy 포함) | 184.54 | 191.48 |
+
+초기 JS 원본은 약 10.1%, 동일 gzip은 약 9% 감소했다. 전체 JS는 약 0.5%, 전체 gzip은 약 3.8% 증가했다. 초기 entry만 285.38 kB라고 보고하지 않으며 shared alert 256.76 kB/runtime 0.58 kB도 초기 비용에 포함한다. auth/admin/exam은 각각 독립 lazy 청크이고 최초 홈에서 모두 내려받지 않는다. 전체 코드가 사라진 것으로 해석하지 않는다. warning threshold나 vendor 수동 분할은 변경하지 않았다. 실제 장치 네트워크 latency/성능을 측정한 수치는 아니다.
+
+### 요청·정합성 검증
+
+실제 createMemoryRouter + MSW 테스트에서:
+
+- 최초 Exam 진입은 auth/me 1 + bank GET 1. fresh bank 재진입은 bank GET 0, stale/명시적 invalidate 뒤 revalidation은 bank GET 1이다.
+- middleware 접근 확인 이전에 보호 GET이 출발하지 않으며 anonymous/pending/rejected/member/admin 직접 진입을 검증했다.
+- Action 성공 후 Router만 후속 조회를 시작한다. 승인 성공+목록 GET 500에서도 확정 항목이 되살아나지 않는다. 실패한 POST는 목록을 제거하지 않는다.
+- 같은 ID의 concurrent fetcher는 추가 POST를 차단하고, 서로 다른 ID의 동시 성공 patch는 함께 보존한다.
+- 오래된 pending GET이 성공 patch를 덮지 않는다. 이전 세션 GET/POST/오류/늦은 login은 새 세션 cache에 적용되지 않는다.
+- navigation abort는 같은 Query를 기다리는 다른 consumer의 GET을 취소하지 않는다. StrictMode 임시 UI 구독 해제도 Loader 요청을 취소하지 않는다.
+- multipart import는 응답 cache를 seed하고 새 bank URL로 이동한다. redirect 직후 새 bank GET은 0이다.
+- URL canonicalization, view back, missing-bank 오류/재시도를 검증했다.
+
+### 실행한 최종 gate
+
+- `pnpm build` — Contracts/API/Web 성공, route lazy 청크 생성.
+- `pnpm typecheck` — 성공.
+- `pnpm test` — Web 46 + API 15 = 61개 통과.
+- `pnpm lint` — 경고/오류 없음.
+- `git diff --check` — 성공.
+
+기존 static Shell 테스트는 handler와 middleware를 제거한 UI 전용 harness로 실행하며 실제 Router 실행은 별도 router-data 테스트가 검증한다. 테스트 수를 줄여 회귀 의미를 없애지 않았다. 모든 fixture/브라우저 데이터는 합성이다.
+
+### 브라우저 QA 및 제한
+
+Codex 브라우저에서 로컬 MSW 모드로 초기 홈, anonymous Exam→login returnTo, 합성 계정 login→Exam, 탭 view URL, 뒤로 가기 복원, 학습 시작과 이탈 확인창 표시, fetcher logout 후 보호 콘텐츠 제거를 확인했다. 초기 StrictMode 요청 취소 문제를 브라우저에서 발견·수정하고 별도 회귀 테스트로 고정했다. 확인창 취소 후 세션 보존은 별도 브라우저 assertion을 수행하지 않았다.
+
+실제 운영 API의 쿠키/DB·다중 탭 경합, 모바일 실기기, 지연된 chunk 다운로드·새 배포 chunk 실패는 검증하지 않았다. 이 PR은 backend/contract/DB 변경이 없으며 기존 서버 인가를 유지한다. 코드 분할로 생긴 전체 gzip 증가와 위 QA 범위를 잔여 제한으로 PR에도 기록한다.
