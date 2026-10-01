@@ -1,33 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { LoginRequest, SignupRequest } from "@innova/contracts";
-import { login, logout, signup } from "@/entities/auth/api";
+import { useSyncExternalStore } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { currentUserQuery } from "@/entities/auth/queries";
-import { cacheAuthenticatedUser, clearSessionCache } from "./clear-protected-queries";
+import { getSessionVersion, isSessionTransitioning, subscribeSession } from "@/entities/auth/session-version";
 
+export function useSessionScope() {
+  const client = useQueryClient();
+  const snapshot = useSyncExternalStore((listener) => subscribeSession(client, listener),
+    () => `${getSessionVersion(client)}:${isSessionTransitioning(client)}`, () => `${getSessionVersion(client)}:false`);
+  return { epoch: Number(snapshot.split(":")[0]), transitioning: snapshot.endsWith(":true") };
+}
 export function useCurrentUser() {
-  return useQuery(currentUserQuery());
-}
-
-export function useLogin() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: LoginRequest) => login(input),
-    onSuccess: (user) => cacheAuthenticatedUser(queryClient, user),
-  });
-}
-
-export function useSignup() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: SignupRequest) => signup(input),
-    onSuccess: (user) => cacheAuthenticatedUser(queryClient, user),
-  });
-}
-
-export function useLogout() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: logout,
-    onSuccess: () => clearSessionCache(queryClient),
-  });
+  // Router is the only initiator; all components observe this same cache.
+  return useQuery({ ...currentUserQuery(), enabled: false });
 }

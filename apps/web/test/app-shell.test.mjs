@@ -24,13 +24,15 @@ before(async () => {
 });
 after(async () => { delete globalThis.localStorage; await vite?.close(); });
 
-function renderRoute(path, user, bank, customizeRoutes, configureQuery) {
+async function renderRoute(path, user, bank, customizeRoutes, configureQuery) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
   if (user !== undefined) queryClient.setQueryData(currentUserQuery().queryKey, user);
   if (bank) queryClient.setQueryData(examBankQuery("aws-sap").queryKey, { bank });
   configureQuery?.(queryClient);
-  const routes = createAppRoutes();
-  const hydrationData = customizeRoutes?.(routes);
+  const routes = createAppRoutes(queryClient);
+  async function loadLazy(routes) { for (const route of routes) { if (route.lazy) { Object.assign(route, await route.lazy()); delete route.lazy; } delete route.loader; delete route.middleware; if (route.children) await loadLazy(route.children); } }
+  await loadLazy(routes);
+  const hydrationData = customizeRoutes?.(routes) ?? { loaderData: { root: null, admin: null, exam: null } };
   const router = createMemoryRouter(routes, { initialEntries: [path], ...(hydrationData ? { hydrationData } : {}) });
   const html = renderToStaticMarkup(createElement(QueryClientProvider, { client: queryClient }, createElement(RouterProvider, { router })));
   void router.dispose();
@@ -38,10 +40,10 @@ function renderRoute(path, user, bank, customizeRoutes, configureQuery) {
   return html;
 }
 
-test("platform shell persists across standard routes and exam loading, with a single main landmark", () => {
+test("platform shell persists across standard routes and exam loading, with a single main landmark", async () => {
   const user = { id: "1", email: "admin@example.com", role: "admin", approvalStatus: "approved" };
   for (const path of ["/", "/login", "/admin/users", "/missing", "/exam"]) {
-    const html = renderRoute(path, user);
+    const html = await renderRoute(path, user);
     assert.match(html, /Innova Platform/);
     assert.match(html, /aria-label="주요 탐색"/);
     assert.match(html, /href="\/exam"/);
@@ -49,38 +51,38 @@ test("platform shell persists across standard routes and exam loading, with a si
   }
 });
 
-test("exam and admin first queries show page-shaped skeletons without empty or interactive content", () => {
+test("exam and admin first queries show page-shaped skeletons without empty or interactive content", async () => {
   const user = { id: "1", email: "admin@example.com", role: "admin", approvalStatus: "approved" };
-  const exam = renderRoute("/exam", user);
+  const exam = await renderRoute("/exam", user);
   assert.match(exam, /문항 은행을 불러오는 중입니다/);
   assert.match(exam, /data-slot="skeleton"/);
   assert.doesNotMatch(exam, /aria-label="Exam Drill 메뉴"|레슨 시작|0개 개념/);
 
-  const admin = renderRoute("/admin/users", user);
+  const admin = await renderRoute("/admin/users", user);
   assert.match(admin, /승인 대기 사용자를 불러오는 중입니다/);
   assert.match(admin, /data-slot="skeleton"/);
   assert.doesNotMatch(admin, /현재 승인 대기 중인 사용자가 없습니다|>승인<\/button>/);
 });
 
-test("existing exam and admin data remain visible during fetch and after recoverable fetch errors", () => {
+test("existing exam and admin data remain visible during fetch and after recoverable fetch errors", async () => {
   const user = { id: "1", email: "admin@example.com", role: "admin", approvalStatus: "approved" };
   const bank = { subject: "AWS SAP", concepts: [{ id: "note-1" }], scenarios: [] };
   const users = [{ id: "2", email: "pending@example.com", approvalStatus: "pending" }];
-  const refreshExam = renderRoute("/exam", user, bank, undefined, (client) => {
+  const refreshExam = await renderRoute("/exam", user, bank, undefined, (client) => {
     client.getQueryCache().find({ queryKey: examBankQuery("aws-sap").queryKey }).setState({ fetchStatus: "fetching" });
   });
   assert.match(refreshExam, /문항 은행 갱신 중…/);
   assert.match(refreshExam, /레슨 시작/);
   assert.doesNotMatch(refreshExam, /data-slot="skeleton"/);
 
-  const failedExam = renderRoute("/exam", user, bank, undefined, (client) => {
+  const failedExam = await renderRoute("/exam", user, bank, undefined, (client) => {
     client.getQueryCache().find({ queryKey: examBankQuery("aws-sap").queryKey }).setState({ status: "error", error: new Error("offline") });
   });
   assert.match(failedExam, /마지막 조회 결과를 표시합니다/);
   assert.match(failedExam, /레슨 시작/);
   assert.match(failedExam, /다시 시도/);
 
-  const refreshAdmin = renderRoute("/admin/users", user, undefined, undefined, (client) => {
+  const refreshAdmin = await renderRoute("/admin/users", user, undefined, undefined, (client) => {
     client.setQueryData(pendingUsersQuery().queryKey, users);
     client.getQueryCache().find({ queryKey: pendingUsersQuery().queryKey }).setState({ fetchStatus: "fetching" });
   });
@@ -88,7 +90,7 @@ test("existing exam and admin data remain visible during fetch and after recover
   assert.match(refreshAdmin, /pending@example.com/);
   assert.doesNotMatch(refreshAdmin, /data-slot="skeleton"/);
 
-  const failedAdmin = renderRoute("/admin/users", user, undefined, undefined, (client) => {
+  const failedAdmin = await renderRoute("/admin/users", user, undefined, undefined, (client) => {
     client.setQueryData(pendingUsersQuery().queryKey, users);
     client.getQueryCache().find({ queryKey: pendingUsersQuery().queryKey }).setState({ status: "error", error: new Error("offline") });
   });
@@ -97,19 +99,19 @@ test("existing exam and admin data remain visible during fetch and after recover
   assert.match(failedAdmin, /다시 시도/);
 });
 
-test("empty results appear only after loading, while initial errors keep retry actions", () => {
+test("empty results appear only after loading, while initial errors keep retry actions", async () => {
   const user = { id: "1", email: "admin@example.com", role: "admin", approvalStatus: "approved" };
-  const emptyExam = renderRoute("/exam", user, { subject: "AWS SAP", concepts: [], scenarios: [] });
+  const emptyExam = await renderRoute("/exam", user, { subject: "AWS SAP", concepts: [], scenarios: [] });
   assert.match(emptyExam, /학습할 문항이 없습니다/);
   assert.doesNotMatch(emptyExam, /레슨 시작/);
 
-  const emptyAdmin = renderRoute("/admin/users", user, undefined, undefined, (client) => {
+  const emptyAdmin = await renderRoute("/admin/users", user, undefined, undefined, (client) => {
     client.setQueryData(pendingUsersQuery().queryKey, []);
   });
   assert.match(emptyAdmin, /현재 승인 대기 중인 사용자가 없습니다/);
 
   for (const [path, options] of [["/exam", examBankQuery("aws-sap")], ["/admin/users", pendingUsersQuery()]]) {
-    const failed = renderRoute(path, user, undefined, undefined, (client) => {
+    const failed = await renderRoute(path, user, undefined, undefined, (client) => {
       client.getQueryCache().build(client, options).setState({ status: "error", error: new Error("offline"), fetchStatus: "idle" });
     });
     assert.match(failed, /불러오지 못했습니다/);
@@ -118,16 +120,16 @@ test("empty results appear only after loading, while initial errors keep retry a
   }
 });
 
-test("access errors still block previously cached exam and admin content", () => {
+test("access errors still block previously cached exam and admin content", async () => {
   const user = { id: "1", email: "admin@example.com", role: "admin", approvalStatus: "approved" };
   const forbidden = new ApiError("forbidden", 403, { error: { code: "FORBIDDEN", message: "forbidden" } });
-  const exam = renderRoute("/exam", user, { subject: "AWS SAP", concepts: [{ id: "note-1" }], scenarios: [] }, undefined, (client) => {
+  const exam = await renderRoute("/exam", user, { subject: "AWS SAP", concepts: [{ id: "note-1" }], scenarios: [] }, undefined, (client) => {
     client.getQueryCache().find({ queryKey: examBankQuery("aws-sap").queryKey }).setState({ status: "error", error: forbidden });
   });
   assert.match(exam, /문항 은행을 불러오지 못했습니다/);
   assert.doesNotMatch(exam, /레슨 시작/);
 
-  const admin = renderRoute("/admin/users", user, undefined, undefined, (client) => {
+  const admin = await renderRoute("/admin/users", user, undefined, undefined, (client) => {
     client.setQueryData(pendingUsersQuery().queryKey, [{ id: "2", email: "pending@example.com" }]);
     client.getQueryCache().find({ queryKey: pendingUsersQuery().queryKey }).setState({ status: "error", error: forbidden });
   });
@@ -135,9 +137,9 @@ test("access errors still block previously cached exam and admin content", () =>
   assert.doesNotMatch(admin, /pending@example.com/);
 });
 
-test("exam learning header and tabs stay inside the common shell without duplicate account actions", () => {
+test("exam learning header and tabs stay inside the common shell without duplicate account actions", async () => {
   const user = { id: "1", email: "admin@example.com", role: "admin", approvalStatus: "approved" };
-  const html = renderRoute("/exam", user, { subject: "AWS SAP", concepts: [], scenarios: [] });
+  const html = await renderRoute("/exam", user, { subject: "AWS SAP", concepts: [], scenarios: [] });
   assert.match(html, /aria-label="Exam Drill 메뉴"/);
   assert.match(html, /AWS SAP · 0개 개념/);
   assert.equal((html.match(/<main\b/g) ?? []).length, 1);
@@ -145,13 +147,13 @@ test("exam learning header and tabs stay inside the common shell without duplica
   assert.equal((html.match(/사용자 승인/g) ?? []).length, 1);
 });
 
-test("auth check and nested route errors render within the common shell", () => {
-  const checking = renderRoute("/exam");
+test("auth check and nested route errors render within the common shell", async () => {
+  const checking = await renderRoute("/exam");
   assert.match(checking, /계정 정보를 확인하고 있습니다/);
   assert.equal((checking.match(/<main\b/g) ?? []).length, 1);
 
   const user = { id: "1", email: "admin@example.com", role: "admin", approvalStatus: "approved" };
-  const failed = renderRoute("/admin/users", user, undefined, (routes) => {
+  const failed = await renderRoute("/admin/users", user, undefined, (routes) => {
     routes[0].children[0].id = "standard-layout";
     return { loaderData: {}, errors: { "standard-layout": new Error("render failed") } };
   });
@@ -159,15 +161,16 @@ test("auth check and nested route errors render within the common shell", () => 
   assert.match(failed, /Innova Platform/);
   assert.equal((failed.match(/<main\b/g) ?? []).length, 1);
 
-  const examFailed = renderRoute("/exam", user, undefined, (routes) => {
+  const examFailed = await renderRoute("/exam", user, undefined, (routes) => {
     routes[0].children[1].id = "exam-layout";
     return { loaderData: {}, errors: { "exam-layout": new Error("exam failed") } };
   });
   assert.match(examFailed, /페이지를 표시하지 못했습니다/);
+  assert.match(examFailed, /기본 은행 열기/);
   assert.match(examFailed, /aria-label="주요 탐색"/);
   assert.equal((examFailed.match(/<main\b/g) ?? []).length, 1);
 
-  const rootFailed = renderRoute("/", user, undefined, (routes) => {
+  const rootFailed = await renderRoute("/", user, undefined, (routes) => {
     routes[0].id = "root-layout";
     return { loaderData: {}, errors: { "root-layout": new Error("root failed") } };
   });
@@ -177,10 +180,10 @@ test("auth check and nested route errors render within the common shell", () => 
 });
 
 
-test("rejected admin responses hide cached pending users inside the shell", () => {
+test("rejected admin responses hide cached pending users inside the shell", async () => {
   const user = { id: "1", email: "admin@example.com", role: "admin", approvalStatus: "approved" };
   const rejected = new ApiError("rejected", 403, { error: { code: "SIGNUP_REJECTED", message: "rejected" } });
-  const html = renderRoute("/admin/users", user, undefined, undefined, (client) => {
+  const html = await renderRoute("/admin/users", user, undefined, undefined, (client) => {
     client.setQueryData(pendingUsersQuery().queryKey, [{ id: "2", email: "private@example.com" }]);
     client.getQueryCache().find({ queryKey: pendingUsersQuery().queryKey }).setState({ status: "error", error: rejected });
   });

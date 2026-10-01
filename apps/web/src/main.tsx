@@ -17,7 +17,7 @@ async function enableMocking() {
 }
 
 enableMocking().then(() => {
-  const router = createAppRouter();
+  const router = createAppRouter(queryClient);
 
   createRoot(document.getElementById("root")!).render(
     <StrictMode>

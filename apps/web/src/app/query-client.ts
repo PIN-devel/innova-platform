@@ -1,4 +1,5 @@
 import { QueryCache, QueryClient } from "@tanstack/react-query";
+import { getSessionVersion, isSessionTransitioning } from "@/entities/auth/session-version";
 import type { AuthUser } from "@innova/contracts";
 import { authKeys } from "@/entities/auth/queries";
 import { clearProtectedQueries, handleSessionApiError, isProtectedQueryKey } from "@/features/auth/clear-protected-queries";
@@ -6,7 +7,7 @@ import { clearProtectedQueries, handleSessionApiError, isProtectedQueryKey } fro
 export function createQueryClient() {
   const cache = new QueryCache({
     onError: (error, query) => {
-      if (isProtectedQueryKey(query.queryKey)) handleSessionApiError(client, error);
+      if (isProtectedQueryKey(query.queryKey) && (query.meta?.sessionVersion ?? 0) === getSessionVersion(client)) handleSessionApiError(client, error);
     },
   });
   const client = new QueryClient({
@@ -22,7 +23,7 @@ export function createQueryClient() {
       || user?.approvalStatus !== previousUser?.approvalStatus;
     previousUser = user;
     // Includes /auth/me revalidation and explicit login/logout updates, before React renders.
-    if (changed) clearProtectedQueries(client);
+    if (changed && !isSessionTransitioning(client)) clearProtectedQueries(client);
   });
   return client;
 }
