@@ -1,0 +1,1164 @@
+{
+  "id": "7c9a0bc3-baaf-4084-8e77-bc7876f0c04c",
+  "prevId": "288ec3f6-9af2-4bc6-9fdc-cf2d644c870b",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.exam_chapters": {
+      "name": "exam_chapters",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_chapters_subject_id_exam_subjects_id_fk": {
+          "name": "exam_chapters_subject_id_exam_subjects_id_fk",
+          "tableFrom": "exam_chapters",
+          "tableTo": "exam_subjects",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_chapters_subject_id_id_pk": {
+          "name": "exam_chapters_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "exam_chapters_order_unique": {
+          "name": "exam_chapters_order_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "subject_id",
+            "position"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "exam_chapters_position_check": {
+          "name": "exam_chapters_position_check",
+          "value": "\"exam_chapters\".\"position\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.exam_knowledge_point_sources": {
+      "name": "exam_knowledge_point_sources",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "knowledge_point_id": {
+          "name": "knowledge_point_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_block_id": {
+          "name": "source_block_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_kp_sources_knowledge_fk": {
+          "name": "exam_kp_sources_knowledge_fk",
+          "tableFrom": "exam_knowledge_point_sources",
+          "tableTo": "exam_knowledge_points",
+          "columnsFrom": [
+            "subject_id",
+            "knowledge_point_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_kp_sources_block_fk": {
+          "name": "exam_kp_sources_block_fk",
+          "tableFrom": "exam_knowledge_point_sources",
+          "tableTo": "exam_source_blocks",
+          "columnsFrom": [
+            "subject_id",
+            "source_block_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_knowledge_point_sources_subject_id_knowledge_point_id_source_block_id_pk": {
+          "name": "exam_knowledge_point_sources_subject_id_knowledge_point_id_source_block_id_pk",
+          "columns": [
+            "subject_id",
+            "knowledge_point_id",
+            "source_block_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_knowledge_points": {
+      "name": "exam_knowledge_points",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "section_id": {
+          "name": "section_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_knowledge_points_section_fk": {
+          "name": "exam_knowledge_points_section_fk",
+          "tableFrom": "exam_knowledge_points",
+          "tableTo": "exam_sections",
+          "columnsFrom": [
+            "subject_id",
+            "section_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_knowledge_points_subject_id_id_pk": {
+          "name": "exam_knowledge_points_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_question_knowledge_points": {
+      "name": "exam_question_knowledge_points",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question_id": {
+          "name": "question_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "knowledge_point_id": {
+          "name": "knowledge_point_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_question_knowledge_question_fk": {
+          "name": "exam_question_knowledge_question_fk",
+          "tableFrom": "exam_question_knowledge_points",
+          "tableTo": "exam_questions",
+          "columnsFrom": [
+            "subject_id",
+            "question_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_question_knowledge_point_fk": {
+          "name": "exam_question_knowledge_point_fk",
+          "tableFrom": "exam_question_knowledge_points",
+          "tableTo": "exam_knowledge_points",
+          "columnsFrom": [
+            "subject_id",
+            "knowledge_point_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_question_knowledge_points_subject_id_question_id_knowledge_point_id_pk": {
+          "name": "exam_question_knowledge_points_subject_id_question_id_knowledge_point_id_pk",
+          "columns": [
+            "subject_id",
+            "question_id",
+            "knowledge_point_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_question_sources": {
+      "name": "exam_question_sources",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question_id": {
+          "name": "question_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_block_id": {
+          "name": "source_block_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_question_sources_question_fk": {
+          "name": "exam_question_sources_question_fk",
+          "tableFrom": "exam_question_sources",
+          "tableTo": "exam_questions",
+          "columnsFrom": [
+            "subject_id",
+            "question_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_question_sources_block_fk": {
+          "name": "exam_question_sources_block_fk",
+          "tableFrom": "exam_question_sources",
+          "tableTo": "exam_source_blocks",
+          "columnsFrom": [
+            "subject_id",
+            "source_block_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_question_sources_subject_id_question_id_source_block_id_pk": {
+          "name": "exam_question_sources_subject_id_question_id_source_block_id_pk",
+          "columns": [
+            "subject_id",
+            "question_id",
+            "source_block_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_questions": {
+      "name": "exam_questions",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter_id": {
+          "name": "chapter_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "section_id": {
+          "name": "section_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_block_id": {
+          "name": "source_block_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_revision": {
+          "name": "source_revision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "exam_questions_chapter_order_unique": {
+          "name": "exam_questions_chapter_order_unique",
+          "columns": [
+            {
+              "expression": "subject_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "chapter_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"exam_questions\".\"section_id\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "exam_questions_section_order_unique": {
+          "name": "exam_questions_section_order_unique",
+          "columns": [
+            {
+              "expression": "subject_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "section_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"exam_questions\".\"section_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "exam_questions_chapter_fk": {
+          "name": "exam_questions_chapter_fk",
+          "tableFrom": "exam_questions",
+          "tableTo": "exam_chapters",
+          "columnsFrom": [
+            "subject_id",
+            "chapter_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_questions_section_fk": {
+          "name": "exam_questions_section_fk",
+          "tableFrom": "exam_questions",
+          "tableTo": "exam_sections",
+          "columnsFrom": [
+            "subject_id",
+            "chapter_id",
+            "section_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "chapter_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_questions_source_revision_fk": {
+          "name": "exam_questions_source_revision_fk",
+          "tableFrom": "exam_questions",
+          "tableTo": "exam_source_blocks",
+          "columnsFrom": [
+            "subject_id",
+            "source_block_id",
+            "source_revision"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id",
+            "revision"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_questions_subject_id_id_pk": {
+          "name": "exam_questions_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "exam_questions_position_check": {
+          "name": "exam_questions_position_check",
+          "value": "\"exam_questions\".\"position\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.exam_sections": {
+      "name": "exam_sections",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter_id": {
+          "name": "chapter_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_section_id": {
+          "name": "parent_section_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "exam_sections_root_order_unique": {
+          "name": "exam_sections_root_order_unique",
+          "columns": [
+            {
+              "expression": "subject_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "chapter_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"exam_sections\".\"parent_section_id\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "exam_sections_child_order_unique": {
+          "name": "exam_sections_child_order_unique",
+          "columns": [
+            {
+              "expression": "subject_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "parent_section_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"exam_sections\".\"parent_section_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "exam_sections_chapter_fk": {
+          "name": "exam_sections_chapter_fk",
+          "tableFrom": "exam_sections",
+          "tableTo": "exam_chapters",
+          "columnsFrom": [
+            "subject_id",
+            "chapter_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_sections_parent_fk": {
+          "name": "exam_sections_parent_fk",
+          "tableFrom": "exam_sections",
+          "tableTo": "exam_sections",
+          "columnsFrom": [
+            "subject_id",
+            "chapter_id",
+            "parent_section_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "chapter_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_sections_subject_id_id_pk": {
+          "name": "exam_sections_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "exam_sections_chapter_id_unique": {
+          "name": "exam_sections_chapter_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "subject_id",
+            "chapter_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "exam_sections_position_check": {
+          "name": "exam_sections_position_check",
+          "value": "\"exam_sections\".\"position\" >= 0"
+        },
+        "exam_sections_self_parent_check": {
+          "name": "exam_sections_self_parent_check",
+          "value": "\"exam_sections\".\"parent_section_id\" is null or \"exam_sections\".\"parent_section_id\" <> \"exam_sections\".\"id\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.exam_source_blocks": {
+      "name": "exam_source_blocks",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "section_id": {
+          "name": "section_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_document_id": {
+          "name": "source_document_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_source_blocks_section_fk": {
+          "name": "exam_source_blocks_section_fk",
+          "tableFrom": "exam_source_blocks",
+          "tableTo": "exam_sections",
+          "columnsFrom": [
+            "subject_id",
+            "section_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_source_blocks_document_fk": {
+          "name": "exam_source_blocks_document_fk",
+          "tableFrom": "exam_source_blocks",
+          "tableTo": "exam_source_documents",
+          "columnsFrom": [
+            "subject_id",
+            "source_document_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_source_blocks_subject_id_id_pk": {
+          "name": "exam_source_blocks_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "exam_source_blocks_revision_unique": {
+          "name": "exam_source_blocks_revision_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "subject_id",
+            "id",
+            "revision"
+          ]
+        },
+        "exam_source_blocks_order_unique": {
+          "name": "exam_source_blocks_order_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "subject_id",
+            "section_id",
+            "position"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "exam_source_blocks_position_check": {
+          "name": "exam_source_blocks_position_check",
+          "value": "\"exam_source_blocks\".\"position\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.exam_source_documents": {
+      "name": "exam_source_documents",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_source_documents_subject_id_exam_subjects_id_fk": {
+          "name": "exam_source_documents_subject_id_exam_subjects_id_fk",
+          "tableFrom": "exam_source_documents",
+          "tableTo": "exam_subjects",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_source_documents_subject_id_id_pk": {
+          "name": "exam_source_documents_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_subjects": {
+      "name": "exam_subjects",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_banks": {
+      "name": "exam_banks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "schema": {
+          "name": "schema",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject": {
+          "name": "subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "generated_at": {
+          "name": "generated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_concepts": {
+      "name": "exam_concepts",
+      "schema": "",
+      "columns": {
+        "bank_id": {
+          "name": "bank_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter": {
+          "name": "chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deck": {
+          "name": "deck",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "term": {
+          "name": "term",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_concepts_bank_id_exam_banks_id_fk": {
+          "name": "exam_concepts_bank_id_exam_banks_id_fk",
+          "tableFrom": "exam_concepts",
+          "tableTo": "exam_banks",
+          "columnsFrom": [
+            "bank_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_concepts_bank_id_id_pk": {
+          "name": "exam_concepts_bank_id_id_pk",
+          "columns": [
+            "bank_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_scenarios": {
+      "name": "exam_scenarios",
+      "schema": "",
+      "columns": {
+        "bank_id": {
+          "name": "bank_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter": {
+          "name": "chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_scenarios_bank_id_exam_banks_id_fk": {
+          "name": "exam_scenarios_bank_id_exam_banks_id_fk",
+          "tableFrom": "exam_scenarios",
+          "tableTo": "exam_banks",
+          "columnsFrom": [
+            "bank_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_scenarios_bank_id_id_pk": {
+          "name": "exam_scenarios_bank_id_id_pk",
+          "columns": [
+            "bank_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approval_status": {
+          "name": "approval_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'member'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "users_approval_status_check": {
+          "name": "users_approval_status_check",
+          "value": "\"users\".\"approval_status\" in ('pending', 'approved', 'rejected')"
+        },
+        "users_role_check": {
+          "name": "users_role_check",
+          "value": "\"users\".\"role\" in ('member', 'admin')"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
