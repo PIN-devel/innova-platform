@@ -1,34 +1,13 @@
-import { useNavigate } from "react-router";
-import { ApiError } from "@/shared/api/client";
-import { useLogout } from "./hooks";
-import { toast } from "sonner";
-
-function logoutErrorMessage(error: unknown) {
-  if (error instanceof ApiError && error.code === "INTERNAL_ERROR") return "로그아웃 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
-  if (error instanceof ApiError) return "로그아웃 요청을 처리하지 못했습니다.";
-  return "네트워크 오류로 로그아웃하지 못했습니다.";
-}
-
+import { useFetcher } from "react-router";
+import type { ActionResult } from "@/app/route-data";
 export function LogoutButton() {
-  const navigate = useNavigate();
-  const mutation = useLogout();
-
-  async function handleLogout() {
-    try {
-      await mutation.mutateAsync();
-      navigate("/login", { replace: true });
-    } catch (error) {
-      if (error instanceof ApiError && error.code === "UNAUTHORIZED") {
-        navigate("/login", { replace: true });
-        return;
-      }
-      toast.error(logoutErrorMessage(error));
-    }
-  }
-
+  const fetcher = useFetcher<ActionResult>();
   return <span className="inline-flex flex-wrap items-center gap-3">
-    <button type="button" onClick={() => void handleLogout()} disabled={mutation.isPending} className="text-sm font-medium text-primary hover:text-primary/80 disabled:opacity-50 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-      {mutation.isPending ? "로그아웃 중…" : "로그아웃"}
-    </button>
+    <fetcher.Form method="post" action="/logout">
+      <button type="submit" disabled={fetcher.state !== "idle"} className="text-sm font-medium text-primary hover:text-primary/80 disabled:opacity-50 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+        {fetcher.state !== "idle" ? "로그아웃 중…" : "로그아웃"}
+      </button>
+    </fetcher.Form>
+    {fetcher.data?.error && <span role="alert" className="text-xs text-destructive">{fetcher.data.error}</span>}
   </span>;
 }

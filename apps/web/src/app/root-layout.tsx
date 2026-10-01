@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Link, NavLink, Outlet } from "react-router";
+import { useEffect, type ReactNode } from "react";
+import { Link, NavLink, Outlet, useNavigation, useRevalidator } from "react-router";
 import { useCurrentUser } from "@/features/auth/hooks";
 import { LogoutButton } from "@/features/auth/logout-button";
 
@@ -8,6 +8,13 @@ const primaryNavigationClass = ({ isActive }: { isActive: boolean }) => `${navig
 
 export default function RootLayout({ children }: { children?: ReactNode }) {
   const currentUser = useCurrentUser();
+  const navigation = useNavigation();
+  const revalidator = useRevalidator();
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === "visible") void revalidator.revalidate(); };
+    window.addEventListener("focus", refresh); window.addEventListener("online", refresh);
+    return () => { window.removeEventListener("focus", refresh); window.removeEventListener("online", refresh); };
+  }, [revalidator]);
 
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
@@ -30,6 +37,7 @@ export default function RootLayout({ children }: { children?: ReactNode }) {
           </nav>
         </div>
       </header>
+      {navigation.state !== "idle" && <p role="status" className="mx-auto max-w-5xl px-4 pt-2 text-sm text-muted-foreground">페이지 이동 중…</p>}
       {children ?? <Outlet />}
     </div>
   );
