@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBlocker, useFetcher, useLocation, useNavigate } from "react-router";
-import type { ActionResult } from "@/app/route-data";
-import { useRouteRefresh } from "@/app/use-route-refresh";
+import type { ActionResult } from "@/shared/lib/router-query/action-result";
+import { useRouteRefresh } from "@/shared/lib/router-query/use-route-refresh";
 import { examLocation, examPath, type ExamView } from "@/features/start-lesson/model/exam-location";
 import type { BankFile, Exercise, LessonSession } from "@/entities/bank";
 import { UNITS } from "@/entities/bank";
@@ -50,7 +50,7 @@ function ExamWorkspace({ activeId, urlView }: { activeId: string; urlView: ExamV
   const { epoch } = useSessionScope();
   const navigate = useNavigate();
   const location = useLocation();
-  const refresh = useRouteRefresh();
+  const refresh = useRouteRefresh([examBankQuery(activeId, epoch).queryKey]);
   const fetcher = useFetcher<ActionResult>();
   const { data, isPending, isFetching, isError, error } = useQuery({ ...examBankQuery(activeId, epoch), enabled: false });
   const { progress, record, setGoal, reset } = useProgress(currentUser.data!.id);

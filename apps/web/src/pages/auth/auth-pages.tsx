@@ -7,7 +7,7 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import type { ActionResult } from "@/app/route-data";
+import type { AuthActionResult } from "./route";
 
 type FieldErrors = Partial<Record<"email" | "password", string>>;
 
@@ -56,7 +56,7 @@ function AuthCard({ children, title, description }: { children: React.ReactNode;
 
 export function LoginPage() {
   const location = useLocation();
-  const fetcher = useFetcher<ActionResult>();
+  const fetcher = useFetcher<AuthActionResult>();
   const [showError, setShowError] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -97,7 +97,7 @@ export function LoginPage() {
 
 export function SignupPage() {
   const location = useLocation();
-  const fetcher = useFetcher<ActionResult>();
+  const fetcher = useFetcher<AuthActionResult>();
   const [showError, setShowError] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

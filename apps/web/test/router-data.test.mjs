@@ -217,3 +217,70 @@ test("multipart import Action seeds a fresh bank and redirects without another b
   assert.equal(count(`/api/exam/banks/${selected.bankId}`), 0);
   assert.equal(count("/api/exam/banks", "POST"), 1);
 });
+
+test("route refresh invalidates only the requested domain while middleware still rechecks auth", async () => {
+  const { refreshRoute } = await vite.ssrLoadModule("/src/shared/lib/router-query/use-route-refresh.ts");
+  const c = client(); await signIn(c); const r = await router(c, "/exam");
+  const epoch = getSessionVersion(c);
+  const examKey = examBankQuery("aws-sap", epoch).queryKey;
+  const adminKey = pendingUsersQuery(epoch).queryKey;
+  const otherKey = examBankQuery("other-bank", epoch).queryKey;
+  c.setQueryData(adminKey, [member]); c.setQueryData(otherKey, { id: "other-bank", bank: {} });
+  requests.length = 0;
+  await refreshRoute(c, [examKey], () => r.revalidate());
+  assert.equal(count("/api/exam/banks/default"), 1);
+  assert.equal(count("/api/auth/me"), 1);
+  assert.equal(count("/api/admin/users/pending"), 0);
+  assert.equal(c.getQueryState(adminKey).isInvalidated, false);
+  assert.equal(c.getQueryState(otherKey).isInvalidated, false);
+
+  await r.navigate("/admin/users"); requests.length = 0;
+  await refreshRoute(c, [adminKey], () => r.revalidate());
+  assert.equal(count("/api/admin/users/pending"), 1);
+  assert.equal(count("/api/exam/banks/default"), 0);
+  assert.equal(c.getQueryState(examKey).isInvalidated, false);
+});
+
+const syntheticConcept = (id, term = id) => ({ id, chapter: 1, deck: "synthetic", term, definition: "synthetic definition", rationale: "synthetic rationale" });
+const syntheticScenario = (id, stem = id) => ({ id, chapter: 1, stem, choices: ["a", "b", "c"], answerIndex: 0, rationale: "synthetic rationale" });
+const syntheticBank = (subject, concepts, scenarios = []) => ({ schema: "sap-drill-bank.v1", subject, source: "synthetic", generatedAt: "2026-10-02", concepts, scenarios });
+function importForm(bank, mode = "replace") {
+  const f = new FormData();
+  f.set("file", new File([JSON.stringify(bank)], "synthetic.json", { type: "application/json" }));
+  f.set("mode", mode); return f;
+}
+
+test("merge import keeps existing notes, replaces matching IDs and seeds incoming metadata", async () => {
+  const c = client(); await signIn(c); const r = await router(c, "/exam?view=settings");
+  const current = syntheticBank("old", [syntheticConcept("keep"), syntheticConcept("same", "old")], [syntheticScenario("scenario", "old")]);
+  const incoming = syntheticBank("incoming", [syntheticConcept("same", "updated"), syntheticConcept("new")], [syntheticScenario("scenario", "updated"), syntheticScenario("new-scenario")]);
+  c.setQueryData(examBankQuery("aws-sap", getSessionVersion(c)).queryKey, { id: "aws-sap", bank: current });
+  await r.navigate("/exam?view=settings", { formMethod: "post", formEncType: "multipart/form-data", formData: importForm(incoming, "merge") });
+  assert.equal(r.state.errors, null);
+  const selected = examLocation(new URL(r.state.location.pathname + r.state.location.search, "http://localhost"));
+  const saved = c.getQueryData(examBankQuery(selected.bankId, getSessionVersion(c)).queryKey).bank;
+  assert.equal(saved.subject, "incoming");
+  assert.deepEqual(saved.concepts.map(n => n.id), ["keep", "same", "new"]);
+  assert.equal(saved.concepts[1].term, "updated");
+  assert.deepEqual(saved.scenarios.map(n => n.id), ["scenario", "new-scenario"]);
+  assert.equal(saved.scenarios[0].stem, "updated");
+  assert.equal(count(`/api/exam/banks/${selected.bankId}`), 0);
+});
+
+test("import command rejects overlap and a late file read cannot submit for the next session", async () => {
+  const { importExamBank } = await vite.ssrLoadModule("/src/features/start-lesson/model/import-bank.ts");
+  const { cacheAuthenticatedUser } = await vite.ssrLoadModule("/src/features/auth/clear-protected-queries.ts");
+  const c = client(); await signIn(c);
+  const started = Promise.withResolvers(), release = Promise.withResolvers();
+  const input = { source: { text: async () => { started.resolve(); return release.promise; } }, mode: "replace", currentBankId: "aws-sap", epoch: getSessionVersion(c), signal: new AbortController().signal };
+  requests.length = 0;
+  const first = importExamBank(c, input);
+  const cancelled = assert.rejects(first, error => error.constructor.name === "CancelledError");
+  await started.promise;
+  await assert.rejects(importExamBank(c, input), error => error.reason === "busy");
+  cacheAuthenticatedUser(c, { ...member, approvalStatus: "approved" });
+  release.resolve(JSON.stringify(syntheticBank("synthetic", [syntheticConcept("one")])));
+  await cancelled;
+  assert.equal(count("/api/exam/banks", "POST"), 0);
+  assert.equal(c.getQueryData(authKeys.me).id, member.id);
+});

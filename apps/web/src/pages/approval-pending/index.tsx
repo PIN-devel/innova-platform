@@ -1,5 +1,6 @@
 import { Link, useRevalidator } from "react-router";
-import { useRouteRefresh } from "@/app/use-route-refresh";
+import { useRouteRefresh } from "@/shared/lib/router-query/use-route-refresh";
+import { authKeys } from "@/entities/auth/queries";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { useCurrentUser } from "@/features/auth/hooks";
@@ -7,7 +8,7 @@ import { useCurrentUser } from "@/features/auth/hooks";
 export default function ApprovalPendingPage() {
   const currentUser = useCurrentUser();
   const revalidator = useRevalidator();
-  const refresh = useRouteRefresh();
+  const refresh = useRouteRefresh([authKeys.me]);
 
   return <Card className="mx-auto w-full max-w-xl">
     <CardHeader>

@@ -1,4 +1,4 @@
-import { routeQuery } from "@/shared/api/route-query";
+import { routeQuery } from "@/shared/lib/router-query/route-query";
 import { createContext, replace, type MiddlewareFunction, type RouterContextProvider } from "react-router";
 import { isCancelledError, type QueryClient } from "@tanstack/react-query";
 import type { AuthUser } from "@innova/contracts";

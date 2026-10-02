@@ -9,7 +9,9 @@ import SignupRejectedPage from "@/pages/signup-rejected";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
 import { ExamContentErrorBoundary, RootRouteErrorBoundary, StandardContentErrorBoundary } from "./route-error-boundary";
 import { accessMiddleware, sessionMiddleware } from "@/features/auth/route-session";
-import { adminAction, adminLoader, authAction, examAction, examLoader } from "./route-data";
+import { adminAction, adminLoader } from "@/pages/admin-users/route";
+import { authAction } from "@/pages/auth/route";
+import { examAction, examLoader } from "@/pages/exam/route";
 import { InitialRouteLoading } from "./route-loading";
 
 export const createAppRoutes = (client: QueryClient): RouteObject[] => ([

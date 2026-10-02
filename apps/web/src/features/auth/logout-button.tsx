@@ -1,5 +1,5 @@
 import { useFetcher } from "react-router";
-import type { ActionResult } from "@/app/route-data";
+import type { ActionResult } from "@/shared/lib/router-query/action-result";
 export function LogoutButton() {
   const fetcher = useFetcher<ActionResult>();
   return <span className="inline-flex flex-wrap items-center gap-3">

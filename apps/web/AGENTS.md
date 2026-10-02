@@ -3,7 +3,9 @@
 이 파일은 `apps/web/` 작업에 적용되며 루트 `AGENTS.md`를 함께 따른다.
 
 - 데이터 흐름·라우팅·세션 구조를 변경할 때 `ARCHITECTURE.md`를 먼저 읽는다. PIN-20 통합 리팩터링의 실제 구현 기준과 현행 감사가 구분되어 있으며, 구현과 달라진 설계는 같은 문서에 갱신한다. 비교 기준선은 `architecture-baseline.md`를 참조한다.
-- React, TypeScript, Vite, React Router, TanStack Query의 현재 구조를 따른다. 라우트와 공통 레이아웃은 `src/app/`, 화면은 `src/pages/`, 기능 동작은 `src/features/`, 도메인 API와 조회 정의는 `src/entities/*/`에 둔다. HTTP 전송과 공통 오류 해석은 `src/shared/api/client.ts`를 재사용한다.
+- React, TypeScript, Vite, React Router, TanStack Query의 현재 구조를 따른다. `src/app/`은 Router composition·Provider·공통 layout·global lifecycle을 소유하고, route-specific loader/action은 `src/pages/<route>/route.ts`에 둔다. 새 route capability를 app 중앙 파일에 누적하지 않는다. 기능 command는 `src/features/`, 도메인 API와 조회 정의는 `src/entities/*/`에 둔다. HTTP 전송과 공통 오류 해석은 `src/shared/api/client.ts`를 재사용한다.
+- `app → pages → features → entities → shared` 방향을 따른다. 하위 layer에서 상위 layer의 타입·helper를 포함해 import하지 않는다. `pnpm --filter @innova/web lint`는 Oxlint로 alias·상대경로의 layer 방향과 import cycle을 검사한다. 같은 layer의 slice 간 제한이나 public API/barrel 강제는 이 규칙의 범위가 아니다.
+- Router × Query 공통 helper는 `shared/lib/router-query/`에 두고 도메인 key를 알지 않게 한다. `useRouteRefresh(keys)`의 invalidation 대상은 page/feature가 결정한다. Exam Bank parsing/merge/저장과 세션 fence는 import feature command가 소유하며 route adapter는 FormData·route 입력·redirect/error 연결을 담당한다.
 - route-linked 조회·변경은 Loader/Action과 `ARCHITECTURE.md`의 Router 재검증 정책을 따른다. 서버 데이터는 `entities/*/queries.ts`의 Query Key factory와 query options를 조회·갱신·무효화에서 함께 사용한다. 신선도는 데이터 성격별로 정하고 인증·관리자 데이터에 장기 캐시 정책을 일괄 적용하지 않는다. 변경 성공 응답으로 확정된 결과는 캐시에 반영한 뒤 재검증해, 재조회 실패로 이미 처리된 항목이 되살아나지 않도록 한다.
 - QueryClient는 `app/query-client.ts`의 인증 경계 처리를 유지한다. 계정·권한 변경 및 세션 만료 시 보호된 캐시를 제거하고, 조회의 `signal`을 HTTP 호출에 전달한다. 보호 query key에는 현재 session epoch를 포함하고 신규 보호 데이터는 `features/auth/clear-protected-queries.ts`의 정리 대상에도 반영한다. QueryClient 밖에서 완료되는 비동기 변경 작업은 `entities/auth/session-version.ts`로 이전 세션의 결과가 새 세션에 적용되지 않게 한다.
 - 인증 가드의 계정·권한별 Outlet key를 유지해 학습 세션과 화면 로컬 상태가 다른 계정으로 넘어가지 않도록 한다. 사용자별 진도는 사용자 ID로 격리하고, 문제 본문·정답은 브라우저 영구 저장소에 기록하지 않는다.

@@ -1,9 +1,10 @@
 # Frontend Data Architecture
 
-PIN-20 통합 리팩터링의 실제 구현 기준이다. UI는 [DESIGN.md](./DESIGN.md), 변경 전후 측정과 QA는 [architecture-baseline.md](./architecture-baseline.md)를 따른다. Data Mode를 유지하며 API/DB를 재작성하지 않는다.
+PIN-20의 데이터 흐름과 PIN-29의 책임 배치 기준이다. UI는 [DESIGN.md](./DESIGN.md), PIN-20 변경 전후 측정과 QA는 [architecture-baseline.md](./architecture-baseline.md)를 따른다. Data Mode와 단일 Query Cache를 유지한다.
 
-- 기반: 최신 `develop` `f7f259ca61dc16a2a22206f116b74d490f6b55e6`. 원격 main과 이력은 달랐지만 tree는 같았다.
-- 작업 브랜치: 사용자가 신규 브랜치를 요청하여 `refactor/pin-20-data-flow`를 develop에서 생성했다. 기존 PIN-21 설계 커밋을 cherry-pick하여 이 문서를 이어받았다. develop 대상 단일 PR을 제출한다.
+- PIN-20 시작 기준: `develop` `f7f259ca61dc16a2a22206f116b74d490f6b55e6`. 당시 원격 main과 이력은 달랐지만 tree는 같았다.
+- PIN-29 시작 기준: 최신 `develop` `13eaea6057c7f1fb8cdf4960ebec1f5c4e3cd62d`(Curriculum 기반 PR #28 포함). Web에서 발견한 역방향 app import는 6개 파일의 9개였고, 중앙 route-data와 전역 key refresh helper를 제거했다.
+- PIN-20~26은 PR #24로 develop에 통합됐다. PIN-29는 최신 develop의 코드에 대한 구조 후속 작업이며 데이터 흐름을 재설계하지 않는다.
 - 설치 버전: TanStack Query 5.103.2, React Router 8.4.0, React 19.3.0, Vite 8.3.1. package.json의 최소 버전과 구분한다.
 
 ## 1. 현행 감사와 교체 결과
@@ -25,16 +26,20 @@ PIN-8의 Shell/콘텐츠 layout 및 단일 main, PIN-9의 최초 Skeleton/기존
 
 | 영역 | 책임 |
 | --- | --- |
-| `app/router.tsx`, `route-data.ts` | 주입된 단일 QueryClient, route tree, loader/action/lazy, URL·redirect·재검증 |
+| `app/router.tsx` | composition root: 주입된 단일 QueryClient, route tree, middleware·page adapter·lazy 연결 |
+| `app/query-client.ts`, root layout | Provider/캐시 구성, 인증 변경 감지, 공통 Shell, focus/online lifecycle |
+| `pages/auth/route.ts`, `pages/admin-users/route.ts`, `pages/exam/route.ts` | 해당 route의 loader/action, FormData·URL 입력, 접근 검사, command/query 호출, redirect/error |
 | `features/auth/route-session.ts` | middleware 접근 snapshot/context와 순수 returnTo 검사 |
-| `app/query-client.ts`, auth session/commands | 인증 변경 감지, epoch, 전환 잠금, 보호 cache 정리 |
+| auth session/commands, `features/start-lesson/model/import-bank.ts` 등 feature commands | epoch·전환/변경 잠금, 보호 cache 정리, domain parsing/merge, 성공 응답의 cache 반영 |
 | `entities/*/queries.ts` | key, queryFn, freshness, GC/retry. 별도 변경 실행 경로 없음 |
 | `entities/*/api.ts`, `shared/api/client.ts` | HTTP·credentials·signal·공통 오류/Contracts |
-| feature commands | API 변경 응답의 세션 검사와 확정 cache 반영 |
 | page | 캐시 구독, fetcher, 사용자 입력, local 학습 상태 |
+| `shared/lib/router-query/` | 도메인 비의존 QueryObserver bridge·Loader fallback·명시적 key invalidation → Router revalidation·generic ActionResult |
 | API/Contracts | 최종 인증·인가 및 wire schema. 이번 작업에서 변경 없음 |
 
 `createAppRouter(client)`와 `createAppRoutes(client)`에는 Provider와 같은 client를 전달한다. loader/action이 전역 client나 Hook을 사용하지 않는다. Loader 반환값은 null이며 User/목록/은행을 loaderData에 복사하지 않는다. middleware snapshot은 한 요청의 접근 판정용이며 두 번째 서버 캐시가 아니다.
+
+기본 의존 방향은 `app → pages → features → entities → shared`다. 상위 layer가 하위 layer를 조합하며 하위 layer에서 상위 layer의 구현·타입을 import하지 않는다. 같은 layer의 slice 간 의존 제한과 public API/barrel 강제는 현재 범위에 포함하지 않는다. Auth form 결과 필드 타입은 `pages/auth/route.ts`의 `AuthActionResult`, 공통 error/code/ok 형식은 shared의 generic `ActionResult<Field>`가 소유한다. Logout feature는 page adapter를 import하지 않는다.
 
 ## 3. 조회·freshness·재검증
 
@@ -50,11 +55,11 @@ PIN-8의 Shell/콘텐츠 layout 및 단일 main, PIN-9의 최초 Skeleton/기존
 
 UI 구독은 enabled false로 **조회 시작을 Router에 맡긴다**. 최초 조회·진입·재시도·focus/online을 포함해 Router만 재검증을 시작하므로 mount refetch나 Query 자동 focus refetch와 중복되지 않는다. root Shell의 focus/online listener는 보이는 문서에서 router.revalidate를 요청한다. 실패한 auth도 public 폼을 허용한다.
 
-`shared/api/route-query.ts`는 client.query를 기다리는 동안 enabled false QueryObserver를 유지한다. StrictMode/초기 fallback의 임시 UI observer가 마지막 구독을 해제해 Loader의 공유 GET을 취소하는 실제 브라우저 문제를 방지한다. 종료 시 반드시 해제하고 세션 제거로 detach된 Query의 GC timer도 정리한다.
+`shared/lib/router-query/route-query.ts`는 client.query를 기다리는 동안 enabled false QueryObserver를 유지한다. StrictMode/초기 fallback의 임시 UI observer가 마지막 구독을 해제해 Loader의 공유 GET을 취소하는 실제 브라우저 문제를 방지한다. 종료 시 반드시 해제하고 세션 제거로 detach된 Query의 GC timer도 정리한다. `loadRouteQuery`의 기존-data fallback은 같은 모듈에 있고, 세션 검사 callback은 page adapter가 전달한다. Shared는 auth/admin/exam key 또는 epoch 구현을 import하지 않는다.
 
 - 최초/재진입: middleware auth → 접근 검사 → Loader → query freshness 판정. fresh Exam 재진입은 은행 GET 0, stale/명시적 invalidate는 1.
 - Action 성공: 확정 patch → invalidate(refetchType none) → Router 자동 revalidation. Action에서 active refetch를 추가 실행하지 않는다.
-- 수동 refresh/실패 retry: `useRouteRefresh`가 auth/admin/exam key를 invalidate(none)한 뒤 Router revalidate를 기다린다.
+- 수동 refresh/실패 retry: shared의 `useRouteRefresh(keys)`가 전달받은 key만 invalidate(none)한 뒤 Router revalidate를 기다린다. Exam page는 현재 bank/epoch, admin page는 현재 pending/epoch, 승인 상태 page와 인증 guard는 auth/me를 선택한다. Exam refresh가 admin cache를 무효화하지 않는다. root middleware의 auth/me는 staleTime 0이므로 모든 revalidation에서 접근 상태를 재확인한다.
 - 기본 은행 이동: 대상 bank key를 invalidate(none)하고 URL로 이동한다.
 - view 변경도 기본 Router revalidation을 유지한다. fresh bank는 추가 GET 없이 재사용하며, auth가 변경된 경우 새 epoch의 missing bank를 확실히 준비한다. view만 보고 shouldRevalidate false로 고정하면 세션 변경 시 조회가 누락될 수 있어 적용하지 않았다.
 
@@ -109,7 +114,7 @@ root session middleware가 먼저 me를 확인하고 child access middleware가 
 
 관리자 결정은 epoch와 사용자 ID별 잠금을 사용한다. 같은 사용자의 concurrent fetcher 요청은 추가 POST 전에 거부하고, 다른 사용자 결정은 병렬 허용한다. 성공 후 이전 pending GET을 cancel하고 epoch를 다시 확인한다. `setQueryData` updater로 확정 항목만 제거한 뒤 invalidate(none)한다. 자기 상태 변경이면 auth cache도 갱신한다. POST 실패는 항목을 제거하지 않는다.
 
-Import Action은 파일/merge mode/schema를 확인한다. 요청 시작 snapshot의 epoch를 파일 읽기·POST·cache seed 뒤 검사하고 같은 client의 동시 import를 차단한다. 저장 성공 응답으로 새 은행 cache를 seed하므로 redirect 직후 새 은행 GET이 필요하지 않다. 본문을 actionData나 영구 저장소에 복제하지 않는다.
+Import Action은 FormData의 파일/merge mode와 route URL을 읽고 feature command를 호출한다. `features/start-lesson/model/import-bank.ts`는 JSON 해석·Contracts schema 검증·현재 은행 조합·같은 ID의 incoming note 우선 병합·동시 import 잠금을 소유한다. 요청 시작 snapshot의 epoch를 파일 읽기·POST·cache seed 뒤 검사한다. 저장 성공 응답으로 새 은행 cache를 seed하므로 redirect 직후 새 은행 GET이 필요하지 않다. Action은 결과에 따라 redirect/error를 반환하며 본문을 actionData나 영구 저장소에 복제하지 않는다.
 
 ## 7. URL, local state, Loading/Error/Lazy
 
@@ -122,19 +127,35 @@ Import Action은 파일/merge mode/schema를 확인한다. 요청 시작 snapsho
 
 Shell과 가벼운 handler는 eager, auth/admin/exam page는 route lazy다. 초기 HydrateFallback도 Shell + 해당 content layout/Skeleton의 단일 main을 유지한다. 이후 navigation은 기존 화면과 Shell의 role=status 안내를 유지한다. 같은 key 재조회는 기존 콘텐츠와 Query isFetching/error 경고, fetcher는 해당 작업의 pending/error를 표시한다.
 
-Route boundary retry는 invalidate(none) + Router revalidation이다. document/chunk 오류처럼 reload가 필요한 경우 홈 이동 또는 브라우저 새로고침을 사용할 수 있다. skip link, aria-busy, reduced-motion Skeleton, Semantic token을 유지한다.
+App의 공통 Route boundary는 도메인 key를 추측하지 않고 Router revalidation만 요청한다(`useRouteRefresh()`의 빈 key 목록). 실패·missing Query는 stale이므로 Loader가 재시도하고 auth/me도 다시 조회한다. 기존 데이터 경고의 page retry는 해당 key를 명시적으로 invalidate한다. document/chunk 오류처럼 reload가 필요한 경우 홈 이동 또는 브라우저 새로고침을 사용할 수 있다. skip link, aria-busy, reduced-motion Skeleton, Semantic token을 유지한다.
 
 ## 8. 검증과 제한
 
+### FSD dependency guard
+
+잠금 파일로 설치되는 Oxlint 1.85.0의 schema와 공식 문서를 확인했다. `.oxlintrc.json`의 source override에서 다음 규칙을 error로 실행한다. ESLint나 별도 import graph framework를 추가하지 않는다.
+
+- `fsd/layer-direction`: 기존 Oxlint `jsPlugins` API로 실행하는 단일 로컬 규칙(`lint/fsd-plugin.mjs`). `@/`, 상대경로, Vite `/src/` 경로를 정규화한 뒤 source/target layer를 비교한다. native `no-restricted-imports`는 문자열만 검사하므로 `@/shared/../app` 같은 우회와 layer 이름을 가진 허용된 내부 폴더의 오탐을 함께 피하려고 이 작은 규칙을 사용했다. import/export, literal dynamic import/require, type-only import와 TypeScript import type도 검사한다.
+- native `import/no-cycle`: import plugin을 활성화하고 외부 패키지는 제외한다. `ignoreTypes: false`로 type-only cycle도 검사하며 깊이를 인위적으로 제한하지 않는다. 현재 tsconfig의 `@/*` 해석은 fixture로 검증한다.
+
+`test/fsd-lint.test.mjs`는 실제 Web config/로컬 규칙을 임시 프로젝트에서 Oxlint로 실행한다. 모든 허용 방향·같은 layer, 10개의 역방향 edge와 alias/relative/dot-segment 경로, type/import/export 형태, alias/relative/type-only cycle의 통과·실패를 검사한다. 임시 위반 코드는 테스트 종료 시 삭제된다. 구성 변경 뒤 `pnpm --filter @innova/web test`와 `lint`를 함께 실행한다.
+
+범위는 현재 5개 layer의 의존 방향과 cycle이다. slice public API 강제·모든 cross-slice 제한·parent relative 금지·새 alias 자동 지원은 추가하지 않는다. 계산된 dynamic import/require 경로는 정적으로 검증할 수 없으므로 route lazy와 내부 모듈 참조에는 literal 경로를 사용한다. Oxlint JS plugin API는 alpha이므로 버전 변경 시 guard fixture를 반드시 실행한다.
+
 `test/router-data.test.mjs`는 실제 createMemoryRouter + MSW로 접근 표, query freshness/중복 요청, action/revalidation, concurrent fetcher, 세션 fence, navigation abort 공유, StrictMode 구독 해제, 오래된 GET과 성공 patch 경합, multipart import, URL history/retry를 검증한다. 기존 query-cache와 static Shell 회귀 테스트를 함께 유지한다. 정적 markup harness는 handler를 제거해 UI만 검사하고 별도 실제 Router 테스트가 실행 책임을 검증한다.
 
-브라우저 QA는 합성 MSW 계정/문항으로 수행했다. 실제 운영 API/cookie·다중 탭, 느린 chunk 다운로드·새 배포 chunk 실패, 실제 모바일 기기 성능은 이 PR에서 검증하지 않았다. 측정 수치를 초기 dependency 합계와 전체 lazy chunk 합계로 구분하며 warning threshold는 변경하지 않았다.
+PIN-29에서 도메인별 refresh의 비관련 cache 유지, concepts/scenarios merge 우선순위와 incoming metadata, 동시 import 거부 및 세션 전환 중 늦은 파일 읽기의 POST 차단을 추가로 검증한다. 공통 boundary의 missing-bank retry는 기존 Router 테스트를 유지한다.
+
+PIN-20 브라우저 QA는 합성 MSW 계정/문항으로 수행했다. PIN-29는 화면을 변경하지 않으며 기존 Router/Query/Shell/MSW 테스트와 추가 회귀 테스트로 검증한다. 이번 구조 변경에서 브라우저 QA, 실제 운영 API/cookie·다중 탭, 느린 chunk 다운로드·새 배포 chunk 실패, 실제 모바일 기기 성능을 새로 검증하지 않았다. PIN-20 측정 수치는 초기 dependency 합계와 전체 lazy chunk 합계로 구분하며 warning threshold는 변경하지 않았다.
 
 ## 참고
 
-2026-10-01 KST에 설치 타입/소스와 공식 문서를 확인했다.
+Router/Query는 PIN-20에서, Oxlint는 PIN-29에서 설치 타입/소스와 공식 문서를 확인했다.
 
 - [TanStack QueryClient](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient)
 - [React Router middleware](https://reactrouter.com/how-to/middleware)
 - [React Router actions](https://reactrouter.com/start/data/actions)
 - [Query cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation)
+- [Oxlint no-restricted-imports](https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-restricted-imports)
+- [Oxlint JS plugins](https://oxc.rs/docs/guide/usage/linter/js-plugins)
+- [Oxlint import/no-cycle](https://oxc.rs/docs/guide/usage/linter/rules/import/no-cycle)
