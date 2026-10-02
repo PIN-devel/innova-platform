@@ -20,6 +20,10 @@ import { todayKst } from "@/shared/lib/file";
 import { shuffle } from "@/shared/lib/shuffle";
 import { ExamLoading } from "./exam-loading";
 import "./exam.css";
+import "./curriculum.css";
+import CurriculumPage from "./curriculum-page";
+import { curriculumLocation } from "@/features/study-curriculum/location";
+import { CurriculumSubjectNavigation } from "@/features/study-curriculum/subject-navigation";
 
 type View = "home" | "units" | "review" | "mock" | "settings" | "lesson" | "result";
 type Given = string | number | boolean | Array<{ leftId: string; rightId: string }> | null;
@@ -40,8 +44,10 @@ function examApiErrorMessage(error: unknown) {
 
 export default function ExamPage() {
   const location = useLocation();
+  const curriculum = curriculumLocation(new URL(location.pathname + location.search, "https://innova.invalid"));
+  if (curriculum) return <CurriculumPage key={`${curriculum.subjectId}:${location.key}`} {...curriculum} />;
   const selected = examLocation(new URL(location.pathname + location.search, "https://innova.invalid"));
-  return <ExamWorkspace key={`${selected.bankId}:${location.key}`} activeId={selected.bankId} urlView={selected.view} />;
+  return <><CurriculumSubjectNavigation /><ExamWorkspace key={`${selected.bankId}:${location.key}`} activeId={selected.bankId} urlView={selected.view} /></>;
 }
 
 function ExamWorkspace({ activeId, urlView }: { activeId: string; urlView: ExamView }) {

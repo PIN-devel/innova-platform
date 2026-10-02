@@ -3,11 +3,12 @@ import type { AuthUser } from "@innova/contracts";
 import { adminUserKeys } from "@/entities/admin-users/queries";
 import { authKeys } from "@/entities/auth/queries";
 import { examBankKeys } from "@/entities/exam-bank/queries";
+import { curriculumKeys } from "@/entities/curriculum/queries";
 import { advanceSessionVersion, isSessionTransitioning, setSessionTransitioning } from "@/entities/auth/session-version";
 import { ApiError } from "@/shared/api/client";
 
 export function isProtectedQueryKey(key: readonly unknown[]) {
-  return [adminUserKeys.all, examBankKeys.all].some((prefix) => prefix.every((part, index) => key[index] === part));
+  return [adminUserKeys.all, examBankKeys.all, curriculumKeys.all].some((prefix) => prefix.every((part, index) => key[index] === part));
 }
 
 export function clearProtectedQueries(queryClient: QueryClient) {
@@ -15,6 +16,7 @@ export function clearProtectedQueries(queryClient: QueryClient) {
   queryClient.getMutationCache().clear();
   queryClient.removeQueries({ queryKey: adminUserKeys.all });
   queryClient.removeQueries({ queryKey: examBankKeys.all });
+  queryClient.removeQueries({ queryKey: curriculumKeys.all });
 }
 
 export function cacheAuthenticatedUser(queryClient: QueryClient, user: AuthUser) {
