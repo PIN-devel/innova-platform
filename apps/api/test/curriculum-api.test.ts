@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { Writable } from "node:stream";
 import { buildApp } from "../src/app.js";
 import { CurriculumReadingOrderError, type CurriculumReadRepository } from "../src/db/curriculum-read.js";
 import type { UserRepository } from "../src/db/users.js";
 import { createSyntheticCurriculum } from "./fixtures/curriculum-bundle.js";
+import { createBlobCurriculumAssetReader } from "../src/curriculum-assets.js";
+import { createApplicationLogger } from "../src/logger.js";
 
 const b = createSyntheticCurriculum();
 const chapter = { ...b.chapters.find((c) => c.id === "chapter-1")!, readingOrder: b.sourceBlocks.map((s) => s.id) };
@@ -77,4 +80,48 @@ test("Chapter without normalized reading order is blocked instead of guessed", a
   t.after(() => app.close()); await app.ready();
   const response = await app.inject({ url: base, headers: { cookie: `exam_drill_auth=${app.jwt.sign({ sub: userId })}` } });
   assert.equal(response.statusCode, 409); assert.equal(response.json().error.code, "BUSINESS_RULE_VIOLATION");
+});
+
+test("Blob SDK failures expose no credential or URL in Curriculum responses or logs", async (t) => {
+  const lines: string[] = [];
+  const logger = createApplicationLogger({ level: "info", destination: new Writable({ write(chunk, _encoding, callback) { lines.push(String(chunk)); callback(); } }) });
+  const marker = "synthetic-blob-credential-marker";
+  const urlMarker = "https://synthetic.private.blob.vercel-storage.com/private-marker.png";
+  let reads = 0;
+  let missing = false;
+  const users: UserRepository = {
+    async findById() { return { id: userId, email: "test@example.com", passwordHash: "unused", role: "member", approvalStatus: "approved" }; },
+    async findByEmail() {}, async create() {}, async findPending() { return []; }, async approvePending() {}, async rejectPending() {},
+  };
+  const app = buildApp({ logger, jwtSecret: "synthetic-only-secret-with-32-characters", userRepository: users,
+    examRepository: { async find() {}, async create() { throw new Error("unused"); } },
+    curriculumRepository: { ...repository, async chapter(subjectId, chapterId) {
+      const result = await repository.chapter(subjectId, chapterId);
+      if (!result) return undefined;
+      const copy = structuredClone(result);
+      const image = copy.sourceBlocks.find((block) => block.id === "block-body")!.content[2];
+      assert.equal(image.type, "diagram");
+      if (image.type === "diagram") image.assetKey = "synthetic/diagram.png";
+      return copy;
+    } },
+    curriculumAssets: createBlobCurriculumAssetReader(marker, async () => { reads++; if (missing) return null; throw new Error(`${marker} ${urlMarker}`); }),
+  });
+  t.after(async () => { await app.close(); logger.flush(); });
+  await app.ready();
+  const url = `${base}/blocks/block-body/assets/2`;
+  assert.equal((await app.inject({ url })).statusCode, 401);
+  assert.equal(reads, 0);
+  const headers = { cookie: `exam_drill_auth=${app.jwt.sign({ sub: userId })}` };
+  const response = await app.inject({ url, headers });
+  assert.equal(response.statusCode, 503);
+  assert.deepEqual(response.json(), { error: { code: "INTERNAL_ERROR", message: "Private asset storage is unavailable" } });
+  assert.equal(response.headers["cache-control"], "no-store");
+  assert.equal(response.headers.vary, "Cookie");
+  missing = true;
+  assert.equal((await app.inject({ url, headers })).statusCode, 404);
+  logger.flush();
+  for (const value of [response.body, lines.join("")]) {
+    assert.equal(value.includes(marker), false);
+    assert.equal(value.includes(urlMarker), false);
+  }
 });

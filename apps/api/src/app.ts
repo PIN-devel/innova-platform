@@ -14,7 +14,7 @@ import { adminUserRoutes } from "./routes/admin-users.js";
 import { examRoutes } from "./routes/exam.js";
 import { curriculumRoutes } from "./routes/curriculum.js";
 import { createCurriculumReadRepository, type CurriculumReadRepository } from "./db/curriculum-read.js";
-import { createCurriculumAssetReader, type CurriculumAssetReader } from "./curriculum-assets.js";
+import { createRuntimeCurriculumAssetReader, type CurriculumAssetReader } from "./curriculum-assets.js";
 import { AppError, apiErrorBody, invalidInput } from "./errors.js";
 
 const fastifyBadRequestCodes = new Set([
@@ -30,7 +30,7 @@ export function buildApp({
   userRepository,
   readinessCheck,
   curriculumRepository,
-  curriculumAssets = createCurriculumAssetReader(),
+  curriculumAssets = createRuntimeCurriculumAssetReader(),
   jwtSecret = process.env.JWT_SECRET,
 }: {
   logger?: false | FastifyBaseLogger;
