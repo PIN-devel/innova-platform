@@ -1,6 +1,8 @@
 # API
 
-Fastify, TypeScript, Drizzle ORM, Neon PostgreSQL API입니다. Exam Drill 은행을 DB에 저장합니다. 루트의 `pnpm dev` 또는 `pnpm dev:web`으로 API와 웹을 함께 실행합니다.
+Fastify, TypeScript, Drizzle ORM, Neon PostgreSQL API입니다. Exam Drill 은행을 DB에 저장합니다. 루트의 `pnpm dev`는 API와 프록시 모드 웹을 함께 실행하고, `pnpm dev:web`은 API 없이 MSW 기반 웹만 실행합니다.
+
+공통 실행·검증은 [루트 README](../../README.md), 변경 지침은 [API AGENTS](./AGENTS.md)를 따른다.
 
 ## 실행
 

@@ -1,11 +1,13 @@
 # Frontend Data Architecture
 
-PIN-20의 데이터 흐름과 PIN-29의 책임 배치 기준이다. UI는 [DESIGN.md](./DESIGN.md), PIN-20 변경 전후 측정과 QA는 [architecture-baseline.md](./architecture-baseline.md)를 따른다. Data Mode와 단일 Query Cache를 유지한다.
+상태: 현행 구현 기준. 설정·테스트 경로는 `apps/web/`, `app/pages/features/entities/shared` 구현 경로는 `apps/web/src/` 기준이다.
+
+PIN-20의 데이터 흐름과 PIN-29의 책임 배치 기준이다. UI는 [디자인 기준](./design.md)을 따른다. 과거 수치와 QA 재현이 필요할 때만 [측정 기록](./architecture-baseline.md)을 읽는다. Data Mode와 단일 Query Cache를 유지한다.
 
 - PIN-20 시작 기준: `develop` `f7f259ca61dc16a2a22206f116b74d490f6b55e6`. 당시 원격 main과 이력은 달랐지만 tree는 같았다.
 - PIN-29 시작 기준: 최신 `develop` `13eaea6057c7f1fb8cdf4960ebec1f5c4e3cd62d`(Curriculum 기반 PR #28 포함). Web에서 발견한 역방향 app import는 6개 파일의 9개였고, 중앙 route-data와 전역 key refresh helper를 제거했다.
 - PIN-20~26은 PR #24로 develop에 통합됐다. PIN-29는 최신 develop의 코드에 대한 구조 후속 작업이며 데이터 흐름을 재설계하지 않는다.
-- 설치 버전: TanStack Query 5.103.2, React Router 8.4.0, React 19.3.0, Vite 8.3.1. package.json의 최소 버전과 구분한다.
+- PIN-29 검증 당시 설치 버전: TanStack Query 5.103.2, React Router 8.4.0, React 19.3.0, Vite 8.3.1. 현재 버전은 lockfile을 확인하며 package.json의 최소 버전과 구분한다.
 
 ## 1. 현행 감사와 교체 결과
 
