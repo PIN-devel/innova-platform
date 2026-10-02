@@ -1,5 +1,7 @@
 # Innova Platform UI 규칙
 
+상태: 현행 UI 기준. 코드·자산 경로는 `apps/web/` 기준이다.
+
 이 문서는 모든 기능에 적용하는 공통 디자인 원칙이다. 토큰의 실제 값과 Tailwind 매핑은 `src/styles.css`, 재사용 가능한 구현은 `src/shared/ui/`가 기준이다.
 
 ## 브랜드 마크

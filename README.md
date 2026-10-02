@@ -1,6 +1,19 @@
 # innova-platform
 React, Fastify, PostgreSQL 기반 모노레포입니다. `/exam`에서 Exam Drill을 사용합니다.
 
+## 문서와 작업 기준
+
+| 목적 | 문서 |
+| --- | --- |
+| AI 공통·앱별 지침 | [공통 AGENTS](./AGENTS.md), [Web AGENTS](./apps/web/AGENTS.md), [API AGENTS](./apps/api/AGENTS.md) |
+| 문서 위치·파일명·참조 관리 | [문서 정책](./docs/documentation-policy.md) |
+| 필요한 정보만 읽고 조사·검증·전달하기 | [AI 작업 흐름](./docs/ai-workflow.md) |
+| 브랜치·PR·릴리스 | [Git 운영](./docs/git-workflow.md) |
+| 이슈와 기존 자동화의 역할 | [Linear 운영](./docs/linear-workflow.md) |
+| 앱 실행과 현행 기준 | [Web](./apps/web/README.md), [API](./apps/api/README.md) |
+
+과거 측정 기록은 비교·재현할 때만 읽는다. 정책 원문과 구현·검증 결과는 각 소유 문서/이슈에서 관리한다.
+
 ## Workspace
 
 pnpm 12를 사용합니다. 저장소 루트에서 한 번만 의존성을 설치하면 됩니다.
