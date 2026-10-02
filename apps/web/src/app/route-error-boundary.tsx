@@ -1,5 +1,5 @@
 import { isRouteErrorResponse, useNavigate, useRouteError } from "react-router";
-import { useRouteRefresh } from "./use-route-refresh";
+import { useRouteRefresh } from "@/shared/lib/router-query/use-route-refresh";
 import { Button } from "@/shared/ui/button";
 import { ErrorState } from "@/shared/ui/error-state";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";

@@ -1,6 +1,8 @@
 import { useFetcher } from "react-router";
-import type { ActionResult } from "@/app/route-data";
-import { useRouteRefresh } from "@/app/use-route-refresh";
+import type { ActionResult } from "@/shared/lib/router-query/action-result";
+import { useRouteRefresh } from "@/shared/lib/router-query/use-route-refresh";
+import { adminUserKeys } from "@/entities/admin-users/queries";
+import { useSessionScope } from "@/features/auth/hooks";
 import { ApiError } from "@/shared/api/client";
 import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
@@ -12,7 +14,8 @@ import { AdminUsersLoading } from "./admin-users-loading";
 export default function AdminUsersPage() {
   const pendingUsers = usePendingUsers();
   const fetcher = useFetcher<ActionResult>();
-  const refresh = useRouteRefresh();
+  const { epoch } = useSessionScope();
+  const refresh = useRouteRefresh([adminUserKeys.pending(epoch)]);
   const busy = fetcher.state !== "idle";
   const submit = (intent: "approve" | "reject", id: string) => { if (!busy) fetcher.submit({ intent, id }, { method: "post", action: "/admin/users" }); };
 
