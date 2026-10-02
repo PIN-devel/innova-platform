@@ -50,7 +50,9 @@ export const CurriculumSectionSchema = z.strictObject({
 export const CurriculumSourceBlockSchema = z.strictObject({
   id: CurriculumIdSchema, subjectId: CurriculumIdSchema, sectionId: CurriculumIdSchema,
   sourceDocumentId: CurriculumIdSchema, position, revision: nonempty,
-  role: z.enum(["body", "definition", "comparison", "procedure", "relationship", "decision", "case-study", "summary", "term", "quiz", "answer", "example", "before", "after", "exercise"]),
+  // case-study is generic; financial-context preserves financial operating
+  // background/constraints, financial-case preserves a specific financial case.
+  role: z.enum(["body", "definition", "comparison", "procedure", "relationship", "decision", "case-study", "financial-context", "financial-case", "summary", "term", "quiz", "answer", "example", "before", "after", "exercise"]),
   content: CurriculumRichContentSchema,
   location: z.strictObject({
     pdfPageStart: z.number().int().positive(), pdfPageEnd: z.number().int().positive(),
@@ -71,7 +73,7 @@ export const CurriculumKnowledgePointSchema = z.strictObject({
 });
 
 const answerMetadata = {
-  status: z.enum(["official", "proposed"]), sourceBlockIds: references,
+  status: z.enum(["official", "proposed"]), sourceBlockIds: evidence,
   explanation: CurriculumRichContentSchema.optional(),
 };
 const unresolved = z.strictObject({ status: z.literal("unresolved"), reason: nonempty });
@@ -105,7 +107,6 @@ export const CurriculumQuestionSchema = z.discriminatedUnion("kind", [
       if (q.kind === "single-choice" && q.answer.correctChoiceIds.length !== 1) issue("Single choice requires one answer", ["answer", "correctChoiceIds"]);
     }
   }
-  if (q.answer.status === "official" && q.answer.sourceBlockIds.length === 0) issue("Official answer requires textbook evidence", ["answer", "sourceBlockIds"]);
 });
 
 export const CurriculumBundleSchema = z.strictObject({
@@ -128,7 +129,7 @@ export const CurriculumBundleSchema = z.strictObject({
   const chapters = new Map(bundle.chapters.map((e) => [e.id, e]));
   const sections = new Map(bundle.sections.map((e) => [e.id, e]));
   const blocks = new Map(bundle.sourceBlocks.map((e) => [e.id, e]));
-  const knowledge = new Set(bundle.knowledgePoints.map((e) => e.id));
+  const knowledge = new Map(bundle.knowledgePoints.map((e) => [e.id, e]));
   const positions = new Set<string>();
   const order = (scope: string, value: number, path: (string | number)[]) => {
     const key = `${scope}:${value}`;
@@ -168,12 +169,17 @@ export const CurriculumBundleSchema = z.strictObject({
   });
   bundle.questions.forEach((q, i) => {
     const path = ["questions", i];
+    // Keep the broader origin type, but this curriculum imports textbook quizzes
+    // only. There is no derived-question generation or import path in Stage A.
+    if (q.origin !== "textbook-quiz") issue("Curriculum bundle only accepts textbook quizzes", [...path, "origin"]);
     if (!chapters.has(q.chapterId)) issue("Unknown chapter", [...path, "chapterId"]);
     if (q.sectionId !== null && sections.get(q.sectionId)?.chapterId !== q.chapterId) issue("Question section/chapter mismatch", [...path, "sectionId"]);
     order(JSON.stringify(["question", q.chapterId, q.sectionId]), q.position, [...path, "position"]);
     checkSources(q.sourceBlockIds, [...path, "sourceBlockIds"]);
     q.knowledgePointIds.forEach((id, k) => {
-      if (!knowledge.has(id)) issue("Unknown knowledge point", [...path, "knowledgePointIds", k]);
+      const point = knowledge.get(id);
+      if (!point) issue("Unknown knowledge point", [...path, "knowledgePointIds", k]);
+      else if (sections.get(point.sectionId)?.chapterId !== q.chapterId) issue("Question knowledge point/chapter mismatch", [...path, "knowledgePointIds", k]);
     });
     const source = blocks.get(q.transformation.sourceBlockId);
     if (!source || !q.sourceBlockIds.includes(source.id)) issue("Missing canonical question source", [...path, "transformation"]);

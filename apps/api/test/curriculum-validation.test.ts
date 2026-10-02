@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CurriculumBundleSchema, type CurriculumBundle } from "@innova/contracts";
+import { CurriculumBundleSchema, CurriculumQuestionSchema, type CurriculumBundle } from "@innova/contracts";
 import { createSyntheticCurriculum } from "./fixtures/curriculum-bundle.js";
 
 test("bundle preserves hierarchy, rich content, provenance and all answer states", () => {
@@ -42,6 +42,7 @@ const invalid: [string, (bundle: CurriculumBundle) => void][] = [
   ["missing question evidence", (b) => { b.questions[0].sourceBlockIds = []; }],
   ["orphan question evidence", (b) => { b.questions[0].sourceBlockIds = ["missing"]; }],
   ["orphan question knowledge", (b) => { b.questions[0].knowledgePointIds = ["missing"]; }],
+  ["question knowledge point in another chapter", (b) => { b.knowledgePoints[0].sectionId = "section-other"; }],
   ["orphan question chapter", (b) => { b.questions[0].chapterId = "missing"; }],
   ["question section/chapter mismatch", (b) => { b.questions[0].sectionId = "section-other"; }],
   ["question source/section mismatch", (b) => { b.questions[0].sectionId = "section-root"; }],
@@ -72,11 +73,63 @@ test("unknown payload fields are rejected instead of silently losing extracted d
   assert.equal(CurriculumBundleSchema.safeParse({ ...bundle, questions: [{ ...bundle.questions[0], answer: { status: "unresolved", reason: "unknown", correctChoiceIds: ["a"] } }] }).success, false);
 });
 
-test("derived is an explicit future origin, and chapter-level quiz can omit Section", () => {
+test("chapter-level quiz can reference knowledge points across Sections in its Chapter", () => {
   const bundle = createSyntheticCurriculum();
-  bundle.questions[0].origin = "textbook-derived";
+  bundle.knowledgePoints.push({ ...bundle.knowledgePoints[0], id: "knowledge-child", sectionId: "section-child" });
   bundle.questions[0].sectionId = null;
+  bundle.questions[0].knowledgePointIds.push("knowledge-child");
   assert.equal(CurriculumBundleSchema.safeParse(bundle).success, true);
+});
+
+test("chapter-level quiz rejects a knowledge point from another Chapter", () => {
+  const bundle = createSyntheticCurriculum();
+  bundle.questions[0].sectionId = null;
+  bundle.knowledgePoints[0].sectionId = "section-other";
+  const result = CurriculumBundleSchema.safeParse(bundle);
+  assert.equal(result.success, false);
+  if (!result.success) assert.ok(result.error.issues.some((issue) => issue.message === "Question knowledge point/chapter mismatch" && issue.path.join(".") === "questions.0.knowledgePointIds.0"));
+});
+
+test("all official and proposed answer kinds require evidence before bundle relation validation", () => {
+  const bundle = createSyntheticCurriculum();
+  for (const question of bundle.questions) {
+    if (question.answer.status === "unresolved") continue;
+    for (const status of ["official", "proposed"] as const) {
+      const withoutEvidence: unknown = { ...question, answer: { ...question.answer, status, sourceBlockIds: [] } };
+      assert.equal(CurriculumQuestionSchema.safeParse(withoutEvidence).success, false, `${status} ${question.kind}`);
+      assert.equal(CurriculumBundleSchema.safeParse({ ...bundle, questions: [withoutEvidence] }).success, false, `${status} ${question.kind}`);
+    }
+  }
+});
+
+test("proposed evidence must exist and be included among the question sources", () => {
+  const bundle = createSyntheticCurriculum();
+  const question = bundle.questions[1];
+  assert.notEqual(question.answer.status, "unresolved");
+  if (question.answer.status === "unresolved") return;
+  for (const sourceBlockId of ["missing", "block-body"]) {
+    question.answer.sourceBlockIds = [sourceBlockId];
+    assert.equal(CurriculumBundleSchema.safeParse(bundle).success, false);
+  }
+});
+
+test("actual textbook bundles reject derived questions while the standalone origin type remains", () => {
+  for (const subjectId of ["it-architecture", "software-design-principles", "synthetic-design"]) {
+    const bundle = createSyntheticCurriculum(subjectId);
+    bundle.questions[0].origin = "textbook-derived";
+    assert.equal(CurriculumQuestionSchema.safeParse(bundle.questions[0]).success, true);
+    const result = CurriculumBundleSchema.safeParse(bundle);
+    assert.equal(result.success, false);
+    if (!result.success) assert.ok(result.error.issues.some((issue) => issue.path.join(".") === "questions.0.origin"));
+  }
+});
+
+test("financial roles are preserved alongside generic case-study without changing content", () => {
+  for (const role of ["financial-context", "financial-case", "case-study"] as const) {
+    const bundle = createSyntheticCurriculum();
+    bundle.sourceBlocks[0].role = role;
+    assert.deepEqual(CurriculumBundleSchema.parse(bundle), bundle);
+  }
 });
 
 test("root section IDs do not collide with the null parent ordering scope", () => {
