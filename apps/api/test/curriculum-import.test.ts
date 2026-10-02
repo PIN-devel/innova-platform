@@ -49,6 +49,10 @@ test("Curriculum migration and production Neon batch importer execute against em
 
   await t.test("invalid bundle and wrong target are rejected before transport receives a transaction", async () => {
     await assert.rejects(importBundle({ ...bundle, knowledgePoints: [{ ...bundle.knowledgePoints[0], sourceBlockIds: [] }] }));
+    await assert.rejects(importBundle({ ...bundle, questions: [{ ...bundle.questions[0], answer: { status: "official", correctChoiceIds: ["a"], sourceBlockIds: [] } }] }));
+    await assert.rejects(importBundle({ ...bundle, knowledgePoints: [{ ...bundle.knowledgePoints[0], sectionId: "section-other" }] }));
+    await assert.rejects(importBundle({ ...bundle, questions: [{ ...bundle.questions[1], answer: { status: "proposed", correctChoiceIds: ["a"], sourceBlockIds: [] } }] }));
+    await assert.rejects(importBundle({ ...bundle, questions: [{ ...bundle.questions[0], origin: "textbook-derived" }] }));
     await assert.rejects(importBundle(bundle, "wrong-subject"), /target mismatch/);
     assert.equal(batches.length, 0);
     assert.equal((await pg.query("select * from exam_subjects")).rows.length, 0);
@@ -135,5 +139,17 @@ test("Curriculum migration and production Neon batch importer execute against em
     const blockInserts = batches.at(-1)!.filter((q) => q.sql.startsWith('insert into "exam_source_blocks"'));
     assert.equal(blockInserts.length, 3);
     assert.ok(blockInserts.every((q) => q.params.length <= 200 * 7));
+  });
+
+  await t.test("financial context and case roles survive JSONB import and re-import", async () => {
+    const financial = createSyntheticCurriculum();
+    financial.sourceBlocks[0].role = "financial-context";
+    financial.sourceBlocks.push({ ...financial.sourceBlocks[0], id: "block-financial-case", position: 1, role: "financial-case" });
+    await importBundle(financial);
+    const result = await pg.query<{ content: { role: string } }>("select content from exam_source_blocks where subject_id = $1 and id in ('block-body', 'block-financial-case') order by id", [financial.subject.id]);
+    assert.deepEqual(result.rows.map((row) => row.content.role), ["financial-context", "financial-case"]);
+    const before = await snapshot(financial.subject.id);
+    await importBundle(financial);
+    assert.deepEqual(await snapshot(financial.subject.id), before);
   });
 });
