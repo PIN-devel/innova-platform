@@ -5,7 +5,7 @@ React 웹 앱이다. 명령은 저장소 루트에서 실행한다.
 - `pnpm dev:web`: API 없이 MSW 모드, `http://localhost:5173`.
 - `pnpm dev`: API와 프록시 모드 웹을 함께 실행, `http://localhost:5174`.
 
-설치·계약 빌드·공통 검증은 [루트 README](../../README.md)를 따른다. 실제 환경 값은 .env.example을 참고한다.
+설치·계약 빌드·공통 검증은 [루트 README](../../README.md)를 따른다. API 연결 환경 설정은 [API README](../api/README.md)와 해당 앱의 `.env.example`을 참고한다.
 
 | 필요한 작업 | 기준 |
 | --- | --- |
