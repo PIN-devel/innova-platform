@@ -12,6 +12,9 @@ import { createApplicationLogger } from "./logger.js";
 import { authRoutes } from "./routes/auth.js";
 import { adminUserRoutes } from "./routes/admin-users.js";
 import { examRoutes } from "./routes/exam.js";
+import { curriculumRoutes } from "./routes/curriculum.js";
+import { createCurriculumReadRepository, type CurriculumReadRepository } from "./db/curriculum-read.js";
+import { createRuntimeCurriculumAssetReader, type CurriculumAssetReader } from "./curriculum-assets.js";
 import { AppError, apiErrorBody, invalidInput } from "./errors.js";
 
 const fastifyBadRequestCodes = new Set([
@@ -26,12 +29,16 @@ export function buildApp({
   examRepository,
   userRepository,
   readinessCheck,
+  curriculumRepository,
+  curriculumAssets = createRuntimeCurriculumAssetReader(),
   jwtSecret = process.env.JWT_SECRET,
 }: {
   logger?: false | FastifyBaseLogger;
   examRepository?: ExamRepository;
   userRepository?: UserRepository;
   readinessCheck?: () => Promise<void>;
+  curriculumRepository?: CurriculumReadRepository;
+  curriculumAssets?: CurriculumAssetReader;
   jwtSecret?: string;
 } = {}) {
   if (!jwtSecret || jwtSecret.length < 32) throw new Error("JWT_SECRET must be set to at least 32 characters");
@@ -45,6 +52,9 @@ export function buildApp({
   const db = examRepository && userRepository ? undefined : createDatabase();
   const exams = examRepository ?? createExamRepository(db!);
   const users = userRepository ?? createUserRepository(db!);
+  // Existing isolated legacy tests may omit Curriculum injection. Production
+  // always has a DB; avoid a second connection and keep legacy tests DB-free.
+  const curriculum = curriculumRepository ?? (db ? createCurriculumReadRepository(db) : undefined);
   const checkReadiness = readinessCheck ?? (db
     ? async () => { await db.execute(sql`select 1`); }
     : async () => { throw new Error("Database is not configured for readiness checks"); });
@@ -110,6 +120,7 @@ export function buildApp({
   });
   app.register(authRoutes, { prefix: "/api/auth", users });
   app.register(examRoutes, { prefix: "/api/exam", repository: exams, requireAuth: createApprovedAuthGuard(users) });
+  if (curriculum) app.register(curriculumRoutes, { prefix: "/api/curriculum", repository: curriculum, assets: curriculumAssets, requireAuth: createApprovedAuthGuard(users) });
   app.register(adminUserRoutes, { prefix: "/api/admin", users, requireAdmin: createAdminAuthGuard(users) });
 
   return app;

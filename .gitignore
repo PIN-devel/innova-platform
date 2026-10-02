@@ -8,6 +8,7 @@ node_modules/
 **/private-data/
 **/sample-bank.json
 *.exam-bank.json
+*.curriculum-bundle.json
 **/.env
 **/.env.*
 !**/.env.example

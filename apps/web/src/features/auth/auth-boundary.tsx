@@ -2,7 +2,8 @@ import { Navigate, Outlet, useLocation } from "react-router";
 import { Button } from "@/shared/ui/button";
 import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
-import { useRouteRefresh } from "@/app/use-route-refresh";
+import { useRouteRefresh } from "@/shared/lib/router-query/use-route-refresh";
+import { authKeys } from "@/entities/auth/queries";
 import { useCurrentUser, useSessionScope } from "./hooks";
 import { getAdminRedirect, getApprovalPendingRedirect, getExamRedirect, getPostAuthPath, getSignupRejectedRedirect } from "./route-access";
 import type { Access } from "./route-session";
@@ -12,7 +13,7 @@ function LiveAccessBoundary({ access }: { access: Access }) {
   const location = useLocation();
   const currentUser = useCurrentUser();
   const { epoch, transitioning } = useSessionScope();
-  const refresh = useRouteRefresh();
+  const refresh = useRouteRefresh([authKeys.me]);
   if (transitioning) return <LoadingState label="계정을 변경하고 있습니다." />;
   if (currentUser.isPending) return <LoadingState label="계정 정보를 확인하고 있습니다." />;
   if (currentUser.isError) {
