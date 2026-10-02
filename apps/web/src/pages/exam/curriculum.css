@@ -1,0 +1,26 @@
+.curriculum-subjects { display: flex; flex-wrap: wrap; gap: .75rem; padding: 1rem; border-bottom: 1px solid var(--border); }
+.curriculum-subjects a, .curriculum-toc a, .curriculum-reading h2 { color: var(--primary); }
+.curriculum-subjects a { padding: .4rem .7rem; border-radius: var(--radius); }
+.curriculum-subjects a[aria-current], .exam-actions a[aria-current] { background: var(--primary); color: var(--primary-foreground); font-weight: 600; }
+.curriculum-subjects ~ .exam-main .exam-actions a { display: inline-flex; align-items: center; padding: .65rem .9rem; border: 1px solid var(--border); border-radius: var(--radius); }
+.curriculum-subjects a:focus-visible, .curriculum-toc a:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.curriculum-toc { border: 1px solid var(--border); padding: 1rem; border-radius: var(--radius); }
+.curriculum-toc ul { list-style: none; padding-left: 1rem; }
+.curriculum-toc li { margin: .5rem 0; }
+.curriculum-reading { display: grid; gap: 1.5rem; }
+.curriculum-block { scroll-margin-top: 5rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; overflow-wrap: anywhere; }
+.curriculum-block h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 1rem; }
+.curriculum-source { color: var(--muted-foreground); font-size: .8rem; margin-bottom: .75rem; }
+.curriculum-text { white-space: pre-wrap; line-height: 1.8; margin-bottom: .8rem; }
+.curriculum-reading pre { overflow-x: auto; background: var(--muted); padding: 1rem; border-radius: var(--radius); white-space: pre; line-height: 1.5; }
+.curriculum-reading figure { margin: .8rem 0; }
+.curriculum-reading img { max-width: 100%; height: auto; }
+.curriculum-reading figcaption { color: var(--muted-foreground); font-size: .9rem; margin: .5rem 0; }
+.curriculum-table { overflow-x: auto; margin: 1rem 0; }
+.curriculum-table table { border-collapse: collapse; min-width: 100%; }
+.curriculum-table th, .curriculum-table td { border: 1px solid var(--border); padding: .6rem; white-space: pre-wrap; vertical-align: top; }
+.curriculum-table th { background: var(--muted); text-align: left; }
+.curriculum-review { background: var(--warning); color: var(--warning-foreground); padding: .75rem; }
+.curriculum-choice { display: flex; align-items: flex-start; gap: .7rem; border: 1px solid var(--border); padding: 1rem; border-radius: var(--radius); }
+.curriculum-choice:has(input:checked) { border-color: var(--primary); background: var(--accent); }
+.curriculum-choice input { margin-top: .4rem; }

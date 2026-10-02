@@ -20,7 +20,7 @@ PIN-21 기준 Router는 createBrowserRouter/RouterProvider만 사용하고 loade
 | `/logout` | fetcher.Form → auth Action | 서버 실패 메시지, 성공/이미 만료 시 login 이동 |
 | `/approval-pending`, `/signup-rejected` | 상태별 middleware + live guard | 계정 정보, 문의, Router 상태 재확인 |
 | `/admin/users` | admin middleware → Loader → Query 구독, 결정 Action/useFetcher | Skeleton, cache 유지·갱신 경고, 성공 항목 제거 |
-| `/exam` | approved middleware → Loader → Query 구독, import Action/useFetcher | 은행/view는 URL, 학습·답변·타이머는 local |
+| `/exam` | approved middleware → Loader → Query 구독, import/Quiz Action/useFetcher | 은행 또는 교재 Subject/Chapter/view는 URL, 학습·답변은 local |
 
 PIN-8의 Shell/콘텐츠 layout 및 단일 main, PIN-9의 최초 Skeleton/기존 데이터 갱신/오류·빈 결과 구분, PIN-10의 entity query key/options와 성공 응답 우선 cache patch를 유지했다. 접근 검사와 재검증의 시작 책임은 Router로 옮겼고 기존 useMutation 실행 경로와 은행 localStorage 선택은 제거했다.
 
@@ -161,3 +161,15 @@ Router/Query는 PIN-20에서, Oxlint는 PIN-29에서 설치 타입/소스와 공
 - [Oxlint no-restricted-imports](https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-restricted-imports)
 - [Oxlint JS plugins](https://oxc.rs/docs/guide/usage/linter/js-plugins)
 - [Oxlint import/no-cycle](https://oxc.rs/docs/guide/usage/linter/rules/import/no-cycle)
+
+## Curriculum Vertical Slice
+
+`/exam?subject=<id>`는 Curriculum Chapter 목록, `chapter=<id>`는 읽기 화면, `view=quiz`는 교재 Quiz다. 기존 bank/view URL과 AWS SAP 학습 경로는 유지한다. Subject 선택은 Curriculum Subject 조회와 별도의 AWS SAP 링크를 사용하며 ExamBank adapter를 두지 않는다.
+
+- `entities/curriculum`은 공유 response schema로 HTTP 응답을 검증하고 subjects/chapters/chapter/quiz Query를 소유한다. key에 session epoch를 포함하며 5분 freshness와 30분 GC를 사용한다. 보호 cache 정리 대상에 Curriculum을 포함한다.
+- `pages/exam/route.ts`는 승인된 접근을 확인한 뒤 조회를 시작한다. page는 enabled false로 구독한다. Quiz 제출은 fetcher Form → route Action → `features/study-curriculum/submit-answer.ts` → API를 통과하며 이전 세션의 완료 결과를 차단한다. 답안·채점 결과는 메모리에만 존재하며 학습 기록을 DB나 localStorage에 저장하지 않는다.
+- Chapter의 `readingOrder`는 모든 SourceBlock ID를 정확히 한 번 담는 명시적 순서다. Section/block position은 기존 sibling scope를 유지한다. parent/child 콘텐츠가 교차할 수 있으므로 API는 읽기 순서가 없는 Chapter를 409로 차단하며 page/PDF 위치 기반 heuristic을 사용하지 않는다. Section TOC의 sibling 정렬은 탐색만 담당하며 본문을 재정렬하지 않는다.
+- `/api/curriculum`은 매 요청 DB-current approved guard와 no-store/Vary Cookie를 적용한다. Chapter 읽기는 JSONB 콘텐츠를 그대로 제공하고 Quiz 조회는 답안을 제외한다. grade 응답에서 답안과 교재 해설/evidence를 제공한다. `exact`는 문자열 그대로 비교하며 trim, synonym, Unicode normalization, fuzzy/LLM 평가를 사용하지 않는다. self-assessment와 unresolved는 자동 정답 판정을 하지 않는다.
+- 그림은 인증된 block/content-index API로만 읽는다. 선택적인 `CURRICULUM_ASSET_ROOT` 아래 assetKey 상대 경로의 PNG/JPEG/WebP/GIF를 허용하며 traversal·root 밖 symlink·SVG/HTML을 거부한다. 런타임 자산이 없으면 명시적인 unavailable 안내를 표시하고 콘텐츠를 생성하여 대체하지 않는다.
+- private assets는 Git 및 Vercel public bundle에 포함하지 않는다. 현재 로컬 private runtime에서 사용 가능하나 Render/Vercel 운영 환경에 해당 디렉터리가 제공되는 방식은 배포 후속 작업이다. 이번 Slice는 Production PostgreSQL 적재와 로컬 후보 코드의 API/Router/UI 검증이며 main 병합·운영 애플리케이션 배포를 포함하지 않는다.
+- MSW의 Curriculum은 합성 샘플만 제공하며 동일한 승인 제한과 exact 채점을 재현한다. 계약/import/API/Router·cache·render 회귀도 합성 데이터로 수행한다.

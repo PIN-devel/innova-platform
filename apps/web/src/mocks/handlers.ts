@@ -12,6 +12,8 @@ import {
 } from "@innova/contracts";
 import type { ApiErrorCode, AuthUser, ExamBankRecord, ValidationErrorDetail } from "@innova/contracts";
 import { http, HttpResponse } from "msw";
+import { CurriculumAnswerSubmissionSchema, toCurriculumQuizQuestion, gradeCurriculumAnswer } from "@innova/contracts";
+import { mockCurriculum } from "./curriculum.ts";
 
 const seedBank = ExamBankSchema.parse({
   schema: "sap-drill-bank.v1",
@@ -55,7 +57,7 @@ const banks = new Map<string, ExamBankRecord>([
   ["aws-sap", ExamBankRecordSchema.parse({ id: "aws-sap", bank: seedBank })],
 ]);
 
-const headers = { "Cache-Control": "no-store" };
+const headers = { "Cache-Control": "no-store", "Vary": "Cookie" };
 
 const defaultMockUser: AuthUser = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -83,7 +85,42 @@ function authSuccess(user: AuthUser, status = 200) {
   return HttpResponse.json(authResponseSchema.parse({ user }), { status, headers });
 }
 
+function curriculumAccess() {
+  if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
+  if (currentMockUser.approvalStatus === "rejected") return apiError(403, "SIGNUP_REJECTED", "Signup request was rejected");
+  if (currentMockUser.approvalStatus !== "approved") return apiError(403, "APPROVAL_PENDING", "Account approval is pending");
+}
+function mockChapter(subject: unknown, chapter: unknown) {
+  return subject === mockCurriculum.subject.id && chapter === mockCurriculum.chapters[0].id;
+}
+
 export const handlers = [
+  http.get("*/api/curriculum/subjects", () => curriculumAccess() ?? HttpResponse.json({ subjects: [mockCurriculum.subject] }, { headers })),
+  http.get("*/api/curriculum/subjects/:subjectId", ({ params }) => curriculumAccess() ?? (params.subjectId === mockCurriculum.subject.id ? HttpResponse.json(mockCurriculum.subject, { headers }) : apiError(404, "NOT_FOUND", "Curriculum Subject not found"))),
+  http.get("*/api/curriculum/subjects/:subjectId/chapters", ({ params }) => curriculumAccess() ?? (params.subjectId === mockCurriculum.subject.id ? HttpResponse.json({ subject: mockCurriculum.subject, chapters: mockCurriculum.chapters }, { headers }) : apiError(404, "NOT_FOUND", "Curriculum Subject not found"))),
+  http.get("*/api/curriculum/subjects/:subjectId/chapters/:chapterId", ({ params }) => {
+    const denied = curriculumAccess(); if (denied) return denied;
+    if (!mockChapter(params.subjectId, params.chapterId)) return apiError(404, "NOT_FOUND", "Curriculum Chapter not found");
+    const chapter = mockCurriculum.chapters[0]!;
+    return HttpResponse.json({ subject: mockCurriculum.subject, chapter, sections: mockCurriculum.sections, sourceBlocks: chapter.readingOrder!.map((id) => mockCurriculum.sourceBlocks.find((b) => b.id === id)), knowledgePoints: mockCurriculum.knowledgePoints }, { headers });
+  }),
+  http.get("*/api/curriculum/subjects/:subjectId/chapters/:chapterId/quiz", ({ params }) => {
+    const denied = curriculumAccess(); if (denied) return denied;
+    if (!mockChapter(params.subjectId, params.chapterId)) return apiError(404, "NOT_FOUND", "Curriculum Chapter not found");
+    return HttpResponse.json({ subjectId: params.subjectId, chapterId: params.chapterId, questions: mockCurriculum.questions.map(toCurriculumQuizQuestion) }, { headers });
+  }),
+  http.post("*/api/curriculum/subjects/:subjectId/chapters/:chapterId/questions/:questionId/grade", async ({ params, request }) => {
+    const denied = curriculumAccess(); if (denied) return denied;
+    if (!mockChapter(params.subjectId, params.chapterId)) return apiError(404, "NOT_FOUND", "Curriculum Chapter not found");
+    const question = mockCurriculum.questions.find((q) => q.id === params.questionId);
+    if (!question) return apiError(404, "NOT_FOUND", "Curriculum Question not found");
+    try {
+      const parsed = CurriculumAnswerSubmissionSchema.safeParse(await request.json());
+      if (!parsed.success) return apiError(400, "INVALID_INPUT", "Invalid Curriculum answer");
+      return HttpResponse.json(gradeCurriculumAnswer(question, parsed.data), { headers });
+    } catch { return apiError(400, "INVALID_INPUT", "Answer does not match the question"); }
+  }),
+  http.get("*/api/curriculum/subjects/:subjectId/chapters/:chapterId/blocks/:blockId/assets/:index", () => curriculumAccess() ?? apiError(404, "NOT_FOUND", "Private asset is unavailable in this runtime")),
   http.post("*/api/auth/signup", async ({ request }) => {
     let body: unknown;
     try { body = await request.json(); } catch { return apiError(400, "INVALID_INPUT", "Invalid signup input"); }

@@ -42,6 +42,10 @@ export const CurriculumSourceDocumentSchema = z.strictObject({
 });
 export const CurriculumChapterSchema = z.strictObject({
   id: CurriculumIdSchema, subjectId: CurriculumIdSchema, number: nonempty.optional(), title: nonempty, position,
+  // Explicit Chapter-wide traversal, including interleaved parent/child blocks.
+  // Optional for existing authoring bundles; read APIs require it before serving
+  // a Chapter. Section/block position remains local to its sibling scope.
+  readingOrder: references.optional(),
 });
 export const CurriculumSectionSchema = z.strictObject({
   id: CurriculumIdSchema, subjectId: CurriculumIdSchema, chapterId: CurriculumIdSchema,
@@ -159,6 +163,21 @@ export const CurriculumBundleSchema = z.strictObject({
     if (!doc) issue("Unknown source document", ["sourceBlocks", i, "sourceDocumentId"]);
     else if (e.location.pdfPageEnd > doc.pdfPageCount) issue("Page exceeds source document", ["sourceBlocks", i, "location"]);
     order(`block:${e.sectionId}`, e.position, ["sourceBlocks", i, "position"]);
+  });
+  bundle.chapters.forEach((chapter, i) => {
+    if (!chapter.readingOrder) return;
+    const chapterBlocks = bundle.sourceBlocks.filter((b) => sections.get(b.sectionId)?.chapterId === chapter.id);
+    const expected = new Set(chapterBlocks.map((b) => b.id));
+    if (chapter.readingOrder.length !== expected.size || chapter.readingOrder.some((id) => !expected.has(id))) {
+      issue("Reading order must contain every Chapter block exactly once", ["chapters", i, "readingOrder"]);
+    }
+    const lastPosition = new Map<string, number>();
+    for (const id of chapter.readingOrder) {
+      const block = blocks.get(id);
+      if (!block || !expected.has(id)) continue;
+      if ((lastPosition.get(block.sectionId) ?? -1) >= block.position) issue("Reading order contradicts Section block order", ["chapters", i, "readingOrder"]);
+      lastPosition.set(block.sectionId, block.position);
+    }
   });
   const checkSources = (refs: string[], path: (string | number)[]) => refs.forEach((id, i) => {
     if (!blocks.has(id)) issue("Unknown source block", [...path, i]);
