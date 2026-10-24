@@ -164,7 +164,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      oxlint:
+        specifier: ^1.81.0
+        version: 1.85.0
 
   apps/api:
     dependencies:

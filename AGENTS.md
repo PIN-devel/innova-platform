@@ -19,10 +19,11 @@
 
 | 작업 | 추가 기준 |
 | --- | --- |
-| 문서 작성·이동·명명 | [문서 정책](docs/documentation-policy.md) |
+| 문서 작성·이동·명명·정책 채택 | [문서 정책](docs/documentation-policy.md) |
 | 여러 단계의 조사·구현·검증·전달 절차 설계 | [AI 작업 흐름](docs/ai-workflow.md) |
 | 브랜치·PR·릴리스·정리 | [Git 운영](docs/git-workflow.md) |
 | Linear 조회·생성·갱신·종료 | [Linear 운영](docs/linear-workflow.md) |
+| DB 스키마·migration 변경과 복구 준비 | [API DB 변경 지침](apps/api/docs/database-migrations.md) |
 
 ## Linear 작업 관리
 

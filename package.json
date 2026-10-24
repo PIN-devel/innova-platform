@@ -9,6 +9,9 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm --filter @innova/contracts build && pnpm -r --filter './apps/**' typecheck",
     "test": "pnpm --filter @innova/contracts build && pnpm -r --filter './apps/**' test",
-    "lint": "pnpm --filter @innova/web lint"
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "oxlint": "^1.81.0"
   }
 }
