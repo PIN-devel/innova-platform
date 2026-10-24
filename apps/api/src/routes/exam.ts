@@ -8,12 +8,12 @@ export const examRoutes: FastifyPluginAsync<{ repository: ExamRepository; requir
     reply.header("Cache-Control", "no-store").header("Vary", "Cookie");
   });
   app.addHook("preHandler", requireAuth);
-  app.get("/banks/default", async (_request, reply) => {
+  app.get("/banks/default", async () => {
     const record = await repository.find(DEFAULT_EXAM_BANK_ID);
     if (!record) throw new AppError(404, "NOT_FOUND", "Default exam bank is not seeded");
     return record;
   });
-  app.get<{ Params: { id: string } }>("/banks/:id", async (request, reply) => {
+  app.get<{ Params: { id: string } }>("/banks/:id", async (request) => {
     const record = await repository.find(request.params.id);
     if (!record) throw new AppError(404, "NOT_FOUND", "Exam bank not found");
     return record;
