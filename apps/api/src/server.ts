@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { buildApp } from "./app.js";
 import { createApplicationLogger } from "./logger.js";
+import { registerShutdown } from "./shutdown.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const environment = process.env.NODE_ENV ?? "development";
@@ -19,6 +20,7 @@ logger.info({ event: "server.starting", host, port, environment }, "server start
 
 try {
   const app = buildApp({ logger });
+  registerShutdown(app, logger);
   await app.listen({ port, host });
   logger.info({ event: "server.started", host, port, environment }, "server started");
 } catch (error) {

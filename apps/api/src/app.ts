@@ -3,12 +3,12 @@ import { LogController, type FastifyBaseLogger } from "fastify";
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import { randomUUID } from "node:crypto";
-import { sql } from "drizzle-orm";
 import { AUTH_COOKIE_NAME, createAdminAuthGuard, createApprovedAuthGuard } from "./auth.js";
 import { createDatabase } from "./db/client.js";
 import { createExamRepository, type ExamRepository } from "./db/exam.js";
 import { createUserRepository, type UserRepository } from "./db/users.js";
 import { createApplicationLogger } from "./logger.js";
+import { READINESS_TIMEOUT_MS, runReadinessCheck } from "./readiness.js";
 import { authRoutes } from "./routes/auth.js";
 import { adminUserRoutes } from "./routes/admin-users.js";
 import { examRoutes } from "./routes/exam.js";
@@ -29,6 +29,7 @@ export function buildApp({
   examRepository,
   userRepository,
   readinessCheck,
+  readinessTimeoutMs = READINESS_TIMEOUT_MS,
   curriculumRepository,
   curriculumAssets = createRuntimeCurriculumAssetReader(),
   jwtSecret = process.env.JWT_SECRET,
@@ -36,7 +37,8 @@ export function buildApp({
   logger?: false | FastifyBaseLogger;
   examRepository?: ExamRepository;
   userRepository?: UserRepository;
-  readinessCheck?: () => Promise<void>;
+  readinessCheck?: (signal: AbortSignal) => Promise<unknown>;
+  readinessTimeoutMs?: number;
   curriculumRepository?: CurriculumReadRepository;
   curriculumAssets?: CurriculumAssetReader;
   jwtSecret?: string;
@@ -56,7 +58,7 @@ export function buildApp({
   // always has a DB; avoid a second connection and keep legacy tests DB-free.
   const curriculum = curriculumRepository ?? (db ? createCurriculumReadRepository(db) : undefined);
   const checkReadiness = readinessCheck ?? (db
-    ? async () => { await db.execute(sql`select 1`); }
+    ? async (signal: AbortSignal) => { await db.$client.query("select 1", [], { fetchOptions: { signal } }); }
     : async () => { throw new Error("Database is not configured for readiness checks"); });
 
   app.register(cookie);
@@ -111,10 +113,11 @@ export function buildApp({
   app.get("/health", async () => ({ status: "ok" }));
   app.get("/ready", async (request, reply) => {
     try {
-      await checkReadiness();
+      await runReadinessCheck(checkReadiness, readinessTimeoutMs);
       return { status: "ready" };
     } catch (error) {
-      request.log.error({ event: "app.readiness.failed", err: error }, "readiness check failed");
+      const reason = error instanceof Error && error.name === "TimeoutError" ? "timeout" : "check_failed";
+      request.log.error({ event: "app.readiness.failed", reason }, "readiness check failed");
       return reply.code(503).send({ status: "not_ready" });
     }
   });

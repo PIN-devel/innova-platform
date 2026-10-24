@@ -159,6 +159,8 @@ test("readiness failures are logged but return a safe 503 response", async (t) =
   const readinessLog = readLogs(lines).find((entry) => entry.event === "app.readiness.failed");
   assert.ok(readinessLog);
   assert.equal(readinessLog.reqId, response.headers["x-request-id"]);
+  assert.equal(readinessLog.reason, "check_failed");
+  assert.equal(lines.join("").includes("private database connection marker"), false);
   assert.equal(response.body.includes("private database connection marker"), false);
 });
 

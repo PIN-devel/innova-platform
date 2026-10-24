@@ -56,4 +56,8 @@ curl http://127.0.0.1:3000/ready
 
 `/health`는 DB 연결과 무관한 liveness 확인 경로입니다(Render Health Check Path로 사용할 수 있습니다). `/ready`는 Neon DB에 `SELECT 1`을 실행해 준비 상태를 확인하고, 실패 시 안전한 503 응답을 반환합니다. API 오류의 `X-Request-Id` 응답 헤더와 구조화된 stdout 로그의 `reqId`를 이용해 요청을 추적할 수 있습니다.
 
+`/ready`는 배포 후 수동 확인·장애 진단용으로 사용하며 최대 3초 기다린 뒤 실패·시간 초과에 `503 {"status":"not_ready"}`를 반환합니다. 내부 재시도는 없고 시간 초과 시 Neon HTTP 요청에 취소 신호를 전달합니다. Neon이 유휴 상태에서 깨어나는 동안 한 번 실패하면 잠시 후 다시 확인하세요. Render 검사 경로는 `/health` 유지가 권장되며 이 코드 변경으로 운영 설정을 바꾸지 않습니다. 준비 실패는 `app.readiness.failed`의 `reason`(`check_failed`/`timeout`)과 `reqId`로 확인하며 DB 오류 원문은 로그에 남기지 않습니다.
+
+서버는 `SIGTERM`·`SIGINT`에서 Fastify `app.close()`를 한 번 호출해 새 연결 수락을 중단하고 진행 중 요청을 최대 10초 기다립니다. 정상 종료 코드는 0, 종료 실패·시간 초과는 1입니다. `server.shutdown.started`·`completed`·`failed`·`timeout` 이벤트와 `signal`·`durationMs`를 Render Logs에서 확인하세요(`started`에는 `durationMs`가 없습니다). 10초를 넘는 요청은 중단될 수 있습니다. 두 제한 시간은 코드 상수로 관리하며 별도 환경 변수나 모니터링 서비스는 필요하지 않습니다. 실제 Render 종료 대기는 앱의 10초보다 길어야 하며 적용된 설정·배포 확인은 별도로 기록합니다.
+
 Fastify 공식 [Getting Started](https://fastify.dev/docs/latest/Guides/Getting-Started/), [TypeScript](https://fastify.dev/docs/latest/Reference/TypeScript/), [Testing](https://fastify.dev/docs/latest/Guides/Testing/) 가이드를 참고했습니다.
