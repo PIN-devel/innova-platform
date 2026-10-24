@@ -4,6 +4,8 @@ Fastify, TypeScript, Drizzle ORM, Neon PostgreSQL API입니다. Exam Drill 은�
 
 공통 실행·검증은 [루트 README](../../README.md), 변경 지침은 [API AGENTS](./AGENTS.md)를 따른다.
 
+스키마 변경·migration 실행 전에는 [DB 변경과 복구 준비](docs/database-migrations.md)에 따라 로컬 `.env`의 dev 연결 대상에 대한 사용자 확인과 변경별 복구 계획을 준비한다.
+
 ## 실행
 
 ```sh
