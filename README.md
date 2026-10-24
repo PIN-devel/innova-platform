@@ -46,6 +46,8 @@ pnpm test
 pnpm lint
 ```
 
-`pnpm test`는 Contracts 빌드 후 API와 Web 테스트를 모두 실행합니다. API 테스트는 주입한 저장소, Web 테스트는 QueryClient·MSW·서버 렌더링을 사용하며 실제 DB나 브라우저를 필요로 하지 않습니다. `pnpm lint`의 현재 적용 범위는 Web입니다.
+`pnpm test`는 Contracts 빌드 후 API와 Web 테스트를 모두 실행합니다. API 테스트는 주입한 저장소, Web 테스트는 QueryClient·MSW·서버 렌더링을 사용하며 실제 DB나 브라우저를 필요로 하지 않습니다.
+
+`pnpm lint`는 Contracts·API·Web을 모두 검사합니다. API의 `src`·`test`·`drizzle.config.ts`와 Contracts의 `src`는 루트 Oxlint 설정으로 기본 오류를 검사하고, Web은 기존 React·TanStack Query·FSD 설정을 사용합니다. API·Contracts의 generated/migration/build 산출물은 검사 대상에 포함하지 않습니다. 패키지별로는 `pnpm --filter @innova/api lint`, `pnpm --filter @innova/contracts lint`, `pnpm --filter @innova/web lint`를 실행할 수 있습니다.
 
 `apps/web`과 `apps/api`는 `packages/contracts`의 `@innova/contracts`를 공유합니다. Exam Drill 은행의 JSON 검증도 이 패키지의 Zod 스키마를 사용합니다.

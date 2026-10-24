@@ -4,7 +4,7 @@ import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { AUTH_COOKIE_NAME, createAdminAuthGuard, createApprovedAuthGuard, createAuthGuard } from "./auth.js";
+import { AUTH_COOKIE_NAME, createAdminAuthGuard, createApprovedAuthGuard } from "./auth.js";
 import { createDatabase } from "./db/client.js";
 import { createExamRepository, type ExamRepository } from "./db/exam.js";
 import { createUserRepository, type UserRepository } from "./db/users.js";
