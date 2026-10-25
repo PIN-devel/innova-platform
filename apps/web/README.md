@@ -5,6 +5,8 @@ React 웹 앱이다. 명령은 저장소 루트에서 실행한다.
 - `pnpm dev:web`: API 없이 MSW 모드, `http://localhost:5173`.
 - `pnpm dev`: API와 프록시 모드 웹을 함께 실행, `http://localhost:5174`.
 
+PIN-52 MOTIFIN 시안은 `pnpm dev:web` 실행 후 `http://localhost:5173/__wireframes/motifin/review`에서 확인한다. 합성 자료와 개발 모드 전용 경로를 사용한다. 화면·시나리오·주입 구조는 [와이어프레임 안내](./docs/motifin-wireframe.md)를 참고한다.
+
 설치·계약 빌드·공통 검증은 [루트 README](../../README.md)를 따른다. API 연결 환경 설정은 [API README](../api/README.md)와 해당 앱의 `.env.example`을 참고한다.
 
 | 필요한 작업 | 기준 |

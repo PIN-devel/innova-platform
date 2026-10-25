@@ -36,6 +36,11 @@ export const createAppRoutes = (client: QueryClient): RouteObject[] => ([
           lazy: async () => ({ Component: (await import("@/pages/exam/exam-page")).default }),
         }] },
       ] },
+      ...(import.meta.env.DEV ? [{
+        id: "motifin-wireframe", path: "__wireframes/motifin/:screen?",
+        ErrorBoundary: StandardContentErrorBoundary,
+        lazy: () => import("./motifin-wireframe/entry"),
+      }] : []),
     ],
   },
 ]);

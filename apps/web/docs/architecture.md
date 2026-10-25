@@ -152,7 +152,17 @@ PIN-20 브라우저 QA는 합성 MSW 계정/문항으로 수행했다. PIN-29는
 
 ## 참고
 
+### MOTIFIN 개발 전용 와이어프레임
+
+자금 일정은 source의 `calendar(monthId)`와 일정/보존 금액 변경 액션을 주입한다. `calendar-presentation.ts`가 합성 잔액 전망·동일 날짜 집계·반복 전개와 메모리 상태를 소유하며 `UpcomingView`·`CalendarEventEditor`는 데이터와 콜백만 사용한다. 카테고리 삭제는 연결된 배분만 미분류로 이동하며 원거래와 다른 배분은 보존한다.
+
+PIN-52의 `/__wireframes/motifin/:screen?`은 `import.meta.env.DEV`일 때만 등록하고 entry를 lazy import한다. `app/motifin-wireframe`이 합성 source/actions를 주입하며 `pages/motifin`이 URL·화면 상태를 조정한다. 화면 read model은 `entities/cash-flow`, 액션 인터페이스와 가져오기 시연 상태 전이는 `features/cash-flow-workspace`, 데이터·콜백만 받는 UI는 `pages/motifin/ui`가 소유한다. 월간 리뷰는 source의 `review(monthId)`로 결론·증감·흐름 구성·원인과 이동 대상을 받으며, 합성 시안의 구성은 `app/motifin-wireframe/review-presentation.ts`에 한정한다. HTTP·실제 금융 기능·Query server-state·영구 저장은 추가하지 않는다. 공통 Shell 아래 entry가 단일 main을 소유하며 기존 인증·Exam·관리자 경로는 유지한다. 교체 지점과 제한은 [시안 안내](./motifin-wireframe.md)를 참고한다.
+
 Router/Query는 PIN-20에서, Oxlint는 PIN-29에서 설치 타입/소스와 공식 문서를 확인했다.
+
+MOTIFIN 가져오기는 월을 입력받지 않고 `previewImport(fileIds)`와 주입된 액션으로 합성 파일들을 내부 월별로 배치한다. 화면에는 정상 자료의 의무 미리보기를 두지 않고 예외·충돌만 확인한다. `import-flow`는 파일 선택·예외 처리·완료와 암호 입력 여부만 조정하며 실제 파일/암호를 보관하지 않는다. PDF 암호 저장 상태, 카드 거래 보정·가져온 값 복원·재업로드 보정 유지는 개발용 메모리 어댑터에서 시연한다. 실제 암호화·DB·소유권/비동기 계약은 PIN-39/40의 후속 범위다.
+
+소비 분석은 `source.spending(monthId, category)`가 제공하는 합성 read model과 주입된 분류/배분/카테고리 액션을 사용한다. 개발용 `spending-presentation.ts`가 규모·전월 변화·반복·미분류 및 상세의 빈도·평균·환불·월별 추이·가맹점/거래를 구성한다. `entities/cash-flow/classification.ts`는 소비 성격과 배분을 구분해 카테고리 미확정이 총 소비 누락으로 이어지지 않도록 한다. UI는 `focus`/`sort`/`category` 탐색과 배분 입력을 담당하며 실제 자동 분류/AI/서버 계약은 추가하지 않는다.
 
 - [TanStack QueryClient](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient)
 - [React Router middleware](https://reactrouter.com/how-to/middleware)
