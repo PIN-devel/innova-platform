@@ -58,3 +58,33 @@ Raw 추출 필드·비즈니스·보정/이력·일정/이력은 DB에 보관하
 이전 작업에서 수행한 Web 테스트 77개, 공용 typecheck/lint/build와 합성 브라우저 검증의 통과 기록을 유지한다. 이번 커밋 단계에서는 소스를 변경하거나 검증을 재실행하지 않고 staged diff·비밀 값/임시 산출물 제외·파일 내용 보존을 검사했다. `.env`·실제 금융 파일·키·임시 QA 산출물은 커밋하지 않는다.
 
 이 체크포인트는 공통 작업/검수의 시작 기준이며 코드 리뷰·사용자 인수·운영 migration/배포의 승인이 아니다. 위 출시 보류 조건과 PIN-54/64의 In Progress 상태를 유지한다. 로컬 Git 이력 보호이며 원격 백업은 아직 수행하지 않았다.
+
+## 출시 전 코드 검수 — 2026-10-28
+
+`feature/pin-65-platform-buttons`의 `12b03571`에서 기존 금융 구현·버튼 커밋을 보존한 `fix/pin-64-release-audit`를 만들고 `origin/develop`의 `af637b5e`를 merge했다. 이번 검수의 수정은 다음과 같다.
+
+- 같은 초에 기록된 은행 거래가 역순으로 인쇄되면 PDF 추출 단계에서 잘못 거부되거나 월간 리뷰에서 잔액 충돌로 표시되던 문제를 수정했다. 잔액으로 검증된 방향을 유지하며 Raw 행 순서·원천 값은 변경하지 않는다. API 계산과 MSW에도 같은 회귀를 추가했다.
+- 로그인 직후 PublicOnly의 관찰 경로가 `returnTo`를 무시해 Exam으로 보내던 문제를 수정했다. 화면 가드도 기존 안전 경로 검사와 승인 정책을 사용하며 금융 화면·선택 월로 복귀한다.
+- 정상 응답을 캐시에 주입한 월간 리뷰·분석·일정 렌더링 테스트와 은행 PDF.js 추출 텍스트의 순방향/역방향·잔액/합계 오류 테스트를 추가했다. 후자는 합성 텍스트로 parser를 검증하며 실제 PDF 디코딩·Android worker 검증을 대체하지 않는다.
+
+### 반복 가능한 회귀 범위
+
+루트 `pnpm test`가 Contracts를 빌드한 뒤 아래 API/Web 테스트를 함께 실행한다. 핵심 계산은 공유 Contracts 모델을 API 테스트에서 직접 검증하며 MSW/Query command 테스트와 실제 SQL/PGlite 테스트를 구분한다. 새 CI 자동 실행 워크플로를 추가한 것은 아니다.
+
+| 핵심 기능 | 자동 검증의 진입점과 범위 |
+| --- | --- |
+| 파일 추출·적재 | API `test/finance-raw.test.ts`, Web `test/finance-raw.test.mjs`, `test/finance-bank-parser.test.mjs`: 추출 필드·검산·암호화·owner·중복 재시도·늦은 세션 결과 차단 |
+| 비즈니스 반영 | API `test/finance-business-normalize.test.ts`, `test/finance-business.test.ts`: 은행/카드 의미·청구/출금 연결·중복/정정 보류·Raw 추적·원자적 저장 |
+| 분류·보정·분할 | API/Web `test/finance-classification.test.*`: 배분 합계·환불 한도·분류 이동·수정 이력·revision/operation 충돌·확정 저장 후 재조회 실패 |
+| 월간 리뷰·분석 | API/Web `test/finance-review.test.*`, `test/finance-analysis.test.*`: 잔액 연결·현금/소비 분리·부분 월·결측·0분모·보정 반영·근거·세션 격리 |
+| 자금 일정 | API/Web `test/finance-schedule.test.*`: 월말/회차 이동·이후 변경/중단·실제 연결·중복 연결 방지·예정/실제 금액 분리 |
+| PDF 선택 암호 | API/Web `test/finance-pdf-password.test.*`: owner/시도/만료·재인증·키/nonce·삭제 경합·카드 worker 암호 미전달·평문 cache 부재 |
+| 복구·기존 도메인 | API `test/finance-recovery.test.ts`, Web `test/auth-routing.test.mjs`, `test/router-data.test.mjs`, `test/app-shell.test.mjs` 및 기존 Auth/Exam/Curriculum 테스트 |
+
+### 화면 검수와 남은 조건
+
+합성 전용 MSW 브라우저에서 금융 직접 진입→로그인→선택 월 복귀, 2개월 XLSX와 손상 파일의 다중 가져오기, 동일 파일 재시도·중복 제외, 관측 소비/부분 자료 표시, 카테고리 추가·분할 합계 오류 차단·저장/readback, 반복 계획 등록·2월 말일 제한·회차 건너뛰기를 확인했다. 실제 API/Neon readback을 새로 수행한 결과가 아니다.
+
+달력은 320/390/1280 CSS px에서 문서 가로 넘침이 없고 날짜 버튼 최소 높이 44px·최소 너비 44.28px 이상이었다. 390px 분석 화면과 분류 시트의 버튼·링크에서 44px 미만 대상은 없었다(숨겨진 skip link 제외). 이 결과는 해당 화면/상태의 측정이며 PIN-65의 모든 화면·입력 방식 또는 실제 Android 인수를 완료한 의미가 아니다.
+
+최종 공용 검증 결과는 PIN-64와 전달 PR에 기록한다. 로컬 실행 Node.js는 `24.21.0`이며 원격 develop에서 인수한 `.node-version`의 `24.22.1` 런타임 검증과 구분한다. 이번 검수에서 DB schema/migration·운영 환경·키는 변경하지 않았다. 기존 신규 migration `0003`–`0007`의 운영 적용, 실제 Android/사용자 인수, 금융 export/delete와 백업 보존·복원 후 재삭제 정책이 남아 있어 **운영 출시 보류**를 유지한다.
