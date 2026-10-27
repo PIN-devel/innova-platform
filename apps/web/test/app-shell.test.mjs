@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { createServer } from "vite";
+import {buildFinanceReview,buildFinanceAnalysis,buildSchedule,emptySchedule,classificationView,emptyClassification} from '@innova/contracts';
 
 let vite;
 let createAppRoutes;
@@ -200,5 +201,20 @@ test('MOTIFIN live routes keep one themed main and three product tabs with the s
   assert.match(html,/class="motifin mf-main mf-live"/);
   assert.match(html,/aria-label="MOTIFIN 주요 탐색"/);
   for(const target of ['review','analysis','schedule'])assert.match(html,new RegExp(`href="/motifin/${target}\\?month=2026-02"`));
+ }
+});
+
+test('MOTIFIN data-backed review, analysis and schedule render their main content',async()=>{
+ const user={id:'1',email:'synthetic@example.invalid',role:'member',approvalStatus:'approved'},month='2026-02',now='2026-10-27T00:00:00Z';
+ const classification=classificationView(emptyClassification(),[]),analysis=buildFinanceAnalysis(month,classification,now);
+ const cases=[
+  ['review',buildFinanceReview(month,{documents:[],settlements:[]},[],classification,now),'한 달의 이야기로'],
+  ['analysis',analysis,'확보한 거래의 소비 순액'],
+  ['schedule',buildSchedule(month,emptySchedule(),[],[],analysis,0,now),'한 달의 일정'],
+ ];
+ for(const [page,view,text] of cases){
+  const html=await renderRoute(`/motifin/${page}?month=${month}`,user,undefined,undefined,client=>client.setQueryData([`finance-${page}`,user.id,0,month],view));
+  assert.ok(html.includes(text),page);
+  assert.doesNotMatch(html,/페이지를 표시하지 못했습니다/);
  }
 });
