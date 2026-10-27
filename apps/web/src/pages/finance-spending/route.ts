@@ -1,0 +1,11 @@
+import type {QueryClient} from '@tanstack/react-query';
+import {data,type ActionFunctionArgs,type LoaderFunctionArgs} from 'react-router';
+import {classificationCommandSchema} from '@innova/contracts';
+import {requireAccess} from '@/features/auth/route-session';
+import {assertSessionVersion} from '@/entities/auth/session-version';
+import {classificationQuery} from '@/entities/finance-classification/queries';
+import {saveClassification} from '@/features/finance-classification/change-classification';
+import {loadRouteQuery} from '@/shared/lib/router-query/route-query';
+import {ApiError} from '@/shared/api/client';
+export const spendingLoader=(client:QueryClient)=>async({request,context}:LoaderFunctionArgs)=>{const {user,epoch}=requireAccess(context,client,request,'exam');await loadRouteQuery(client,classificationQuery(client,user!.id,epoch),request,()=>assertSessionVersion(client,epoch));return null;};
+export const spendingAction=(client:QueryClient)=>async({request,context}:ActionFunctionArgs)=>{const {user,epoch}=requireAccess(context,client,request,'exam');try{const form=await request.formData(),command=classificationCommandSchema.parse(JSON.parse(String(form.get('command'))));return await saveClassification(client,user!.id,epoch,command,request.signal);}catch(error){assertSessionVersion(client,epoch);request.signal.throwIfAborted();const conflict=error instanceof ApiError&&error.code==='CONFLICT';return data({error:conflict?'다른 변경이 먼저 저장되었습니다. 최신 내역을 확인한 뒤 다시 수정해 주세요.':'입력·배분 합계·원천 확인을 다시 점검해 주세요.',conflict},{status:conflict?409:400});}};

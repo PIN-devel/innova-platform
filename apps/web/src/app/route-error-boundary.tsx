@@ -3,6 +3,7 @@ import { useRouteRefresh } from "@/shared/lib/router-query/use-route-refresh";
 import { Button } from "@/shared/ui/button";
 import { ErrorState } from "@/shared/ui/error-state";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
+import {MotifinContentLayout} from "./motifin-content-layout";
 import RootLayout from "./root-layout";
 import { ExamContentLayout, StandardContentLayout } from "./content-layouts";
 
@@ -41,3 +42,5 @@ export function ExamContentErrorBoundary() {
 export function RootRouteErrorBoundary() {
   return <RootLayout><StandardContentErrorBoundary /></RootLayout>;
 }
+
+export function MotifinContentErrorBoundary(){return <MotifinContentLayout><RouteErrorBoundary/></MotifinContentLayout>;}

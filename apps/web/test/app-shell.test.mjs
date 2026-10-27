@@ -162,7 +162,7 @@ test("auth check and nested route errors render within the common shell", async 
   assert.equal((failed.match(/<main\b/g) ?? []).length, 1);
 
   const examFailed = await renderRoute("/exam", user, undefined, (routes) => {
-    routes[0].children[1].id = "exam-layout";
+    assert.ok(routes[0].children.some(route => route.id === "exam-layout"));
     return { loaderData: {}, errors: { "exam-layout": new Error("exam failed") } };
   });
   assert.match(examFailed, /페이지를 표시하지 못했습니다/);
@@ -190,4 +190,15 @@ test("rejected admin responses hide cached pending users inside the shell", asyn
   assert.match(html, /Innova Platform/);
   assert.match(html, /승인 대기 사용자를 불러오지 못했습니다/);
   assert.doesNotMatch(html, /private@example.com/);
+});
+
+test('MOTIFIN live routes keep one themed main and three product tabs with the selected month',async()=>{
+ const user={id:'1',email:'synthetic@example.invalid',role:'member',approvalStatus:'approved'};
+ for(const path of ['review','analysis','spending','schedule','import','security']){
+  const html=await renderRoute(`/motifin/${path}?month=2026-02`,user);
+  assert.equal((html.match(/<main\b/g)??[]).length,1,path);
+  assert.match(html,/class="motifin mf-main mf-live"/);
+  assert.match(html,/aria-label="MOTIFIN 주요 탐색"/);
+  for(const target of ['review','analysis','schedule'])assert.match(html,new RegExp(`href="/motifin/${target}\\?month=2026-02"`));
+ }
 });

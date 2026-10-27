@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {setupServer} from 'msw/node';
+import {createServer} from 'vite';
+import {createFinanceRawHandlers} from '../src/mocks/finance-raw-handlers.ts';
+import {cardSource} from '../../api/test/fixtures/finance-raw.ts';
+test('classification mocks preserve saved categories, split sums, edit history and source reimport',async t=>{
+ let user={id:crypto.randomUUID(),email:'synthetic@example.invalid',role:'member',approvalStatus:'approved'};const server=setupServer(...createFinanceRawHandlers(()=>user));server.listen({onUnhandledRequest:'error'});t.after(()=>server.close());
+ const headers=()=>({'x-expected-user':user.id,'x-finance-request':'1',origin:'http://localhost','content-type':'application/json'}),call=(path,body)=>fetch('http://localhost/api/finance/'+path,{headers:headers(),method:body?'POST':'GET',...(body?{body:JSON.stringify(body)}:{})});
+ const raw=await (await call('raw/imports',{batchId:crypto.randomUUID(),document:cardSource()})).json();await call('business/process',{rawFileId:raw.file.id});let view=await(await call('business/classification')).json();assert.equal(view.summary.total,'600');
+ const category=crypto.randomUUID(),make=(change)=>({expectedRevision:view.revision,operationId:crypto.randomUUID(),change}),add=make({type:'category-add',id:category,name:'식비'});view=await(await call('business/classification',add)).json();
+ const edit={...view.transactions[0].effective,allocations:[{categoryId:category,amount:'300'},{categoryId:'unclassified',amount:'300'}],note:'합성 분류 보존'};
+ const cmd=make({type:'edit',edit});view=await(await call('business/classification',cmd)).json();assert.equal(view.revision,2);assert.equal(view.summary.transactionCount,1);assert.equal(view.summary.allocations.length,2);assert.equal((await call('business/classification',cmd)).status,200);
+ assert.equal((await call('business/classification',{...cmd,operationId:crypto.randomUUID()})).status,409);
+ await call('business/process',{rawFileId:raw.file.id});assert.equal((await(await call('business/classification')).json()).transactions[0].effective.note,'합성 분류 보존');
+ const reset=make({type:'reset',eventId:edit.eventId});view=await(await call('business/classification',reset)).json();assert.equal(view.transactions[0].userEdited,false);view=await(await call('business/classification',make({type:'restore',eventId:edit.eventId,revision:2}))).json();assert.equal(view.transactions[0].effective.note,'합성 분류 보존');
+ user={...user,id:crypto.randomUUID(),role:'admin'};assert.equal((await(await call('business/classification')).json()).transactions.length,0);assert.equal((await call('business/classification',{...cmd,expectedRevision:0})).status,400);user={...user,approvalStatus:'pending'};assert.equal((await call('business/classification')).status,403);
+});
+test('classification command keeps committed cache on readback failure and fences a late session response',async t=>{
+ const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'});t.after(()=>vite.close());const {QueryClient}=await import('@tanstack/react-query');const client=new QueryClient();t.after(()=>client.clear());const {saveClassification}=await vite.ssrLoadModule('/src/features/finance-classification/change-classification.ts'),{classificationKeys}=await vite.ssrLoadModule('/src/entities/finance-classification/queries.ts'),{clearProtectedQueries,isProtectedQueryKey}=await vite.ssrLoadModule('/src/features/auth/clear-protected-queries.ts');
+ const owner=crypto.randomUUID(),key=classificationKeys.workspace(owner,0),view={revision:1,updatedAt:null,categories:[{id:'unclassified',name:'미분류'}],transactions:[],history:[],summary:{total:'0',transactionCount:0,excludedCount:0,allocations:[]}},command={expectedRevision:0,operationId:crypto.randomUUID(),change:{type:'category-add',id:crypto.randomUUID(),name:'합성'}};
+ const native=globalThis.fetch;t.after(()=>globalThis.fetch=native);let calls=0;globalThis.fetch=async()=>{if(calls++)throw Error('synthetic readback failure');return new Response(JSON.stringify(view),{headers:{'content-type':'application/json'}});};assert.deepEqual(await saveClassification(client,owner,0,command,new AbortController().signal),{verified:false,revision:1});assert.equal(client.getQueryData(key).revision,1);assert.equal(isProtectedQueryKey(key),true);
+ let release,started;const pending=new Promise(r=>started=r);globalThis.fetch=()=>{started();return new Promise(r=>release=r);};const action=saveClassification(client,owner,0,command,new AbortController().signal);await pending;clearProtectedQueries(client);release(new Response(JSON.stringify(view),{headers:{'content-type':'application/json'}}));await assert.rejects(action);assert.equal(client.getQueryData(key),undefined);
+});

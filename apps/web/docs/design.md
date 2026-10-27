@@ -46,6 +46,6 @@
 
 기능별 고유 레이아웃과 학습 상태 표현은 허용하되, 색상·텍스트·테두리·포커스의 공통 의미는 semantic token을 따른다. 기능별 상태가 공통 역할에 없는 색을 필요로 하면 해당 의미에 맞는 semantic token을 사용하고, 새 token은 반복되는 공통 역할이 확인될 때만 `styles.css`에 정의한다. 현재는 light theme만 제공하며 테마 전환은 이 문서의 범위 밖이다.
 
-## MOTIFIN 시안의 제품 테마
+## MOTIFIN 제품 테마
 
-PIN-52 사용자 승인 범위의 개발 전용 시안은 `.motifin` 내부에서 기존 semantic CSS 변수를 Mint/Navy 계열로 매핑한다. 전역 Innova 색상과 공통 컴포넌트 기본값은 유지한다. 원본 자산은 복제하지 않으며 시스템 글꼴을 사용한다. 모바일 버튼은 해당 영역에서 44px 이상의 터치 높이를 적용한다. 화면 크기는 갤럭시 S25 FE를 참고하며 브라우저 호환성 작업은 포함하지 않는다. 근거·검토 상태와 공통화 후보는 [시안 안내](./motifin-wireframe.md)에 기록한다.
+PIN-52 승인 디자인을 실제 `/motifin/*` 제품 화면에 적용한다. `src/shared/ui/motifin/motifin.css`가 `.motifin` 안에서 semantic CSS 변수를 Mint/Navy 계열로 매핑하며, 제품 헤더·카드·시트는 `presentation.tsx`, 단일 main과 하단 3탭은 `app/motifin-content-layout.tsx`가 소유한다. 전역 Innova 색상과 공통 컴포넌트 기본값은 유지한다. 제품 본문은 최대 480px 가용 너비, 터치 대상은 44px 이상이며 safe-area와 하단 탐색 여백을 확보한다. 원본 자산을 복제하지 않고 시스템 글꼴을 사용한다. 화면 크기는 갤럭시 S25 FE를 참고한다. 디자인 결정과 실제 데이터에 따른 표현 차이는 [제품 적용 안내](./motifin-wireframe.md)를 따른다.
