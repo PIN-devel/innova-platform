@@ -9,8 +9,8 @@ const COOKIE_MAX_AGE_SECONDS = 15 * 60;
 
 declare module "@fastify/jwt" {
   interface FastifyJWT {
-    payload: { sub: string };
-    user: { sub: string };
+    payload: { sub: string; jti?: string; auth_time?: number };
+    user: { sub: string; jti?: string; auth_time?: number };
   }
 }
 

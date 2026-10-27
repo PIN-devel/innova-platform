@@ -4,9 +4,13 @@ Fastify, TypeScript, Drizzle ORM, Neon PostgreSQL API입니다. Exam Drill 은�
 
 공통 실행·검증은 [루트 README](../../README.md), 변경 지침은 [API AGENTS](./AGENTS.md)를 따른다.
 
+Personal Finance의 구현 전 계약·소유권·PDF 암호·원천/보정 경계는 [아키텍처 검토 초안](docs/personal-finance-architecture.md)을 참고한다. 현행 API 구현이나 보안 검증 완료를 뜻하지 않는다.
+
 스키마 변경·migration 실행 전에는 [DB 변경과 복구 준비](docs/database-migrations.md)에 따라 로컬 `.env`의 dev 연결 대상에 대한 사용자 확인과 변경별 복구 계획을 준비한다.
 
 ## 실행
+
+MOTIFIN 파일 Raw 적재의 스키마·API·실행·보호 경계는 [Raw 적재 안내](docs/finance-raw-ingestion.md)를 따른다. 은행 입출금·카드 이용/청구 해석과 충돌 보류는 [비즈니스 반영](docs/finance-business-ingestion.md)을 참고한다.
 
 ```sh
 pnpm install
@@ -61,3 +65,10 @@ curl http://127.0.0.1:3000/ready
 서버는 `SIGTERM`·`SIGINT`에서 Fastify `app.close()`를 한 번 호출해 새 연결 수락을 중단하고 진행 중 요청을 최대 10초 기다립니다. 정상 종료 코드는 0, 종료 실패·시간 초과는 1입니다. `server.shutdown.started`·`completed`·`failed`·`timeout` 이벤트와 `signal`·`durationMs`를 Render Logs에서 확인하세요(`started`에는 `durationMs`가 없습니다). 10초를 넘는 요청은 중단될 수 있습니다. 두 제한 시간은 코드 상수로 관리하며 별도 환경 변수나 모니터링 서비스는 필요하지 않습니다. 실제 Render 종료 대기는 앱의 10초보다 길어야 하며 적용된 설정·배포 확인은 별도로 기록합니다.
 
 Fastify 공식 [Getting Started](https://fastify.dev/docs/latest/Guides/Getting-Started/), [TypeScript](https://fastify.dev/docs/latest/Reference/TypeScript/), [Testing](https://fastify.dev/docs/latest/Guides/Testing/) 가이드를 참고했습니다.
+- [카드 소비 분류·보정](docs/finance-classification.md): 사용자 카테고리·금액 분할·보정/복원 이력, 원천 보존과 revision 경합
+- [월간 리뷰·계좌 현금 흐름](docs/finance-monthly-review.md): 월 경계·자료 coverage·관측 소비·현금 이동·근거 read model
+- [관측 소비 분석·월별 비교](docs/finance-spending-analysis.md): 배분/평균·비율의 분모, 관측 추이·원거래 탐색
+- [자금 일정·이번 달 발견](docs/finance-schedule.md): 반복 버전·회차 예외·원천 연결·예정/실제 분리
+- [PDF 암호 선택 저장·재사용](docs/finance-pdf-password.md): 독립 키·재인증/단기 시도·nonce 예약·삭제/업로드 경합·회전 경계
+
+- [MOTIFIN 출시 검증·운영 전환](docs/finance-release.md): 합성 검증 범위, 실제 Android·개인정보 생애주기·운영 적용의 잔여 조건과 복구 순서
