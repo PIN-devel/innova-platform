@@ -8,7 +8,13 @@ const sum=(values:string[])=>values.reduce((s,v)=>s+BigInt(v),0n).toString();
 export function buildFinanceReview(month:string,list:BusinessList,bankDetails:BusinessDetail[],classification:ClassificationView,computedAt:string):FinanceReview {
  reviewMonthSchema.parse(month);
  const banks=bankDetails.filter(d=>d.document.state==='accepted'&&d.document.kind==='kb-bank-pdf');
- const allBank=banks.flatMap(d=>d.events.filter(e=>e.kind==='bank-cash').map(event=>({documentId:d.document.id,event}))).sort((a,b)=>(a.event.occurredAt??a.event.occurredOn??'').localeCompare(b.event.occurredAt??b.event.occurredOn??'')||a.event.rawSequence-b.event.rawSequence);
+ const allBank=banks.flatMap(d=>{
+  const rows=d.events.filter(e=>e.kind==='bank-cash');
+  // Printed row order may be descending, including rows in the same second.
+  // Keep the balance-verified direction before the stable timestamp merge.
+  const ordered=[rows,[...rows].reverse()].find(events=>events.every((e,i)=>i===0||(events[i-1]!.occurredAt!<=e.occurredAt!&&events[i-1]!.balance!==null&&e.inflow!==null&&e.outflow!==null&&e.balance!==null&&BigInt(events[i-1]!.balance!)+BigInt(e.inflow)-BigInt(e.outflow)===BigInt(e.balance))))??rows;
+  return ordered.map(event=>({documentId:d.document.id,event}));
+ }).sort((a,b)=>(a.event.occurredAt??a.event.occurredOn??'').localeCompare(b.event.occurredAt??b.event.occurredOn??''));
  const summary=(selected:string):FinanceReview['current']=>{
   const {start,end}=bounds(selected),documents=banks.filter(d=>d.document.period.start&&d.document.period.end&&d.document.period.start<=end&&d.document.period.end>=start);
   const rows=allBank.filter(r=>r.event.occurredOn&&r.event.occurredOn>=start&&r.event.occurredOn<=end);

@@ -118,9 +118,8 @@ async function bank(bytes: ArrayBuffer, password: string, signal?: AbortSignal,o
     if(!rows.length) throw Error('empty-document');
     const total=(i:number)=>rows.reduce((sum,r)=>sum+integer(r.cells[i].value??''),0n);
     for(const [key,col] of [['총 입금금액',4],['총 출금금액',3]] as const) if(integer(metadata.find(m=>m.key===key)?.value??'')!==total(col)) throw Error('bank-total-mismatch');
-    const ascending=rows.length<2||norm(rows[0].cells[0].value??'')<=norm(rows.at(-1)!.cells[0].value??'');
-    const ordered=ascending?rows:[...rows].reverse();
-    for(let i=1;i<ordered.length;i++) if(integer(ordered[i-1].cells[5].value??'')+integer(ordered[i].cells[4].value??'')-integer(ordered[i].cells[3].value??'')!==integer(ordered[i].cells[5].value??'')) throw Error('bank-balance-mismatch');
+    const ordered=[rows,[...rows].reverse()].find(candidate=>candidate.every((row,i)=>i===0||norm(candidate[i-1].cells[0].value??'')<=norm(row.cells[0].value??'')&&integer(candidate[i-1].cells[5].value??'')+integer(row.cells[4].value??'')-integer(row.cells[3].value??'')===integer(row.cells[5].value??'')));
+    if(!ordered) throw Error('bank-balance-mismatch');
     return {kind:'kb-bank-pdf',rows,metadata};
   } finally { signal?.removeEventListener('abort',abort); await task.destroy().catch(()=>{}); }
 }

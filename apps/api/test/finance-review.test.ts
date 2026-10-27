@@ -9,6 +9,18 @@ import type {FinanceBusinessRepository} from '../src/db/finance-business.js';
 import type {FinanceClassificationRepository} from '../src/db/finance-classification.js';
 function data(){const bank=normalizeRaw(readback(bankSource()),v=>JSON.stringify(v)),card=normalizeRaw(readback(cardSource()),v=>JSON.stringify(v));return {bank,card,list:{documents:[bank.document,card.document],settlements:[]} satisfies BusinessList,classification:classificationView(emptyClassification(),[card])};}
 const when='2026-10-26T00:00:00.000Z';
+test('reverse-printed bank rows sharing a timestamp retain their verified balance order in monthly review',()=>{
+ const raw=bankSource({reverse:true});
+ for(const row of raw.rows)row.cells[0]!.value='2026.01.10 09:00:00';
+ const bank=normalizeRaw(readback(raw),v=>JSON.stringify(v));
+ assert.equal(bank.document.state,'accepted');
+ const result=buildFinanceReview('2026-01',{documents:[bank.document],settlements:[]},[bank],classificationView(emptyClassification(),[]),when);
+ assert.equal(result.current.bank.state,'reported-month');
+ assert.equal(result.current.bank.opening,'1000');
+ assert.equal(result.current.bank.closing,'2500');
+ assert.equal(result.current.bank.change,'1500');
+ assert.deepEqual(result.bankEvidence.map(r=>r.event.balance),['4000','3000','2500']);
+});
 test('monthly review separates salary, bank movement, card consumption and source evidence without double counting',()=>{const {bank,card,list,classification}=data();const result=buildFinanceReview('2026-01',list,[bank],classification,when);assert.equal(result.current.bank.state,'reported-month');assert.equal(result.current.bank.opening,'1000');assert.equal(result.current.bank.inflow,'3000');assert.equal(result.current.bank.outflow,'1500');assert.equal(result.current.bank.closing,'2500');assert.equal(result.current.bank.change,'1500');assert.equal(result.current.card.observedTotal,'600');assert.equal(result.current.bank.flows.find(f=>f.id==='out-card')!.amount,'1000');assert.equal(result.current.bank.flows.find(f=>f.id==='out-transfer')!.amount,'500');assert.equal(result.current.card.coverage,'unknown');assert.equal(result.previous.card.observedTotal,null);assert.equal(result.observedDifference,null);assert.equal(result.bankEvidence.length,3);assert.ok(result.cardEvidence.every(t=>t.documentId===card.document.id));});
 test('first use, bank only, card only and partial periods retain unknowns rather than invented zero balances',()=>{const {bank,card,list,classification}=data(),empty=classificationView(emptyClassification(),[]);const fresh=buildFinanceReview('2026-01',{documents:[],settlements:[]},[],empty,when);assert.equal(fresh.current.bank.inflow,null);assert.equal(fresh.current.card.observedTotal,null);assert.equal(fresh.current.bank.closing,null);
  const bankOnly=buildFinanceReview('2026-01',{documents:[bank.document],settlements:[]},[bank],empty,when);assert.equal(bankOnly.current.card.observedTotal,null);const cardOnly=buildFinanceReview('2026-01',{documents:[card.document],settlements:[]},[],classification,when);assert.equal(cardOnly.current.bank.opening,null);
