@@ -46,6 +46,12 @@
 
 기능별 고유 레이아웃과 학습 상태 표현은 허용하되, 색상·텍스트·테두리·포커스의 공통 의미는 semantic token을 따른다. 기능별 상태가 공통 역할에 없는 색을 필요로 하면 해당 의미에 맞는 semantic token을 사용하고, 새 token은 반복되는 공통 역할이 확인될 때만 `styles.css`에 정의한다. 현재는 light theme만 제공하며 테마 전환은 이 문서의 범위 밖이다.
 
+## 버튼과 탐색 링크
+
+`styles.css`가 실제 버튼·href가 있는 링크·summary의 최소 44×44 CSS px 영역을 보장한다. 모바일과 데스크톱에 같은 하한을 사용하며, 공통 `Button`의 큰 크기는 48px 이상이다. 화면 이동은 실제 `Link`/`a`, 실행은 `Button`/`button`을 사용한다. 버튼 모양의 링크에는 `buttonVariants()`를 적용한다. `Button render={<Link />}` 조합은 사용하지 않는다.
+
+크기 API·Base UI `nativeButton` 책임·예시와 PIN-65 전체 사용처 적용 기록은 [플랫폼 버튼 적용 기준과 기록](./platform-buttons.md)을 따른다. 새 버튼이나 조밀한 컨트롤을 추가할 때 이 기록의 레이아웃 경계와 미검증 항목도 확인한다.
+
 ## MOTIFIN 제품 테마
 
 PIN-52 승인 디자인을 실제 `/motifin/*` 제품 화면에 적용한다. `src/shared/ui/motifin/motifin.css`가 `.motifin` 안에서 semantic CSS 변수를 Mint/Navy 계열로 매핑하며, 제품 헤더·카드·시트는 `presentation.tsx`, 단일 main과 하단 3탭은 `app/motifin-content-layout.tsx`가 소유한다. 전역 Innova 색상과 공통 컴포넌트 기본값은 유지한다. 제품 본문은 최대 480px 가용 너비, 터치 대상은 44px 이상이며 safe-area와 하단 탐색 여백을 확보한다. 원본 자산을 복제하지 않고 시스템 글꼴을 사용한다. 화면 크기는 갤럭시 S25 FE를 참고한다. 디자인 결정과 실제 데이터에 따른 표현 차이는 [제품 적용 안내](./motifin-wireframe.md)를 따른다.

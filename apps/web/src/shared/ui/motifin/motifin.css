@@ -13,7 +13,7 @@
 .motifin button, .motifin select, .motifin a { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 .motifin button:not(:disabled), .motifin select { cursor: pointer; }
 .motifin button:focus-visible, .motifin select:focus-visible, .motifin summary:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
-.motifin [data-slot="button"] { min-height: 44px; padding-inline: 14px; white-space: normal; height: auto; }
+.motifin [data-slot="button"] { padding-inline: 14px; }
 .mf-workspace { padding: 22px 20px 10px; }
 .mf-product-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
 .mf-brand { display: block; font-size: 22px; font-weight: 850; line-height: 1.2; letter-spacing: -.9px; }
@@ -169,7 +169,7 @@
 .mf-live .mf-analysis-lenses { margin: 0; }
 .mf-live .mf-category-ranking { list-style: none; padding: 0; }
 .mf-live .mf-spending-overview { margin: 0; }
-.mf-live .mf-live-trend { gap: 4px; }
+.mf-live .mf-live-trend { gap: 4px; flex-wrap: wrap; }
 .mf-live-trend .mf-trend-track { width: 25px; }
 .mf-live-trend strong { font-size: 10px; }
 .mf-live .mf-onboarding { padding-top: 20px; padding-bottom: 25px; }
@@ -196,3 +196,9 @@
 .mf-live :is(section,article,li,details).border { background: var(--card); border-radius: 14px; }
 .motifin input[type="month"]:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .mf-review-status a { margin-left: auto; flex-shrink: 0; }
+
+/* Seven 44px columns fit down to a 320px viewport without overlapping dates. */
+@media (max-width: 440px) {
+  .mf-calendar-card { margin-inline: -14px; padding-inline: 4px; }
+  .mf-live-calendar { gap: 0; }
+}

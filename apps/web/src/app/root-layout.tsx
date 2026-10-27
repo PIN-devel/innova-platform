@@ -18,14 +18,14 @@ export default function RootLayout({ children }: { children?: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-20 focus:rounded-md focus:bg-card focus:px-4 focus:py-2 focus:text-primary focus:outline-2 focus:outline-ring">본문으로 건너뛰기</a>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:inline-flex focus:min-h-11 focus:min-w-11 focus:items-center focus:absolute focus:z-20 focus:rounded-md focus:bg-card focus:px-4 focus:py-2 focus:text-primary focus:outline-2 focus:outline-ring">본문으로 건너뛰기</a>
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-4 sm:px-6">
           <Link to="/" className="inline-flex items-center gap-2 rounded-sm text-lg font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
             <img src="/brand/innova-mark.svg" alt="" className="size-8 shrink-0" />
             <span>Innova Platform</span>
           </Link>
-          <nav className="flex items-center gap-4 text-sm" aria-label="주요 탐색">
+          <nav className="flex min-w-0 flex-wrap items-center gap-4 text-sm" aria-label="주요 탐색">
             <NavLink to="/" end className={primaryNavigationClass}>홈</NavLink>
             <NavLink to="/exam" className={primaryNavigationClass}>Exam Drill</NavLink>
             <NavLink to="/motifin/review" className={primaryNavigationClass}>MOTIFIN</NavLink>
