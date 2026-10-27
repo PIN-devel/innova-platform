@@ -24,6 +24,7 @@
 | 브랜치·PR·릴리스·정리 | [Git 운영](docs/git-workflow.md) |
 | Linear 조회·생성·분류·갱신·종료, 공통 개선 후보 기록 | [Linear 운영](docs/linear-workflow.md) |
 | DB 스키마·migration 변경과 복구 준비 | [API DB 변경 지침](apps/api/docs/database-migrations.md) |
+| 신규 테이블의 식별·감사·소유권·추적 메타 설계 | [테이블 메타데이터 기준](docs/database-table-metadata.md) |
 
 ## Linear 작업 관리
 
