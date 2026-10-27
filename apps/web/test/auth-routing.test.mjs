@@ -12,6 +12,15 @@ const memberApproved = { ...memberPending, approvalStatus: "approved" };
 const adminPending = { ...memberPending, role: "admin" };
 const memberRejected = { ...memberPending, approvalStatus: "rejected" };
 
+test('post-auth finance destinations preserve the review month and still enforce approval', () => {
+  for (const page of ['review', 'analysis', 'spending', 'schedule', 'import', 'security']) {
+    const destination = `/motifin/${page}?month=2026-02`;
+    assert.equal(getPostAuthPath(memberApproved, destination), destination);
+    assert.equal(getPostAuthPath(memberPending, destination), '/approval-pending');
+    assert.equal(getPostAuthPath(memberRejected, destination), '/signup-rejected');
+  }
+});
+
 test("post-auth navigation and protected route decisions distinguish approval from role", () => {
   assert.equal(getPostAuthPath(memberPending), "/approval-pending");
   assert.equal(getPostAuthPath(memberPending, "/admin/users"), "/approval-pending");
