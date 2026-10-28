@@ -203,3 +203,7 @@ PIN-52의 승인 디자인을 `/motifin/*` 실제 페이지에 적용했다. `ap
 ### PDF 암호 선택 저장
 
 `entities/finance-pdf-password` Query는 상태 메타만 보관한다. `features/finance-raw-import/import-with-pdf-password`가 실제 파일 signature·단기 시도·재인증·1회 반환을 조정하고 평문은 실행 지역 변수로만 parser에 전달한다. 카드 worker에는 전달하지 않는다. 계정 저장은 PDF가 암호를 실제 요구했고 지원 양식 파싱을 마친 경우에만 별도로 실행한다. Raw POST의 optional 시도/revision은 서버 DB gate로 삭제/변경/세션/만료 경합을 제한한다. 설정 route의 명시적 삭제 command와 탭 간 무내용 변경 신호, owner/epoch 보호 cache 제거를 유지한다. 한계/키/회전은 [PDF 암호](../../api/docs/finance-pdf-password.md)를 따른다.
+
+## 거래 생애주기 경계 — PIN-68/69/70
+
+`pages/finance-transactions/route.ts`가 승인·session을 확인하고 workspace Loader와 수기/삭제 영향/확정/내보내기 Action을 조정한다. `entities/finance-transactions`는 owner/epoch query/API, `features/finance-transactions`는 진행 중 command의 session 구독·AbortController·성공 결과 우선 반영을 소유한다. 새 query는 보호 cache와 안전한 returnTo에 등록한다. 삭제 성공 후 금융 조회를 cancel/remove하여 오래된 원천·암호화 이력이 cache에서 재노출되지 않게 하고 독립 readback 실패를 저장 취소로 처리하지 않는다. XLSX Blob은 영구 저장하지 않고 다운로드 URL을 폐기한다. MSW 합성 XLSX는 구조/다운로드 흐름용 최소 대역이며 실제 파일/집계 검산은 API 테스트가 소유한다.

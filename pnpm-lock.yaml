@@ -199,6 +199,9 @@ importers:
       fastify:
         specifier: ^5.12.5
         version: 5.12.5
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       pino:
         specifier: ^10.3.1
         version: 10.3.1

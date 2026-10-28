@@ -33,3 +33,7 @@ plan/evidence JSON 내부 참조는 원소별 SQL FK가 아니라 owner의 실�
 `GET/POST /api/finance/business/schedule?month=YYYY-MM`은 approved·owner·expected actor·Origin/JSON·no-store를 검증한다. 관리자 역할은 타인 일정 접근 권한이 아니다. Web command는 성공 결과를 먼저 cache에 반영하고 독립 readback 실패가 성공을 취소하지 않게 한다. owner/epoch/month query, 세션 전환 취소와 cache 제거를 사용한다. API/MSW는 공유 pure model과 동일한 plan/evidence 조건을 따른다.
 
 owner당 계획 200개/월별 버전 1,200개/개별 회차 5,000개/변경 10,000개와 원천 조회 제한을 넘으면 중단하고 일부만 합산하지 않는다. 운영용 pagination/장기 보존·키 rotation의 상세 운영은 별도 검토가 필요하다. 이 기능의 합성 dev·모바일 검증과 적용/정리 결과는 [PIN-62](https://linear.app/pin-dev/issue/PIN-62)가 소유한다. 사용자 결정에 따라 실파일 추가 전송은 제외한다.
+
+## 수기·삭제 연결 — PIN-68/69
+
+수기 수입/지출은 별도 근거 종류로 표시하며 은행 관측·카드 청구와 구별한다. 수기 수입을 은행 잔액에 더하지 않는다. 영구 삭제 시 해당 근거를 참조하는 회차 override를 정리하고 현재 계획·독립 거래는 보존한다. 개인정보가 남는 과거 암호화 schedule history는 폐기·현재 상태를 재기준화한다. 전체 owner 쓰기 CAS/읽기 버전 검사로 삭제와 진행 중 일정 저장의 경합을 처리한다.

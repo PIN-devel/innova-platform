@@ -3,7 +3,7 @@ import { z } from "zod";
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const money = z.string().regex(/^-?(0|[1-9]\d{0,24})$/);
 export const businessReasonSchema = z.enum([
-  "invalid-source", "bank-check-failed", "missing-source-identity", "different-bank-account",
+  "user-deleted", "invalid-source", "bank-check-failed", "missing-source-identity", "different-bank-account",
   "overlapping-document", "possible-duplicate", "unknown-purchase", "unresolved-adjustment",
   "missing-period", "statement-only", "missing-fee", "unlinked-refund",
 ]);
@@ -21,8 +21,9 @@ export const businessDocumentSchema = z.object({
   billingMonth: z.string().regex(/^\d{4}-\d{2}$/).nullable(), dueDate: day.nullable(), totals: businessTotalsSchema,
 });
 export const businessEventSchema = z.object({
-  id: z.uuid(), rawFileId: z.uuid(), rawSequence: z.number().int().positive(), sourcePage: z.number().int().positive(), sourceRow: z.number().int().positive(), relatedSequences: z.array(z.number().int().positive()),
-  kind: z.enum(["bank-cash", "card-purchase", "card-charge", "card-fee", "card-adjustment"]),
+  id: z.uuid(), rawFileId: z.uuid().nullable(), rawSequence: z.number().int().positive().nullable(), sourcePage: z.number().int().positive().nullable(), sourceRow: z.number().int().positive().nullable(), relatedSequences: z.array(z.number().int().positive()),
+  kind: z.enum(["bank-cash", "card-purchase", "card-charge", "card-fee", "card-adjustment", "manual-expense"]),
+  source: z.enum(["manual", "bank", "card"]).optional(),
   status: z.enum(["confirmed", "observed", "needs-review"]), reason: businessReasonSchema.nullable(),
   occurredOn: day.nullable(), occurredAt: z.string().max(32).nullable(),
   amount: money.nullable(), consumptionAmount: money.nullable(), fee: money.nullable(),

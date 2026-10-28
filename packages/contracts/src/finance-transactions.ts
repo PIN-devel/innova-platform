@@ -1,0 +1,18 @@
+import {z} from 'zod';
+import {categoryIdSchema,classificationMoneySchema} from './finance-classification.js';
+import {reviewMonthSchema} from './finance-review.js';
+export const transactionDaySchema=z.string().regex(/^(19|20|21)\d{2}-(0[1-9]|1[0-2])-\d{2}$/).refine(value=>{const d=new Date(value+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value;},'Invalid date');
+export const manualInputSchema=z.object({date:transactionDaySchema,type:z.enum(['income','expense']),amount:z.string().regex(/^[1-9]\d{0,14}$/),description:z.string().trim().min(1).max(200),categoryId:categoryIdSchema.default('unclassified'),note:z.string().max(2000).default('')}).strict();
+export const manualTransactionSchema=manualInputSchema.extend({id:z.uuid(),source:z.literal('manual'),revision:z.number().int().positive(),createdAt:z.string(),updatedAt:z.string()});
+export const manualSaveSchema=z.object({id:z.uuid(),operationId:z.uuid(),expectedRevision:z.number().int().nonnegative(),input:manualInputSchema}).strict();
+export const transactionImpactSchema=z.object({id:z.uuid(),source:z.enum(['manual','bank','card']),revision:z.number().int().nonnegative(),month:reviewMonthSchema.nullable(),affectedMonths:z.array(reviewMonthSchema).default([]),relatedEventIds:z.array(z.uuid()),scheduleCount:z.number().int().nonnegative(),rawRowRemoved:z.boolean(),warning:z.string()});
+export const transactionDeleteSchema=z.object({id:z.uuid(),operationId:z.uuid(),expectedRevision:z.number().int().nonnegative(),confirmed:z.literal(true)}).strict();
+export const transactionDeletedSchema=z.object({id:z.uuid(),deleted:z.literal(true),revision:z.number().int().nonnegative()});
+export const transactionWorkspaceSchema=z.object({categories:z.array(z.object({id:categoryIdSchema,name:z.string()})),revision:z.number().int().nonnegative(),manual:z.array(manualTransactionSchema),duplicateCandidates:z.array(z.object({manualId:z.uuid(),eventIds:z.array(z.uuid())})),fileTransactions:z.array(z.object({id:z.uuid(),documentId:z.uuid(),date:z.string().nullable(),description:z.string(),kind:z.string(),amount:classificationMoneySchema.nullable(),source:z.enum(['bank','card'])}))});
+export const financeExportSchema=z.object({from:reviewMonthSchema,to:reviewMonthSchema,includeNotes:z.boolean().default(false)}).strict().refine(value=>{const ordinal=(m:string)=>Number(m.slice(0,4))*12+Number(m.slice(5));const distance=ordinal(value.to)-ordinal(value.from);return distance>=0&&distance<12;},'Choose 1 to 12 consecutive months');
+export type ManualInput=z.infer<typeof manualInputSchema>;
+export type ManualTransaction=z.infer<typeof manualTransactionSchema>;
+export type ManualSave=z.infer<typeof manualSaveSchema>;
+export type TransactionImpact=z.infer<typeof transactionImpactSchema>;
+export type TransactionDelete=z.infer<typeof transactionDeleteSchema>;
+export type TransactionWorkspace=z.infer<typeof transactionWorkspaceSchema>;

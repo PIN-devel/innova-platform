@@ -12,3 +12,5 @@ export * from './finance-review-model.js';
 export * from './finance-analysis.js';
 export * from './finance-schedule.js';
 export * from './finance-pdf-password.js';
+
+export * from './finance-transactions.js';
