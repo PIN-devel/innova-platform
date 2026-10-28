@@ -22,12 +22,15 @@
 | 문서 작성·이동·명명·정책 채택 | [문서 정책](docs/documentation-policy.md) |
 | 여러 단계의 조사·구현·검증·전달 절차 설계 | [AI 작업 흐름](docs/ai-workflow.md) |
 | 브랜치·PR·릴리스·정리 | [Git 운영](docs/git-workflow.md) |
-| Linear 조회·생성·갱신·종료 | [Linear 운영](docs/linear-workflow.md) |
+| Linear 조회·생성·분류·갱신·종료, 공통 개선 후보 기록 | [Linear 운영](docs/linear-workflow.md) |
 | DB 스키마·migration 변경과 복구 준비 | [API DB 변경 지침](apps/api/docs/database-migrations.md) |
+| 신규 테이블의 식별·감사·소유권·추적 메타 설계 | [테이블 메타데이터 기준](docs/database-table-metadata.md) |
 
 ## Linear 작업 관리
 
 - Pin(PIN) 팀의 Innova Platform 프로젝트에서 관련 이슈를 먼저 조회하고 중복 생성·PR 연결·결과 기록을 피한다. 요청 범위 안에서 목표·범위·완료 기준을 갱신한다.
+- 영역 분류는 주요 `Area` Label 하나, Milestone은 완료 기준이 명확한 목표에만 사용한다. 적합한 목표가 없으면 Milestone을 비워 두며 기존 포괄 Milestone에 자동 배정하지 않는다.
+- 작업 중 발견한 비차단 공통 개선 후보는 중복 확인 후 [PIN-53](https://linear.app/pin-dev/issue/PIN-53) 댓글에 출처·Area·관찰·아이디어·지금 처리하지 않는 이유를 기록한다. 후보만으로 구현 범위를 넓히지 않으며 실제 버그·보안 위험·장애·AC 차단 문제는 현재 이슈 또는 독립 이슈에서 처리한다. 승격·보류와 Inbox 상태 기준은 [Linear 운영](docs/linear-workflow.md#공통-개선-후보-수집과-처리)을 따른다.
 - PR 생성의 In Review, 병합의 Done 전환은 기존 자동화에 맡긴다. 현재 값과 적용 조건을 확인하고, 연동 지연을 즉시 수동 상태 변경으로 대체하지 않는다.
 - 자동화 밖의 실제 착수·PR 없는 작업만 필요 시 상태를 갱신한다. 기존 담당자·프로젝트·주기·우선순위는 근거 없이 바꾸지 않는다.
 - 검증 결과·미실행 항목·잔여 작업을 구분한다. 배포 등 독립 완료 조건은 PR 연결 전에 범위를 정리하며, 비공개 콘텐츠·사용자 데이터·비밀 값은 Linear에도 복제하지 않는다.

@@ -11,6 +11,8 @@ PIN-20의 데이터 흐름과 PIN-29의 책임 배치 기준이다. UI는 [디�
 
 ## 1. 현행 감사와 교체 결과
 
+PIN-56은 `/motifin/import`에 approved 접근·route loader/action을 연결한다. `entities/finance-raw`는 owner/epoch별 이력 query와 API, `features/finance-raw-import`는 파일 worker·수동 암호·파일별 저장/readback command를 소유한다. Query에는 안전한 이력만 두고 Raw/암호/파일은 넣지 않는다. `finance-raw` key를 보호 cache 제거에 등록하고 `X-Expected-User`로 다른 탭의 쿠키 전환을 서버에서 차단한다. 승인 시안의 합성 어댑터는 운영에 사용하지 않는다. 실행·계약·제한은 [Raw 적재 안내](../../api/docs/finance-raw-ingestion.md)를 따른다.
+
 PIN-21 기준 Router는 createBrowserRouter/RouterProvider만 사용하고 loader/action/lazy는 없었다. Shell·guard·page의 staleTime 0 Hook이 순차 mount에서 중복 요청할 수 있었다. 관리자 변경은 useMutation, import는 page의 imperative POST였다. 선택 은행은 계정 공용 localStorage에 저장되었다.
 
 | 경로 | 현재 진입과 변경 | 유지하는 UI/상태 |
@@ -23,6 +25,8 @@ PIN-21 기준 Router는 createBrowserRouter/RouterProvider만 사용하고 loade
 | `/exam` | approved middleware → Loader → Query 구독, import/Quiz Action/useFetcher | 은행 또는 교재 Subject/Chapter/view는 URL, 학습·답변은 local |
 
 PIN-8의 Shell/콘텐츠 layout 및 단일 main, PIN-9의 최초 Skeleton/기존 데이터 갱신/오류·빈 결과 구분, PIN-10의 entity query key/options와 성공 응답 우선 cache patch를 유지했다. 접근 검사와 재검증의 시작 책임은 Router로 옮겼고 기존 useMutation 실행 경로와 은행 localStorage 선택은 제거했다.
+
+PIN-57/58은 기존 가져오기 뒤 서버 비즈니스 반영과 독립 readback을 연결한다. `entities/finance-business`의 owner/epoch별 목록·상세 key를 보호 cache에 등록하고 `features/finance-business`가 처리 command와 성공 반영을 소유한다. 문서 중첩·정정 의심은 새 반영 보류이며 합성 시안의 계산을 재사용하지 않는다. 화면은 같은 `/motifin/import`에서 자료·거래·원천 행을 연결한다. 상세 의미와 한계는 [비즈니스 반영](../../api/docs/finance-business-ingestion.md)을 따른다.
 
 ## 2. 책임과 파일 배치
 
@@ -152,7 +156,13 @@ PIN-20 브라우저 QA는 합성 MSW 계정/문항으로 수행했다. PIN-29는
 
 ## 참고
 
-Router/Query는 PIN-20에서, Oxlint는 PIN-29에서 설치 타입/소스와 공식 문서를 확인했다.
+### MOTIFIN 제품 표현과 시안 정리
+
+PIN-52의 승인 디자인을 `/motifin/*` 실제 페이지에 적용했다. `app/motifin-content-layout.tsx`가 공통 RootLayout 아래 제품 테마·단일 main·월을 보존하는 하단 3탭을 소유하며, 최초 로딩·오류에서도 같은 제품 경계를 유지한다. `shared/ui/motifin`은 금융 API를 호출하지 않는 테마·제품 헤더·월 선택·카드·Dialog 시트를 제공한다. 각 `pages/finance-*`는 기존 loader/action과 owner/epoch query/command를 그대로 연결한다.
+
+거래 시트는 URL의 event, 리뷰 현금 근거는 flow, 자금 일정 날짜는 day로 선택하고 닫기·뒤로 가기에서 기존 월/필터를 보존한다. 거래 수정 fetcher key는 owner/epoch/event로 격리해 저장 후 최신 revision으로 편집기를 재생성해도 확인 결과를 유지한다. 합성 시안의 계산·메모리 액션·검토 도구·개발 전용 route는 사용자 요청으로 제거했다. 현재 MSW/회귀 fixture는 같은 제품 API 경로의 개발 검증용으로 유지한다. MSW는 브라우저 네트워크 직전 Origin이 아직 없는 경우 동일 origin referrer만 허용하며 실제 API의 Origin 검사는 변경하지 않는다.
+
+실제 데이터의 coverage·불명 금액·보정·이력/정밀 금액은 기존 계약이 권위다. UI 시안의 완전 월·반복/가용 금액 가정을 승격하지 않는다. 디자인 인수와 실제 지원 범위는 [제품 적용 안내](motifin-wireframe.md)를 참고한다.
 
 - [TanStack QueryClient](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient)
 - [React Router middleware](https://reactrouter.com/how-to/middleware)
@@ -173,3 +183,27 @@ Router/Query는 PIN-20에서, Oxlint는 PIN-29에서 설치 타입/소스와 공
 - 그림은 인증된 block/content-index API로만 읽는다. 선택적인 `CURRICULUM_ASSET_ROOT` 아래 assetKey 상대 경로의 PNG/JPEG/WebP/GIF를 허용하며 traversal·root 밖 symlink·SVG/HTML을 거부한다. 런타임 자산이 없으면 명시적인 unavailable 안내를 표시하고 콘텐츠를 생성하여 대체하지 않는다.
 - private assets는 Git 및 Vercel public bundle에 포함하지 않는다. 현재 로컬 private runtime에서 사용 가능하나 Render/Vercel 운영 환경에 해당 디렉터리가 제공되는 방식은 배포 후속 작업이다. 이번 Slice는 Production PostgreSQL 적재와 로컬 후보 코드의 API/Router/UI 검증이며 main 병합·운영 애플리케이션 배포를 포함하지 않는다.
 - MSW의 Curriculum은 합성 샘플만 제공하며 동일한 승인 제한과 exact 채점을 재현한다. 계약/import/API/Router·cache·render 회귀도 합성 데이터로 수행한다.
+
+### 저장된 카드 소비 분류
+
+`/motifin/spending`의 page route가 분류 workspace 조회·수정과 재검증을 조정한다. `entities/finance-classification`은 owner/epoch query/API, `features/finance-classification`은 operation/revision command·성공 cache 반영·독립 readback과 세션 fence를 소유한다. 카테고리와 거래 선택은 URL로 유지하고 카드 Raw/business 원본과 사용자 수정 이력을 분리한다. `finance-classification` key도 보호 cache 제거에 등록한다. 실제 동작·환불/분할·이력/원천 정정 경계는 [카드 소비 분류·보정](../../api/docs/finance-classification.md)을 따른다.
+
+### 저장된 월간 리뷰
+
+`/motifin/review`의 loader와 `entities/finance-review` query/API가 월별 응답을 준비한다. Shell의 MOTIFIN 진입점은 월간 리뷰이며 가져오기·분류는 보조 탐색이다. 공유 `monthly-review-v1` 계산은 서버/MSW가 사용하고 Web은 원 단위 응답과 근거를 표시한다. owner/epoch/month key를 세션 보호 제거에 등록하고, 분류 command는 기존 review GET 취소·invalidation으로 다음 진입의 재계산을 준비한다. 경계/기간/비교 정책은 [월간 리뷰](../../api/docs/finance-monthly-review.md)를 따른다.
+
+### 관측 소비 분석
+
+`/motifin/analysis`는 `entities/finance-analysis`와 loader를 통해 공유 `spending-analysis-v1` read model을 읽는다. 관점/정렬/카테고리/월은 URL에 유지하고 보정 화면의 내부 returnTo로 되돌아온다. date 선택 해석은 `shared/lib/finance-month`로 재사용한다. query는 owner/epoch/month로 분리하고 보호 cache 제거 및 보정 후 취소/invalidation에 포함한다. 전체 월 비율과 확보된 거래의 비율·평균·추이 경계는 [관측 소비 분석](../../api/docs/finance-spending-analysis.md)을 따른다.
+
+### 자금 일정과 발견
+
+`/motifin/schedule`은 page loader/action과 `entities/finance-schedule`, `features/finance-schedule` command로 저장된 계획을 다룬다. owner/epoch/month query와 revision/operation 재시도를 사용하고 성공 결과 우선 patch·독립 readback·다른 월 invalidation 및 보호 cache 제거를 유지한다. 계획 버전/회차와 실제 근거는 공유 모델에서 분리하며 원천 숫자·실제 잔액을 바꾸지 않는다. 조건과 예외는 [자금 일정](../../api/docs/finance-schedule.md)을 따른다.
+
+### PDF 암호 선택 저장
+
+`entities/finance-pdf-password` Query는 상태 메타만 보관한다. `features/finance-raw-import/import-with-pdf-password`가 실제 파일 signature·단기 시도·재인증·1회 반환을 조정하고 평문은 실행 지역 변수로만 parser에 전달한다. 카드 worker에는 전달하지 않는다. 계정 저장은 PDF가 암호를 실제 요구했고 지원 양식 파싱을 마친 경우에만 별도로 실행한다. Raw POST의 optional 시도/revision은 서버 DB gate로 삭제/변경/세션/만료 경합을 제한한다. 설정 route의 명시적 삭제 command와 탭 간 무내용 변경 신호, owner/epoch 보호 cache 제거를 유지한다. 한계/키/회전은 [PDF 암호](../../api/docs/finance-pdf-password.md)를 따른다.
+
+## 거래 생애주기 경계 — PIN-68/69/70
+
+`pages/finance-transactions/route.ts`가 승인·session을 확인하고 workspace Loader와 수기/삭제 영향/확정/내보내기 Action을 조정한다. `entities/finance-transactions`는 owner/epoch query/API, `features/finance-transactions`는 진행 중 command의 session 구독·AbortController·성공 결과 우선 반영을 소유한다. 새 query는 보호 cache와 안전한 returnTo에 등록한다. 삭제 성공 후 금융 조회를 cancel/remove하여 오래된 원천·암호화 이력이 cache에서 재노출되지 않게 하고 독립 readback 실패를 저장 취소로 처리하지 않는다. XLSX Blob은 영구 저장하지 않고 다운로드 URL을 폐기한다. MSW 합성 XLSX는 구조/다운로드 흐름용 최소 대역이며 실제 파일/집계 검산은 API 테스트가 소유한다.

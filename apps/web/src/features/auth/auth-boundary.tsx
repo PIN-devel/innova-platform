@@ -6,7 +6,7 @@ import { useRouteRefresh } from "@/shared/lib/router-query/use-route-refresh";
 import { authKeys } from "@/entities/auth/queries";
 import { useCurrentUser, useSessionScope } from "./hooks";
 import { getAdminRedirect, getApprovalPendingRedirect, getExamRedirect, getPostAuthPath, getSignupRejectedRedirect } from "./route-access";
-import type { Access } from "./route-session";
+import { safeReturnTo, type Access } from "./route-session";
 
 // Middleware gates entry; this observer immediately hides revoked data between navigations.
 function LiveAccessBoundary({ access }: { access: Access }) {
@@ -21,7 +21,7 @@ function LiveAccessBoundary({ access }: { access: Access }) {
     return <ErrorState title="계정 정보를 불러오지 못했습니다" description="네트워크 연결이나 서버 상태를 확인한 뒤 다시 시도해 주세요." action={<Button onClick={() => void refresh()}>다시 시도</Button>} />;
   }
   const user = currentUser.data;
-  if (access === "public") return user ? <Navigate to={getPostAuthPath(user)} replace /> : <Outlet />;
+  if (access === "public") return user ? <Navigate to={getPostAuthPath(user, safeReturnTo(new URLSearchParams(location.search).get("returnTo")))} replace /> : <Outlet />;
   if (!user) return <Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   const redirect = { exam: getExamRedirect, admin: getAdminRedirect, pending: getApprovalPendingRedirect, rejected: getSignupRejectedRedirect }[access](user);
   if (redirect) return <Navigate to={redirect} replace />;

@@ -1,0 +1,1938 @@
+{
+  "id": "9ea76937-ec64-43d5-b4dc-bb53ba68da53",
+  "prevId": "ad660043-5d27-4ba0-994b-c2b3ea697b73",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.exam_chapters": {
+      "name": "exam_chapters",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_chapters_subject_id_exam_subjects_id_fk": {
+          "name": "exam_chapters_subject_id_exam_subjects_id_fk",
+          "tableFrom": "exam_chapters",
+          "tableTo": "exam_subjects",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_chapters_subject_id_id_pk": {
+          "name": "exam_chapters_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "exam_chapters_order_unique": {
+          "name": "exam_chapters_order_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "subject_id",
+            "position"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "exam_chapters_position_check": {
+          "name": "exam_chapters_position_check",
+          "value": "\"exam_chapters\".\"position\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.exam_knowledge_point_sources": {
+      "name": "exam_knowledge_point_sources",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "knowledge_point_id": {
+          "name": "knowledge_point_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_block_id": {
+          "name": "source_block_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_kp_sources_knowledge_fk": {
+          "name": "exam_kp_sources_knowledge_fk",
+          "tableFrom": "exam_knowledge_point_sources",
+          "tableTo": "exam_knowledge_points",
+          "columnsFrom": [
+            "subject_id",
+            "knowledge_point_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_kp_sources_block_fk": {
+          "name": "exam_kp_sources_block_fk",
+          "tableFrom": "exam_knowledge_point_sources",
+          "tableTo": "exam_source_blocks",
+          "columnsFrom": [
+            "subject_id",
+            "source_block_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_knowledge_point_sources_subject_id_knowledge_point_id_source_block_id_pk": {
+          "name": "exam_knowledge_point_sources_subject_id_knowledge_point_id_source_block_id_pk",
+          "columns": [
+            "subject_id",
+            "knowledge_point_id",
+            "source_block_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_knowledge_points": {
+      "name": "exam_knowledge_points",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "section_id": {
+          "name": "section_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_knowledge_points_section_fk": {
+          "name": "exam_knowledge_points_section_fk",
+          "tableFrom": "exam_knowledge_points",
+          "tableTo": "exam_sections",
+          "columnsFrom": [
+            "subject_id",
+            "section_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_knowledge_points_subject_id_id_pk": {
+          "name": "exam_knowledge_points_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_question_knowledge_points": {
+      "name": "exam_question_knowledge_points",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question_id": {
+          "name": "question_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "knowledge_point_id": {
+          "name": "knowledge_point_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_question_knowledge_question_fk": {
+          "name": "exam_question_knowledge_question_fk",
+          "tableFrom": "exam_question_knowledge_points",
+          "tableTo": "exam_questions",
+          "columnsFrom": [
+            "subject_id",
+            "question_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_question_knowledge_point_fk": {
+          "name": "exam_question_knowledge_point_fk",
+          "tableFrom": "exam_question_knowledge_points",
+          "tableTo": "exam_knowledge_points",
+          "columnsFrom": [
+            "subject_id",
+            "knowledge_point_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_question_knowledge_points_subject_id_question_id_knowledge_point_id_pk": {
+          "name": "exam_question_knowledge_points_subject_id_question_id_knowledge_point_id_pk",
+          "columns": [
+            "subject_id",
+            "question_id",
+            "knowledge_point_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_question_sources": {
+      "name": "exam_question_sources",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question_id": {
+          "name": "question_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_block_id": {
+          "name": "source_block_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_question_sources_question_fk": {
+          "name": "exam_question_sources_question_fk",
+          "tableFrom": "exam_question_sources",
+          "tableTo": "exam_questions",
+          "columnsFrom": [
+            "subject_id",
+            "question_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_question_sources_block_fk": {
+          "name": "exam_question_sources_block_fk",
+          "tableFrom": "exam_question_sources",
+          "tableTo": "exam_source_blocks",
+          "columnsFrom": [
+            "subject_id",
+            "source_block_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_question_sources_subject_id_question_id_source_block_id_pk": {
+          "name": "exam_question_sources_subject_id_question_id_source_block_id_pk",
+          "columns": [
+            "subject_id",
+            "question_id",
+            "source_block_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_questions": {
+      "name": "exam_questions",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter_id": {
+          "name": "chapter_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "section_id": {
+          "name": "section_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_block_id": {
+          "name": "source_block_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_revision": {
+          "name": "source_revision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "exam_questions_chapter_order_unique": {
+          "name": "exam_questions_chapter_order_unique",
+          "columns": [
+            {
+              "expression": "subject_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "chapter_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"exam_questions\".\"section_id\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "exam_questions_section_order_unique": {
+          "name": "exam_questions_section_order_unique",
+          "columns": [
+            {
+              "expression": "subject_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "section_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"exam_questions\".\"section_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "exam_questions_chapter_fk": {
+          "name": "exam_questions_chapter_fk",
+          "tableFrom": "exam_questions",
+          "tableTo": "exam_chapters",
+          "columnsFrom": [
+            "subject_id",
+            "chapter_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_questions_section_fk": {
+          "name": "exam_questions_section_fk",
+          "tableFrom": "exam_questions",
+          "tableTo": "exam_sections",
+          "columnsFrom": [
+            "subject_id",
+            "chapter_id",
+            "section_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "chapter_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_questions_source_revision_fk": {
+          "name": "exam_questions_source_revision_fk",
+          "tableFrom": "exam_questions",
+          "tableTo": "exam_source_blocks",
+          "columnsFrom": [
+            "subject_id",
+            "source_block_id",
+            "source_revision"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id",
+            "revision"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_questions_subject_id_id_pk": {
+          "name": "exam_questions_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "exam_questions_position_check": {
+          "name": "exam_questions_position_check",
+          "value": "\"exam_questions\".\"position\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.exam_sections": {
+      "name": "exam_sections",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter_id": {
+          "name": "chapter_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_section_id": {
+          "name": "parent_section_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "exam_sections_root_order_unique": {
+          "name": "exam_sections_root_order_unique",
+          "columns": [
+            {
+              "expression": "subject_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "chapter_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"exam_sections\".\"parent_section_id\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "exam_sections_child_order_unique": {
+          "name": "exam_sections_child_order_unique",
+          "columns": [
+            {
+              "expression": "subject_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "parent_section_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"exam_sections\".\"parent_section_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "exam_sections_chapter_fk": {
+          "name": "exam_sections_chapter_fk",
+          "tableFrom": "exam_sections",
+          "tableTo": "exam_chapters",
+          "columnsFrom": [
+            "subject_id",
+            "chapter_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_sections_parent_fk": {
+          "name": "exam_sections_parent_fk",
+          "tableFrom": "exam_sections",
+          "tableTo": "exam_sections",
+          "columnsFrom": [
+            "subject_id",
+            "chapter_id",
+            "parent_section_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "chapter_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_sections_subject_id_id_pk": {
+          "name": "exam_sections_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "exam_sections_chapter_id_unique": {
+          "name": "exam_sections_chapter_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "subject_id",
+            "chapter_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "exam_sections_position_check": {
+          "name": "exam_sections_position_check",
+          "value": "\"exam_sections\".\"position\" >= 0"
+        },
+        "exam_sections_self_parent_check": {
+          "name": "exam_sections_self_parent_check",
+          "value": "\"exam_sections\".\"parent_section_id\" is null or \"exam_sections\".\"parent_section_id\" <> \"exam_sections\".\"id\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.exam_source_blocks": {
+      "name": "exam_source_blocks",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "section_id": {
+          "name": "section_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_document_id": {
+          "name": "source_document_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_source_blocks_section_fk": {
+          "name": "exam_source_blocks_section_fk",
+          "tableFrom": "exam_source_blocks",
+          "tableTo": "exam_sections",
+          "columnsFrom": [
+            "subject_id",
+            "section_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "exam_source_blocks_document_fk": {
+          "name": "exam_source_blocks_document_fk",
+          "tableFrom": "exam_source_blocks",
+          "tableTo": "exam_source_documents",
+          "columnsFrom": [
+            "subject_id",
+            "source_document_id"
+          ],
+          "columnsTo": [
+            "subject_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_source_blocks_subject_id_id_pk": {
+          "name": "exam_source_blocks_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "exam_source_blocks_revision_unique": {
+          "name": "exam_source_blocks_revision_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "subject_id",
+            "id",
+            "revision"
+          ]
+        },
+        "exam_source_blocks_order_unique": {
+          "name": "exam_source_blocks_order_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "subject_id",
+            "section_id",
+            "position"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "exam_source_blocks_position_check": {
+          "name": "exam_source_blocks_position_check",
+          "value": "\"exam_source_blocks\".\"position\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.exam_source_documents": {
+      "name": "exam_source_documents",
+      "schema": "",
+      "columns": {
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_source_documents_subject_id_exam_subjects_id_fk": {
+          "name": "exam_source_documents_subject_id_exam_subjects_id_fk",
+          "tableFrom": "exam_source_documents",
+          "tableTo": "exam_subjects",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_source_documents_subject_id_id_pk": {
+          "name": "exam_source_documents_subject_id_id_pk",
+          "columns": [
+            "subject_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_subjects": {
+      "name": "exam_subjects",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_banks": {
+      "name": "exam_banks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "schema": {
+          "name": "schema",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject": {
+          "name": "subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "generated_at": {
+          "name": "generated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_concepts": {
+      "name": "exam_concepts",
+      "schema": "",
+      "columns": {
+        "bank_id": {
+          "name": "bank_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter": {
+          "name": "chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deck": {
+          "name": "deck",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "term": {
+          "name": "term",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_concepts_bank_id_exam_banks_id_fk": {
+          "name": "exam_concepts_bank_id_exam_banks_id_fk",
+          "tableFrom": "exam_concepts",
+          "tableTo": "exam_banks",
+          "columnsFrom": [
+            "bank_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_concepts_bank_id_id_pk": {
+          "name": "exam_concepts_bank_id_id_pk",
+          "columns": [
+            "bank_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.exam_scenarios": {
+      "name": "exam_scenarios",
+      "schema": "",
+      "columns": {
+        "bank_id": {
+          "name": "bank_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter": {
+          "name": "chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_scenarios_bank_id_exam_banks_id_fk": {
+          "name": "exam_scenarios_bank_id_exam_banks_id_fk",
+          "tableFrom": "exam_scenarios",
+          "tableTo": "exam_banks",
+          "columnsFrom": [
+            "bank_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "exam_scenarios_bank_id_id_pk": {
+          "name": "exam_scenarios_bank_id_id_pk",
+          "columns": [
+            "bank_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.finance_business_documents": {
+      "name": "finance_business_documents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_file_id": {
+          "name": "raw_file_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "processor_version": {
+          "name": "processor_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scope_keys": {
+          "name": "scope_keys",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_business_documents_owner_id_finance_business_scopes_owner_id_fk": {
+          "name": "finance_business_documents_owner_id_finance_business_scopes_owner_id_fk",
+          "tableFrom": "finance_business_documents",
+          "tableTo": "finance_business_scopes",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "owner_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "finance_business_documents_owner_id_raw_file_id_finance_raw_files_owner_id_id_fk": {
+          "name": "finance_business_documents_owner_id_raw_file_id_finance_raw_files_owner_id_id_fk",
+          "tableFrom": "finance_business_documents",
+          "tableTo": "finance_raw_files",
+          "columnsFrom": [
+            "owner_id",
+            "raw_file_id"
+          ],
+          "columnsTo": [
+            "owner_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "finance_business_documents_owner_raw_unique": {
+          "name": "finance_business_documents_owner_raw_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "raw_file_id",
+            "processor_version"
+          ]
+        },
+        "finance_business_documents_owner_id_raw_unique": {
+          "name": "finance_business_documents_owner_id_raw_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "id",
+            "raw_file_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "finance_business_documents_state_check": {
+          "name": "finance_business_documents_state_check",
+          "value": "\"finance_business_documents\".\"state\" in ('accepted','needs-review','invalid')"
+        },
+        "finance_business_documents_kind_check": {
+          "name": "finance_business_documents_kind_check",
+          "value": "\"finance_business_documents\".\"kind\" in ('kb-bank-pdf','kb-card-xlsx')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_business_events": {
+      "name": "finance_business_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_file_id": {
+          "name": "raw_file_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_sequence": {
+          "name": "raw_sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_business_events_owner_id_document_id_raw_file_id_finance_business_documents_owner_id_id_raw_file_id_fk": {
+          "name": "finance_business_events_owner_id_document_id_raw_file_id_finance_business_documents_owner_id_id_raw_file_id_fk",
+          "tableFrom": "finance_business_events",
+          "tableTo": "finance_business_documents",
+          "columnsFrom": [
+            "owner_id",
+            "document_id",
+            "raw_file_id"
+          ],
+          "columnsTo": [
+            "owner_id",
+            "id",
+            "raw_file_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "finance_business_events_owner_id_raw_file_id_raw_sequence_finance_raw_rows_owner_id_file_id_sequence_fk": {
+          "name": "finance_business_events_owner_id_raw_file_id_raw_sequence_finance_raw_rows_owner_id_file_id_sequence_fk",
+          "tableFrom": "finance_business_events",
+          "tableTo": "finance_raw_rows",
+          "columnsFrom": [
+            "owner_id",
+            "raw_file_id",
+            "raw_sequence"
+          ],
+          "columnsTo": [
+            "owner_id",
+            "file_id",
+            "sequence"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_business_events_kind_check": {
+          "name": "finance_business_events_kind_check",
+          "value": "\"finance_business_events\".\"kind\" in ('bank-cash','card-purchase','card-charge','card-fee','card-adjustment')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_business_scopes": {
+      "name": "finance_business_scopes",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_business_scopes_owner_id_users_id_fk": {
+          "name": "finance_business_scopes_owner_id_users_id_fk",
+          "tableFrom": "finance_business_scopes",
+          "tableTo": "users",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_business_scopes_revision_check": {
+          "name": "finance_business_scopes_revision_check",
+          "value": "\"finance_business_scopes\".\"revision\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_classification_revisions": {
+      "name": "finance_classification_revisions",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operation_id": {
+          "name": "operation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_classification_revisions_owner_id_finance_classification_workspaces_owner_id_fk": {
+          "name": "finance_classification_revisions_owner_id_finance_classification_workspaces_owner_id_fk",
+          "tableFrom": "finance_classification_revisions",
+          "tableTo": "finance_classification_workspaces",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "owner_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "finance_classification_revisions_owner_id_revision_pk": {
+          "name": "finance_classification_revisions_owner_id_revision_pk",
+          "columns": [
+            "owner_id",
+            "revision"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "finance_classification_operation_unique": {
+          "name": "finance_classification_operation_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "operation_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.finance_classification_workspaces": {
+      "name": "finance_classification_workspaces",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_classification_workspaces_owner_id_users_id_fk": {
+          "name": "finance_classification_workspaces_owner_id_users_id_fk",
+          "tableFrom": "finance_classification_workspaces",
+          "tableTo": "users",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_classification_revision_check": {
+          "name": "finance_classification_revision_check",
+          "value": "\"finance_classification_workspaces\".\"revision\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_raw_batches": {
+      "name": "finance_raw_batches",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_raw_batches_owner_id_users_id_fk": {
+          "name": "finance_raw_batches_owner_id_users_id_fk",
+          "tableFrom": "finance_raw_batches",
+          "tableTo": "users",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "finance_raw_batches_owner_id_id_pk": {
+          "name": "finance_raw_batches_owner_id_id_pk",
+          "columns": [
+            "owner_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.finance_raw_files": {
+      "name": "finance_raw_files",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "batch_id": {
+          "name": "batch_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_hash": {
+          "name": "file_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_digest": {
+          "name": "payload_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parser_version": {
+          "name": "parser_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "row_count": {
+          "name": "row_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata_ciphertext": {
+          "name": "metadata_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_raw_files_owner_id_batch_id_finance_raw_batches_owner_id_id_fk": {
+          "name": "finance_raw_files_owner_id_batch_id_finance_raw_batches_owner_id_id_fk",
+          "tableFrom": "finance_raw_files",
+          "tableTo": "finance_raw_batches",
+          "columnsFrom": [
+            "owner_id",
+            "batch_id"
+          ],
+          "columnsTo": [
+            "owner_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "finance_raw_files_owner_id_unique": {
+          "name": "finance_raw_files_owner_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "id"
+          ]
+        },
+        "finance_raw_files_document_unique": {
+          "name": "finance_raw_files_document_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "kind",
+            "file_hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "finance_raw_files_kind_check": {
+          "name": "finance_raw_files_kind_check",
+          "value": "\"finance_raw_files\".\"kind\" in ('kb-bank-pdf', 'kb-card-xlsx')"
+        },
+        "finance_raw_files_row_count_check": {
+          "name": "finance_raw_files_row_count_check",
+          "value": "\"finance_raw_files\".\"row_count\" between 1 and 5000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_raw_rows": {
+      "name": "finance_raw_rows",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_id": {
+          "name": "file_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_raw_rows_owner_id_file_id_finance_raw_files_owner_id_id_fk": {
+          "name": "finance_raw_rows_owner_id_file_id_finance_raw_files_owner_id_id_fk",
+          "tableFrom": "finance_raw_rows",
+          "tableTo": "finance_raw_files",
+          "columnsFrom": [
+            "owner_id",
+            "file_id"
+          ],
+          "columnsTo": [
+            "owner_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "finance_raw_rows_owner_id_file_id_sequence_pk": {
+          "name": "finance_raw_rows_owner_id_file_id_sequence_pk",
+          "columns": [
+            "owner_id",
+            "file_id",
+            "sequence"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_raw_rows_sequence_check": {
+          "name": "finance_raw_rows_sequence_check",
+          "value": "\"finance_raw_rows\".\"sequence\" between 1 and 5000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_schedule_revisions": {
+      "name": "finance_schedule_revisions",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operation_id": {
+          "name": "operation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_schedule_revisions_owner_id_finance_schedule_workspaces_owner_id_fk": {
+          "name": "finance_schedule_revisions_owner_id_finance_schedule_workspaces_owner_id_fk",
+          "tableFrom": "finance_schedule_revisions",
+          "tableTo": "finance_schedule_workspaces",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "owner_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "finance_schedule_revisions_owner_id_revision_pk": {
+          "name": "finance_schedule_revisions_owner_id_revision_pk",
+          "columns": [
+            "owner_id",
+            "revision"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "finance_schedule_operation_unique": {
+          "name": "finance_schedule_operation_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "operation_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.finance_schedule_workspaces": {
+      "name": "finance_schedule_workspaces",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_schedule_workspaces_owner_id_users_id_fk": {
+          "name": "finance_schedule_workspaces_owner_id_users_id_fk",
+          "tableFrom": "finance_schedule_workspaces",
+          "tableTo": "users",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_schedule_revision_check": {
+          "name": "finance_schedule_revision_check",
+          "value": "\"finance_schedule_workspaces\".\"revision\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approval_status": {
+          "name": "approval_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'member'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "users_approval_status_check": {
+          "name": "users_approval_status_check",
+          "value": "\"users\".\"approval_status\" in ('pending', 'approved', 'rejected')"
+        },
+        "users_role_check": {
+          "name": "users_role_check",
+          "value": "\"users\".\"role\" in ('member', 'admin')"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

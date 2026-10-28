@@ -12,7 +12,7 @@ export const sessionContext = createContext<Scope>();
 export function safeReturnTo(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return "/exam";
   const url = new URL(value, "https://innova.invalid");
-  return url.origin === "https://innova.invalid" && ["/exam", "/admin/users", "/"].includes(url.pathname)
+  return url.origin === "https://innova.invalid" && ["/exam", "/admin/users", "/", "/motifin/import", "/motifin/review", "/motifin/spending", "/motifin/analysis", "/motifin/schedule", "/motifin/security", "/motifin/transactions"].includes(url.pathname)
     ? `${url.pathname}${url.search}` : "/exam";
 }
 export const sessionMiddleware = (client: QueryClient): MiddlewareFunction => async ({ request, context }, next) => {

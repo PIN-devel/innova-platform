@@ -1,0 +1,2 @@
+import {reviewMonthSchema} from '@innova/contracts';
+export function selectedReviewMonth(url:string){const input=new URL(url).searchParams.get('month');if(input){const parsed=reviewMonthSchema.safeParse(input);if(!parsed.success)throw new Response('잘못된 월입니다.',{status:400});return parsed.data;}const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit'}).formatToParts(new Date());return `${parts.find(p=>p.type==='year')!.value}-${parts.find(p=>p.type==='month')!.value}`;}

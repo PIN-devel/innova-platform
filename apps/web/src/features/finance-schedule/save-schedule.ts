@@ -1,0 +1,10 @@
+import type {QueryClient} from '@tanstack/react-query';
+import type {ScheduleCommand,ScheduleView} from '@innova/contracts';
+import {assertSessionVersion,subscribeSession,isSessionTransitioning} from '@/entities/auth/session-version';
+import {changeSchedule,readSchedule} from '@/entities/finance-schedule/api';
+import {scheduleKeys} from '@/entities/finance-schedule/queries';
+import {handleSessionApiError} from '@/features/auth/clear-protected-queries';
+export async function saveSchedule(client:QueryClient,owner:string,epoch:number,month:string,command:ScheduleCommand,signal:AbortSignal){const controller=new AbortController(),abort=()=>controller.abort();signal.throwIfAborted();assertSessionVersion(client,epoch);signal.addEventListener('abort',abort,{once:true});const stop=subscribeSession(client,()=>{try{assertSessionVersion(client,epoch);if(isSessionTransitioning(client))abort();}catch{abort();}}),key=scheduleKeys.month(owner,epoch,month),seed=(view:ScheduleView)=>{assertSessionVersion(client,epoch);client.setQueryData<ScheduleView>(key,old=>old&&old.revision>view.revision?old:view);};
+ try{await client.cancelQueries({queryKey:scheduleKeys.owner(owner,epoch)});assertSessionVersion(client,epoch);controller.signal.throwIfAborted();const result=await changeSchedule(owner,month,command,controller.signal);assertSessionVersion(client,epoch);controller.signal.throwIfAborted();seed(result);await client.invalidateQueries({queryKey:scheduleKeys.owner(owner,epoch),refetchType:'none'});
+  try{const checked=await readSchedule(owner,month,controller.signal);assertSessionVersion(client,epoch);controller.signal.throwIfAborted();if(checked.revision<result.revision)throw Error('Stale schedule');seed(checked);return {revision:result.revision,verified:true};}catch(error){assertSessionVersion(client,epoch);controller.signal.throwIfAborted();if(handleSessionApiError(client,error))throw error;return {revision:result.revision,verified:false};}
+ }catch(error){assertSessionVersion(client,epoch);handleSessionApiError(client,error);throw error;}finally{controller.abort();stop();signal.removeEventListener('abort',abort);}}

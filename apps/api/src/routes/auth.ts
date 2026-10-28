@@ -1,5 +1,6 @@
 import { loginRequestSchema, signupRequestSchema } from "@innova/contracts";
 import type { AuthUser } from "@innova/contracts";
+import {randomUUID} from "node:crypto";
 import type { FastifyPluginAsync } from "fastify";
 import * as argon2 from "argon2";
 import { AUTH_COOKIE_NAME, JWT_EXPIRES_IN, authCookieOptions, createAuthGuard } from "../auth.js";
@@ -18,7 +19,7 @@ export const authRoutes: FastifyPluginAsync<{ users: UserRepository }> = async (
   });
 
   async function issueCookie(user: UserRecord, reply: import("fastify").FastifyReply) {
-    const token = await reply.jwtSign({ sub: user.id }, { expiresIn: JWT_EXPIRES_IN });
+    const token = await reply.jwtSign({ sub: user.id,jti:randomUUID(),auth_time:Math.floor(Date.now()/1000) }, { expiresIn: JWT_EXPIRES_IN });
     reply.setCookie(AUTH_COOKIE_NAME, token, authCookieOptions());
   }
 

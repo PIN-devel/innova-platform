@@ -58,3 +58,35 @@
   --ring: oklch(0.58 0.12 245);
   --radius: 0.625rem;
 }
+
+/* Real boxes reserve space for each target; no overlapping hit-area overlays. */
+:root :is(button, a[href], summary):not(.sr-only) {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+@layer base {
+  a[href]:not(.sr-only) {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  :is(button, a[href], summary):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+}
+
+/* Keep the enlarged toast close control inside its own reserved space. */
+:root [data-sonner-toast][data-styled="true"] {
+  min-height: 60px;
+  padding-right: 60px;
+}
+:root [data-sonner-toast][data-styled="true"] [data-close-button] {
+  top: 8px;
+  right: 8px;
+  left: auto;
+  transform: none;
+  border-radius: var(--radius);
+}

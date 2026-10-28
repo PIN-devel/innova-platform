@@ -1,0 +1,20 @@
+import {createHash} from 'node:crypto';
+import * as argon2 from 'argon2';
+import type {FastifyInstance,FastifyRequest} from 'fastify';
+import {pdfAttemptStartSchema,pdfPasswordSaveSchema,pdfAttemptUseSchema,pdfAttemptSchema,pdfPasswordStatusSchema,pdfPasswordRevealSchema} from '@innova/contracts';
+import type {PdfPasswordRepository,PdfSecretContext} from '../db/finance-pdf-password.js';
+import type {UserRepository} from '../db/users.js';
+import {AUTH_COOKIE_NAME,createApprovedAuthGuard} from '../auth.js';
+import {AppError,invalidInput} from '../errors.js';
+export async function financePdfPasswordRoutes(app:FastifyInstance,{repository,users,allowedOrigins}:{repository:PdfPasswordRepository;users:UserRepository;allowedOrigins:string[]}){
+ const requireAuth=createApprovedAuthGuard(users),context=(request:FastifyRequest):PdfSecretContext=>({owner:request.authUser!.id,sessionHash:createHash('sha256').update(request.cookies[AUTH_COOKIE_NAME]??'').digest('hex'),authTime:request.user.auth_time});
+ app.addHook('onRequest',async(request,reply)=>{reply.header('Cache-Control','no-store').header('Vary','Cookie');await requireAuth(request);if(request.headers['x-expected-user']!==request.authUser!.id||request.headers['sec-fetch-site']==='cross-site')throw new AppError(403,'FORBIDDEN','Session changed');if(request.method!=='GET'&&(!allowedOrigins.includes(String(request.headers.origin))||request.headers['x-finance-request']!=='1'||!request.headers['content-type']?.startsWith('application/json')))throw new AppError(403,'FORBIDDEN','Origin not allowed');});
+ app.setErrorHandler((error,_request,reply)=>{const malformed=typeof error==='object'&&error!==null&&'code' in error&&String(error.code).startsWith('FST_ERR_CTP_');const safe=error instanceof AppError?error:malformed?invalidInput('Invalid PDF password request'):new AppError(500,'INTERNAL_ERROR','PDF password operation unavailable');return reply.code(safe.statusCode).send({error:{code:safe.code,message:safe.message}});});
+ app.setNotFoundHandler((_request,reply)=>reply.header('Cache-Control','no-store').header('Vary','Cookie').code(404).send({error:{code:'NOT_FOUND',message:'PDF password route not found'}}));
+ app.get('/status',async request=>pdfPasswordStatusSchema.parse(await repository.status(context(request))));
+ app.post('/attempts',async request=>{const parsed=pdfAttemptStartSchema.safeParse(request.body);if(!parsed.success)throw invalidInput('Invalid PDF password attempt');const c=context(request);return pdfAttemptSchema.parse(await repository.begin(c,parsed.data,async password=>{const user=await users.findById(c.owner);if(!user||user.approvalStatus!=='approved')throw new AppError(403,'FORBIDDEN','Approval changed');let verified=false;try{verified=await argon2.verify(user.passwordHash,password);}catch{/* Unknown legacy hash fails closed. */}await requireAuth(request);return verified;}));});
+ app.post('/save',async request=>{const parsed=pdfPasswordSaveSchema.safeParse(request.body);if(!parsed.success)throw invalidInput('Invalid PDF password request');try{return pdfPasswordStatusSchema.parse(await repository.save(context(request),parsed.data,parsed.data.secret));}finally{parsed.data.secret='';}});
+ app.post('/reveal',async request=>{const parsed=pdfAttemptUseSchema.safeParse(request.body);if(!parsed.success)throw invalidInput('Invalid PDF password attempt');const result=await repository.reveal(context(request),parsed.data);await requireAuth(request);return pdfPasswordRevealSchema.parse(result);});
+ app.post('/delete',async request=>{const parsed=pdfAttemptUseSchema.safeParse(request.body);if(!parsed.success)throw invalidInput('Invalid PDF password request');return pdfPasswordStatusSchema.parse(await repository.remove(context(request),parsed.data));});
+ app.post('/rotate',async request=>{const parsed=pdfAttemptUseSchema.safeParse(request.body);if(!parsed.success)throw invalidInput('Invalid PDF password request');return pdfPasswordStatusSchema.parse(await repository.rotate(context(request),parsed.data));});
+}

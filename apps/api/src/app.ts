@@ -1,3 +1,7 @@
+import {createFinanceManualRepository,type FinanceManualRepository} from './db/finance-manual.js';
+import {createFinanceTransactionRepository,type FinanceTransactionRepository} from './db/finance-transactions.js';
+import {createFinanceExport} from './finance-export/export.js';
+import {financeTransactionRoutes} from './routes/finance-transactions.js';
 import Fastify from "fastify";
 import { LogController, type FastifyBaseLogger } from "fastify";
 import cookie from "@fastify/cookie";
@@ -16,6 +20,21 @@ import { curriculumRoutes } from "./routes/curriculum.js";
 import { createCurriculumReadRepository, type CurriculumReadRepository } from "./db/curriculum-read.js";
 import { createRuntimeCurriculumAssetReader, type CurriculumAssetReader } from "./curriculum-assets.js";
 import { AppError, apiErrorBody, invalidInput } from "./errors.js";
+import { createFinanceRawRepository, type FinanceRawRepository } from "./db/finance-raw.js";
+import { createRawCipher } from "./finance-raw-crypto.js";
+import { financeRawRoutes } from "./routes/finance-raw.js";
+import { createBusinessFingerprint, createFinanceBusinessRepository, type FinanceBusinessRepository } from "./db/finance-business.js";
+import { financeBusinessRoutes } from "./routes/finance-business.js";
+
+import {createFinanceClassificationRepository,type FinanceClassificationRepository} from './db/finance-classification.js';
+
+import {createFinanceReviewRepository} from './db/finance-review.js';
+
+import {createFinanceScheduleRepository,type FinanceScheduleRepository} from './db/finance-schedule.js';
+
+import {createPdfPasswordCipher,type PdfPasswordCipher} from './finance-pdf-crypto.js';
+import {createPdfPasswordRepository,type PdfPasswordRepository} from './db/finance-pdf-password.js';
+import {financePdfPasswordRoutes} from './routes/finance-pdf-password.js';
 
 const fastifyBadRequestCodes = new Set([
   "FST_ERR_VALIDATION",
@@ -32,6 +51,15 @@ export function buildApp({
   readinessTimeoutMs = READINESS_TIMEOUT_MS,
   curriculumRepository,
   curriculumAssets = createRuntimeCurriculumAssetReader(),
+  financeRawRepository,
+  financeManualRepository,
+  financeTransactionRepository,
+  financeExporter,
+  financeBusinessRepository,
+  financeClassificationRepository,
+  financeScheduleRepository,
+  financePdfPasswordRepository,
+  financeAllowedOrigins = (process.env.FINANCE_ALLOWED_ORIGINS ?? "http://localhost:5174,http://127.0.0.1:5174").split(","),
   jwtSecret = process.env.JWT_SECRET,
 }: {
   logger?: false | FastifyBaseLogger;
@@ -41,6 +69,15 @@ export function buildApp({
   readinessTimeoutMs?: number;
   curriculumRepository?: CurriculumReadRepository;
   curriculumAssets?: CurriculumAssetReader;
+  financeRawRepository?: FinanceRawRepository;
+  financeManualRepository?: FinanceManualRepository;
+  financeTransactionRepository?: FinanceTransactionRepository;
+  financeExporter?: (owner:string,input:unknown)=>Promise<Uint8Array>;
+  financeBusinessRepository?: FinanceBusinessRepository;
+  financeClassificationRepository?: FinanceClassificationRepository;
+  financeScheduleRepository?: FinanceScheduleRepository;
+  financePdfPasswordRepository?: PdfPasswordRepository;
+  financeAllowedOrigins?: string[];
   jwtSecret?: string;
 } = {}) {
   if (!jwtSecret || jwtSecret.length < 32) throw new Error("JWT_SECRET must be set to at least 32 characters");
@@ -57,6 +94,16 @@ export function buildApp({
   // Existing isolated legacy tests may omit Curriculum injection. Production
   // always has a DB; avoid a second connection and keep legacy tests DB-free.
   const curriculum = curriculumRepository ?? (db ? createCurriculumReadRepository(db) : undefined);
+  const finance = financeRawRepository ?? (db && process.env.FINANCE_RAW_ENCRYPTION_KEY ? createFinanceRawRepository(db, createRawCipher()) : undefined);
+  const business = financeBusinessRepository ?? (db && finance && process.env.FINANCE_RAW_ENCRYPTION_KEY ? createFinanceBusinessRepository(db, finance, createRawCipher(), createBusinessFingerprint()) : undefined);
+  const manual=financeManualRepository??(db&&business&&process.env.FINANCE_RAW_ENCRYPTION_KEY?createFinanceManualRepository(db,createRawCipher(),createBusinessFingerprint()):undefined);
+  const classification=financeClassificationRepository??(db&&business&&process.env.FINANCE_RAW_ENCRYPTION_KEY?createFinanceClassificationRepository(db,business,createRawCipher(),manual):undefined);
+  const review=business&&classification?createFinanceReviewRepository(business,classification,manual):undefined;
+  const schedule=financeScheduleRepository??(db&&business&&classification&&process.env.FINANCE_RAW_ENCRYPTION_KEY?createFinanceScheduleRepository(db,business,classification,createRawCipher(),manual):undefined);
+  const transactions=financeTransactionRepository??(db&&business&&manual&&classification?createFinanceTransactionRepository(db,business,manual,classification,createRawCipher(),createBusinessFingerprint()):undefined);
+  const exporter=financeExporter??(db&&business&&manual&&classification&&finance?createFinanceExport(db,business,manual,classification,finance):undefined);
+  let pdfCipher:PdfPasswordCipher|undefined;try{pdfCipher=createPdfPasswordCipher();}catch{/* Optional feature stays unavailable; manual import remains available. */}
+  const pdfPassword=financePdfPasswordRepository??(db?createPdfPasswordRepository(db,pdfCipher):undefined);
   const checkReadiness = readinessCheck ?? (db
     ? async (signal: AbortSignal) => { await db.$client.query("select 1", [], { fetchOptions: { signal } }); }
     : async () => { throw new Error("Database is not configured for readiness checks"); });
@@ -122,6 +169,10 @@ export function buildApp({
     }
   });
   app.register(authRoutes, { prefix: "/api/auth", users });
+  if (finance) app.register(financeRawRoutes, { prefix: "/api/finance/raw", repository: finance, requireAuth: createApprovedAuthGuard(users), allowedOrigins: financeAllowedOrigins });
+  if (business) app.register(financeBusinessRoutes, { prefix: "/api/finance/business", repository: business, classification, review, schedule, requireAuth: createApprovedAuthGuard(users), allowedOrigins: financeAllowedOrigins });
+  if(manual&&transactions&&exporter)app.register(financeTransactionRoutes,{prefix:'/api/finance/transactions',manual,transactions,exporter,requireAuth:createApprovedAuthGuard(users),allowedOrigins:financeAllowedOrigins});
+  if(pdfPassword)app.register(financePdfPasswordRoutes,{prefix:'/api/finance/pdf-password',repository:pdfPassword,users,allowedOrigins:financeAllowedOrigins});
   app.register(examRoutes, { prefix: "/api/exam", repository: exams, requireAuth: createApprovedAuthGuard(users) });
   if (curriculum) app.register(curriculumRoutes, { prefix: "/api/curriculum", repository: curriculum, assets: curriculumAssets, requireAuth: createApprovedAuthGuard(users) });
   app.register(adminUserRoutes, { prefix: "/api/admin", users, requireAdmin: createAdminAuthGuard(users) });
