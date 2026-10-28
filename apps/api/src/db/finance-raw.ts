@@ -1,6 +1,6 @@
 import { randomUUID, createHash } from "node:crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { financeRawDocumentSchema, type FinanceRawFile, type FinanceRawImport, type FinanceRawReadback } from "@innova/contracts";
+import { financeRawDocumentSchema, financeRawReadbackSchema, type FinanceRawFile, type FinanceRawImport, type FinanceRawReadback } from "@innova/contracts";
 import type { createDatabase } from "./client.js";
 import { financeRawFiles, financeRawRows } from "./schema.js";
 import type { RawCipher } from "../finance-raw-crypto.js";
@@ -24,13 +24,12 @@ export function createFinanceRawRepository(db: ReturnType<typeof createDatabase>
       const [file] = await db.select().from(financeRawFiles).where(and(eq(financeRawFiles.ownerId, owner), eq(financeRawFiles.id, id)));
       if (!file) return undefined;
       const rows = await db.select().from(financeRawRows).where(and(eq(financeRawRows.ownerId, owner), eq(financeRawRows.fileId, id))).orderBy(financeRawRows.sequence);
-      const document = financeRawDocumentSchema.parse({ kind: file.kind, fileHash: file.fileHash, parserVersion: file.parserVersion,
+      const document = financeRawReadbackSchema.shape.document.parse({ kind: file.kind, parserVersion: file.parserVersion,
         metadata: cipher.open(file.metadataCiphertext, aad(owner, id, "metadata")),
         rows: rows.map(r => cipher.open(r.payloadCiphertext, aad(owner, id, r.sequence))),
       });
       if (document.rows.length !== file.rowCount) throw new Error("Incomplete Raw readback");
-      const { fileHash: _, ...safe } = document;
-      return { file: publicFile(file), document: safe };
+      return { file: publicFile(file), document };
     },
     async import(owner, input,context) {
       const doc = financeRawDocumentSchema.parse(input.document);

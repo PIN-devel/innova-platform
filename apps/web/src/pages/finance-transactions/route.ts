@@ -1,0 +1,20 @@
+import type {QueryClient} from '@tanstack/react-query';
+import {data,type LoaderFunctionArgs,type ActionFunctionArgs} from 'react-router';
+import {manualSaveSchema,transactionDeleteSchema,financeExportSchema} from '@innova/contracts';
+import {requireAccess} from '@/features/auth/route-session';
+import {assertSessionVersion} from '@/entities/auth/session-version';
+import {transactionQuery} from '@/entities/finance-transactions/queries';
+import {loadRouteQuery} from '@/shared/lib/router-query/route-query';
+import {runTransactionCommand,type TransactionCommand} from '@/features/finance-transactions/commands';
+import {ApiError} from '@/shared/api/client';
+export type TransactionActionResult=Awaited<ReturnType<typeof runTransactionCommand>> & {error?:string};
+export const transactionsLoader=(client:QueryClient)=>async({request,context}:LoaderFunctionArgs)=>{const {user,epoch}=requireAccess(context,client,request,'exam');await loadRouteQuery(client,transactionQuery(client,user!.id,epoch),request,()=>assertSessionVersion(client,epoch));return null;};
+export const transactionsAction=(client:QueryClient)=>async({request,context}:ActionFunctionArgs)=>{const {user,epoch}=requireAccess(context,client,request,'exam');try{
+ const form=await request.formData(),intent=String(form.get('intent')),id=String(form.get('id')),operationId=String(form.get('operationId'));let command:TransactionCommand;
+ if(intent==='manual')command={type:'manual',value:manualSaveSchema.parse({id,operationId,expectedRevision:Number(form.get('revision')),input:{date:String(form.get('date')),type:String(form.get('type')),amount:String(form.get('amount')),description:String(form.get('description')),categoryId:String(form.get('categoryId')??'unclassified'),note:String(form.get('note')??'')}})};
+ else if(intent==='impact')command={type:'impact',id};
+ else if(intent==='delete')command={type:'delete',value:transactionDeleteSchema.parse({id,operationId,expectedRevision:Number(form.get('revision')),confirmed:form.get('confirm')==='yes'})};
+ else if(intent==='export')command={type:'export',value:financeExportSchema.parse({from:String(form.get('from')),to:String(form.get('to')),includeNotes:form.get('includeNotes')==='yes'}),operationId};
+ else throw Error('Unknown transaction operation');
+ return await runTransactionCommand(client,user!.id,epoch,command,request.signal);
+ }catch(error){assertSessionVersion(client,epoch);request.signal.throwIfAborted();const conflict=error instanceof ApiError&&error.status===409;return data({error:conflict?'다른 변경이 먼저 저장되었습니다. 다시 조회하고 삭제 영향을 확인해 주세요.':'입력·기간·연결 또는 처리 결과를 확인해 주세요. 응답이 끊겼다면 목록을 새로 조회한 후 재시도해 주세요.'},{status:conflict?409:400});}};

@@ -26,9 +26,9 @@ export class ApiError extends Error {
 
 const baseUrl = (import.meta.env?.VITE_API_BASE_URL ?? "/api").replace(/\/$/, "");
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, format: "json" | "blob" = "json"): Promise<T> {
   const headers = new Headers(init.headers);
-  headers.set("Accept", "application/json");
+  headers.set("Accept", format === "blob" ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : "application/json");
   if (init.body !== undefined && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
@@ -42,6 +42,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     return undefined as T;
   }
 
+  if(response.ok && format === "blob") return await response.blob() as T;
   const contentType = response.headers.get("content-type");
   const data = contentType?.includes("application/json")
     ? await response.json()
@@ -65,6 +66,7 @@ function withBody<T>(method: "POST" | "PUT" | "PATCH", body: unknown, init: Requ
 }
 
 export const apiClient = {
+  download: (path: string, body: unknown, init?: RequestInit) => request<Blob>(path, {...init, method:"POST", body:JSON.stringify(body)}, "blob"),
   get: <T>(path: string, init?: RequestInit) => request<T>(path, init),
   post: <T>(path: string, body: unknown, init?: RequestInit) => withBody<T>("POST", body, init)(path),
   put: <T>(path: string, body: unknown, init?: RequestInit) => withBody<T>("PUT", body, init)(path),

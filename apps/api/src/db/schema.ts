@@ -157,7 +157,7 @@ export const financeRawFiles = pgTable("finance_raw_files", {
   unique("finance_raw_files_document_unique").on(t.ownerId, t.kind, t.fileHash),
   foreignKey({ columns: [t.ownerId, t.batchId], foreignColumns: [financeRawBatches.ownerId, financeRawBatches.id] }).onDelete("cascade"),
   check("finance_raw_files_kind_check", sql`${t.kind} in ('kb-bank-pdf', 'kb-card-xlsx')`),
-  check("finance_raw_files_row_count_check", sql`${t.rowCount} between 1 and 5000`),
+  check("finance_raw_files_row_count_check", sql`${t.rowCount} between 0 and 5000`),
 ]);
 
 export const financeRawRows = pgTable("finance_raw_rows", {
@@ -188,7 +188,7 @@ export const financeBusinessDocuments = pgTable('finance_business_documents', {
 ]);
 export const financeBusinessEvents = pgTable('finance_business_events', {
   id: text('id').primaryKey(), ownerId: text('owner_id').notNull(), documentId: text('document_id').notNull(),
-  rawFileId: text('raw_file_id').notNull(), rawSequence: integer('raw_sequence').notNull(), kind: text('kind').notNull(),
+  rawFileId: text('raw_file_id').notNull(), rawSequence: integer('raw_sequence'), kind: text('kind').notNull(),
   payloadCiphertext: text('payload_ciphertext').notNull(),
 }, t => [
   foreignKey({ columns: [t.ownerId,t.documentId,t.rawFileId], foreignColumns: [financeBusinessDocuments.ownerId,financeBusinessDocuments.id,financeBusinessDocuments.rawFileId] }).onDelete('cascade'),
@@ -243,3 +243,17 @@ export const financePdfSecretAttempts = pgTable('finance_pdf_secret_attempts', {
 export const financePdfSecretNonces = pgTable('finance_pdf_secret_nonces', {
   keyVersion: text('key_version').notNull(), nonce: text('nonce').notNull(), createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, t => [primaryKey({columns:[t.keyVersion,t.nonce]})]);
+
+// Manual records have their own identity and never fabricate a source file.
+export const financeManualTransactions = pgTable('finance_manual_transactions', {
+  id: text('id').primaryKey(), ownerId: text('owner_id').notNull().references(() => users.id, {onDelete:'cascade'}),
+  revision: integer('revision').notNull(), payloadCiphertext:text('payload_ciphertext').notNull(),
+  createdAt:timestamp('created_at',{withTimezone:true}).defaultNow().notNull(), updatedAt:timestamp('updated_at',{withTimezone:true}).defaultNow().notNull(),
+}, t=>[unique('finance_manual_owner_id_unique').on(t.ownerId,t.id),check('finance_manual_revision_check',sql`${t.revision}>0`)]);
+// Contains no amounts, descriptions or command snapshots. Entries outlive record removal.
+export const financeTransactionOperations = pgTable('finance_transaction_operations', {
+ ownerId:text('owner_id').notNull().references(()=>users.id,{onDelete:'cascade'}),operationId:text('operation_id').notNull(),transactionId:text('transaction_id').notNull(),digest:text('digest').notNull(),createdAt:timestamp('created_at',{withTimezone:true}).defaultNow().notNull(),
+},t=>[primaryKey({columns:[t.ownerId,t.operationId]})]);
+export const financeDeletedTransactions = pgTable('finance_deleted_transactions', {
+ ownerId:text('owner_id').notNull().references(()=>users.id,{onDelete:'cascade'}),eventId:text('event_id').notNull(),rawFileId:text('raw_file_id'),rawSequence:integer('raw_sequence'),createdAt:timestamp('created_at',{withTimezone:true}).defaultNow().notNull(),
+},t=>[primaryKey({columns:[t.ownerId,t.eventId]})]);

@@ -1,3 +1,4 @@
+import {transactionKeys} from '@/entities/finance-transactions/queries';
 import type { QueryClient } from "@tanstack/react-query";
 import type { AuthUser } from "@innova/contracts";
 import { adminUserKeys } from "@/entities/admin-users/queries";
@@ -20,11 +21,12 @@ import {scheduleKeys} from '@/entities/finance-schedule/queries';
 import {pdfPasswordKeys} from '@/entities/finance-pdf-password/queries';
 
 export function isProtectedQueryKey(key: readonly unknown[]) {
-  return [adminUserKeys.all, examBankKeys.all, curriculumKeys.all, financeRawKeys.all, businessKeys.all, classificationKeys.all, reviewKeys.all,analysisKeys.all,scheduleKeys.all,pdfPasswordKeys.all].some((prefix) => prefix.every((part, index) => key[index] === part));
+  return [transactionKeys.all,adminUserKeys.all, examBankKeys.all, curriculumKeys.all, financeRawKeys.all, businessKeys.all, classificationKeys.all, reviewKeys.all,analysisKeys.all,scheduleKeys.all,pdfPasswordKeys.all].some((prefix) => prefix.every((part, index) => key[index] === part));
 }
 
 export function clearProtectedQueries(queryClient: QueryClient) {
   advanceSessionVersion(queryClient);
+  queryClient.removeQueries({queryKey:transactionKeys.all});
   queryClient.getMutationCache().clear();
   queryClient.removeQueries({ queryKey: adminUserKeys.all });
   queryClient.removeQueries({ queryKey: examBankKeys.all });

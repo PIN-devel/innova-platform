@@ -1,3 +1,7 @@
+import {createFinanceManualRepository,type FinanceManualRepository} from './db/finance-manual.js';
+import {createFinanceTransactionRepository,type FinanceTransactionRepository} from './db/finance-transactions.js';
+import {createFinanceExport} from './finance-export/export.js';
+import {financeTransactionRoutes} from './routes/finance-transactions.js';
 import Fastify from "fastify";
 import { LogController, type FastifyBaseLogger } from "fastify";
 import cookie from "@fastify/cookie";
@@ -48,6 +52,9 @@ export function buildApp({
   curriculumRepository,
   curriculumAssets = createRuntimeCurriculumAssetReader(),
   financeRawRepository,
+  financeManualRepository,
+  financeTransactionRepository,
+  financeExporter,
   financeBusinessRepository,
   financeClassificationRepository,
   financeScheduleRepository,
@@ -63,6 +70,9 @@ export function buildApp({
   curriculumRepository?: CurriculumReadRepository;
   curriculumAssets?: CurriculumAssetReader;
   financeRawRepository?: FinanceRawRepository;
+  financeManualRepository?: FinanceManualRepository;
+  financeTransactionRepository?: FinanceTransactionRepository;
+  financeExporter?: (owner:string,input:unknown)=>Promise<Uint8Array>;
   financeBusinessRepository?: FinanceBusinessRepository;
   financeClassificationRepository?: FinanceClassificationRepository;
   financeScheduleRepository?: FinanceScheduleRepository;
@@ -86,9 +96,12 @@ export function buildApp({
   const curriculum = curriculumRepository ?? (db ? createCurriculumReadRepository(db) : undefined);
   const finance = financeRawRepository ?? (db && process.env.FINANCE_RAW_ENCRYPTION_KEY ? createFinanceRawRepository(db, createRawCipher()) : undefined);
   const business = financeBusinessRepository ?? (db && finance && process.env.FINANCE_RAW_ENCRYPTION_KEY ? createFinanceBusinessRepository(db, finance, createRawCipher(), createBusinessFingerprint()) : undefined);
-  const classification=financeClassificationRepository??(db&&business&&process.env.FINANCE_RAW_ENCRYPTION_KEY?createFinanceClassificationRepository(db,business,createRawCipher()):undefined);
-  const review=business&&classification?createFinanceReviewRepository(business,classification):undefined;
-  const schedule=financeScheduleRepository??(db&&business&&classification&&process.env.FINANCE_RAW_ENCRYPTION_KEY?createFinanceScheduleRepository(db,business,classification,createRawCipher()):undefined);
+  const manual=financeManualRepository??(db&&business&&process.env.FINANCE_RAW_ENCRYPTION_KEY?createFinanceManualRepository(db,createRawCipher(),createBusinessFingerprint()):undefined);
+  const classification=financeClassificationRepository??(db&&business&&process.env.FINANCE_RAW_ENCRYPTION_KEY?createFinanceClassificationRepository(db,business,createRawCipher(),manual):undefined);
+  const review=business&&classification?createFinanceReviewRepository(business,classification,manual):undefined;
+  const schedule=financeScheduleRepository??(db&&business&&classification&&process.env.FINANCE_RAW_ENCRYPTION_KEY?createFinanceScheduleRepository(db,business,classification,createRawCipher(),manual):undefined);
+  const transactions=financeTransactionRepository??(db&&business&&manual&&classification?createFinanceTransactionRepository(db,business,manual,classification,createRawCipher(),createBusinessFingerprint()):undefined);
+  const exporter=financeExporter??(db&&business&&manual&&classification&&finance?createFinanceExport(db,business,manual,classification,finance):undefined);
   let pdfCipher:PdfPasswordCipher|undefined;try{pdfCipher=createPdfPasswordCipher();}catch{/* Optional feature stays unavailable; manual import remains available. */}
   const pdfPassword=financePdfPasswordRepository??(db?createPdfPasswordRepository(db,pdfCipher):undefined);
   const checkReadiness = readinessCheck ?? (db
@@ -158,6 +171,7 @@ export function buildApp({
   app.register(authRoutes, { prefix: "/api/auth", users });
   if (finance) app.register(financeRawRoutes, { prefix: "/api/finance/raw", repository: finance, requireAuth: createApprovedAuthGuard(users), allowedOrigins: financeAllowedOrigins });
   if (business) app.register(financeBusinessRoutes, { prefix: "/api/finance/business", repository: business, classification, review, schedule, requireAuth: createApprovedAuthGuard(users), allowedOrigins: financeAllowedOrigins });
+  if(manual&&transactions&&exporter)app.register(financeTransactionRoutes,{prefix:'/api/finance/transactions',manual,transactions,exporter,requireAuth:createApprovedAuthGuard(users),allowedOrigins:financeAllowedOrigins});
   if(pdfPassword)app.register(financePdfPasswordRoutes,{prefix:'/api/finance/pdf-password',repository:pdfPassword,users,allowedOrigins:financeAllowedOrigins});
   app.register(examRoutes, { prefix: "/api/exam", repository: exams, requireAuth: createApprovedAuthGuard(users) });
   if (curriculum) app.register(curriculumRoutes, { prefix: "/api/curriculum", repository: curriculum, assets: curriculumAssets, requireAuth: createApprovedAuthGuard(users) });

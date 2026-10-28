@@ -96,7 +96,7 @@ function card(raw: FinanceRawReadback, fingerprint: (value: unknown) => string, 
       adjustment.status = 'needs-review'; adjustment.reason = 'unresolved-adjustment';
       adjustment.amount = purchaseDelta?.toString() ?? null; adjustment.fee = feeDelta?.toString() ?? null;
       adjustment.description = [value(row,'D'),value(row,'E'),value(row,'F')].filter(Boolean).join(' · ');
-      adjustment.relatedSequences = [parent.purchase.rawSequence];
+      adjustment.relatedSequences = [parent.purchase.rawSequence!];
       parent.purchase.relatedSequences.push(row.sequence); parent.charge.relatedSequences.push(row.sequence);
       parent.purchase.status = 'needs-review'; parent.purchase.reason = 'unresolved-adjustment'; parent.purchase.consumptionAmount = null;
       result.document.reasons.push('unresolved-adjustment');

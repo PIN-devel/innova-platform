@@ -1,4 +1,4 @@
-# 카드 소비 분류·보정
+# 소비 분류·보정
 
 상태: PIN-59 로컬 구현. [비즈니스 반영](finance-business-ingestion.md) 결과에 사용자의 선택을 별도로 적용한다. 원천 Raw·은행 현금·청구 금액·기존 비즈니스 이벤트는 수정하지 않는다. 운영 적용이나 전체 소비월 완전성 검증을 뜻하지 않는다.
 
@@ -28,10 +28,14 @@
 
 새 `finance_classification_workspaces`는 owner PK/FK, revision, 최초 생성/최종 수정 시각, 암호화 현재 상태를 가진다. 유일한 작성·수정 주체는 인증 owner이므로 중복 created_by/updated_by는 두지 않는다. 새 `finance_classification_revisions`는 (owner, revision) PK·owner FK·operation 유일성·생성 시각과 암호화 command/결과 snapshot을 가진 불변 이력이다. 개인정보 삭제 단위는 owner이며 사용자 삭제 시 모두 cascade한다.
 
-JSON 안 event/category 참조는 owner의 실제 비즈니스 이벤트·카테고리를 읽어 서버에서 검증한다. JSON 원소마다 관계 FK를 갖는 구조는 아니다. 현재 비즈니스 이벤트에는 개별 삭제/수정 경로가 없고 사용자 삭제는 이력까지 cascade한다. 향후 이벤트 교체/삭제가 추가되면 참조·이력 보존 정책도 함께 설계해야 한다. 삭제된 원천을 조회 결과에 임의로 되살리지 않는다.
+JSON 안 event/category 참조는 owner의 실제 비즈니스 이벤트·카테고리를 읽어 서버에서 검증한다. JSON 원소마다 관계 FK를 갖는 구조는 아니다. PIN-69의 개별 영구 삭제는 현재 보정과 환불 참조를 정리하고 과거 snapshot 전체를 폐기·현재 값을 재기준화한다. 다른 거래의 현재 값은 유지한다. 동일 행의 독립 이벤트는 연결을 해제하고 재검토한다. 사용자 전체 삭제는 이력까지 cascade한다. 삭제된 원천을 조회 결과에 임의로 되살리지 않는다.
 
 기존 Raw 전용 키에서 별도의 `finance-classification` AAD(owner/revision/state 또는 history)를 사용한 AES-GCM으로 현재 상태·수정 이력을 보호한다. 개인 설명/금액/카테고리를 인덱스·로그에 넣지 않는다. 키 관리/rotation의 제약은 Raw 지침을 따른다. 원천 파일·PDF 암호는 사용/저장하지 않는다.
 
 `GET/POST /api/finance/business/classification`은 approved·owner·expected actor·Origin/JSON·no-store를 검증한다. 관리자도 타인 거래를 수정할 수 없다. 공유 Zod 계약과 동일한 pure model로 API/MSW를 검증하며 실제 SQL의 CAS/암호화는 별도 PostgreSQL 테스트가 검증한다. 이력은 owner당 10,000회, 카드 이벤트는 10,000개, 카테고리 100개까지 지원하며 초과 시 과거 내역을 조용히 누락하는 대신 중단한다. 지속 운영용 pagination/보존·성능 정책은 별도 범위다.
 
 Router loader/action, entities query/API, features command 분리를 유지한다. owner/epoch query key는 세션 전환·권한 오류 시 즉시 제거하고 늦은 GET/POST가 다음 사용자 캐시를 채우지 못하게 한다. 상세 입력·보정값은 영구 브라우저 저장소에 두지 않는다. 현재 합성 자료만 검증하며 실파일 추가 전송은 사용자 결정으로 제외한다. dev migration·검증·정리 기록은 [PIN-59](https://linear.app/pin-dev/issue/PIN-59)가 소유한다.
+
+## 수기 원천과 삭제
+
+PIN-68 수기 지출은 Raw 없는 `manual-expense` 공통 조회로 분류·분할에 포함하며 source=manual, documentId/raw 행 참조는 null이다. 수기 수입은 소비 합계에서 제외한다. 수기 원천 수정은 그 거래의 기존 분류 보정을 초기화해 새 입력을 적용한다. 수기 기본 카테고리가 이후 제거되면 미분류로 읽는다. PIN-69 삭제는 현재 해당 보정/연관 환불 보정과 전체 암호화 history를 정리하고 revision을 증가시켜 과거 복원·지연 쓰기로 부활하지 않게 한다. 공통 owner CAS와 읽기 버전 검사, XLSX 최신 snapshot을 함께 적용한다.

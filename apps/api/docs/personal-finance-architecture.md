@@ -1,6 +1,6 @@
 # Personal Finance 구현 아키텍처와 금융정보 보호 설계
 
-상태: PIN-40 검토 초안, 2026-10-25. 구현·보안 검증·정책 채택·배포 완료를 뜻하지 않는다. 로컬 기준은 `3b7bd3f731c1fece31f3430883acaf3aecbc9374`이며 원격 develop 조회는 DNS 실패로 확인하지 못했다. 실행 코드·Contracts·DB·키·호스팅은 변경하지 않는다.
+상태: PIN-67 확정 정책과 PIN-68/69/70 구현을 반영한 현행 경계, 2026-10-28. 아래 과거 설계 후보 중 수기·삭제·내보내기는 다음 구현 절이 우선한다. 운영 적용·사용자 기능 검증은 별도 기록한다.
 
 제품 기준은 [PIN-16 Product Mission v0.1](https://linear.app/pin-dev/issue/PIN-16)의 월간 관리 부담 감소, 금융 흐름·변화 이해, 근거 있는 발견이다. 현재 목적 문장의 승인 원본은 PIN-16이다. 정식 제품 문서의 위치·진입점을 develop 기준으로 확인하고 별도 문서 변경을 병합한 뒤 단일 기준을 이전한다. 이 설계가 제품 목적 원문을 대신하지 않는다.
 
@@ -137,6 +137,17 @@ Raw를 선택하는 학습 목표는 적재→정규화→중복 후보→원자
 
 설계 근거: [OWASP Cryptographic Storage](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)의 인증 암호화·키 분리, [Secrets Management](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)의 비밀 생애주기, [Node crypto](https://nodejs.org/api/crypto.html)의 AEAD API. nonce 길이·AAD 구성·API 시점·재인증 수치는 본 제품 설계안이며 실행 검증 결과가 아니다.
 
+## 거래 생애주기 구현 — PIN-68/69/70
+
+- 수기 수입/지출은 `finance_manual_transactions`에 독립 owner/ID/revision·생성/수정 시각과 암호화 본문으로 저장한다. 파일/Raw를 만들지 않는다. 필수 날짜·거래명·KRW 양수 정수, 선택 카테고리·메모를 검증한다. 수기 지출은 공통 분류·분할/소비 분석에, 수입은 별도 월간 수입과 일정 근거에 포함하며 은행 잔액·coverage에 더하지 않는다.
+- 모든 거래 해석·수기/분류/일정 쓰기는 `finance_business_scopes`의 owner CAS를 공유한다. 읽기도 버전이 바뀌면 재조회/409로 혼합 스냅샷을 차단한다. `finance_transaction_operations`에는 owner/operation/거래 ID와 용도별 HMAC digest만 남기고 본문을 복제하지 않는다. 관리자도 타인의 자료를 읽거나 변경하지 못한다.
+- 영구 삭제는 서버 영향 미리보기의 버전과 최종 의도를 확인한 단건만 지원한다. Raw 해당 행·제어 합계/메타 사본·거래·보정/분할/연결을 정리하고 분류/일정 전체 과거 암호화 이력은 폐기·현재 상태를 새 revision으로 재기준화한다. 다른 거래의 현재 보정·일정은 보존한다. 앱 복원/분석 제외/다건 삭제는 제공하지 않는다.
+- 동일 Raw 행에 있던 별개 청구/수수료 이벤트는 자동 연쇄 삭제하지 않고 Raw FK를 nullable로 해제해 재검토 상태로 남긴다. 해당 거래 정보가 남는 문서 합계·원천 메타는 제거한다. 은행 잔액은 주변 잔액으로 삭제 금액을 역산하지 않도록 관련 문서의 잔액 표시를 미확인으로 전환하며 숫자를 임의 보정하지 않는다. 삭제 후 원천은 부분 자료다.
+- `finance_deleted_transactions`는 owner/삭제 ID/파일·행 식별/시각만 보호 보관한다. 원문·거래 금액은 없다. 원래 파일 hash/digest 유일성과 삭제 후 남은 Raw를 함께 유지하여 동일 파일 재업로드는 기존 결과만 반환한다. 다른 파일은 날짜·금액만으로 병합하지 않는다. Raw 행 수는 0, 원천 행 번호는 누락, 거래의 원천 행 연결은 null일 수 있다.
+- 내보내기는 `POST /api/finance/transactions/export`에서 현재 월 기본·연속 최대 12개월의 XLSX만 메모리에서 생성한다. 안내/거래 상세/분할 내역/월별 요약 4개 시트, 정확한 정수 텍스트와 ISO 날짜·원천/자료 상태·근거 ID를 제공한다. 문자열 셀만 기록하고 수식·외부 링크를 생성하지 않는다. 최대 15,000 거래행/30,000 배분행/8MiB, 전체 원천 조회는 50,000 이벤트로 제한하고 초과는 조용한 누락 없이 거부한다.
+- 계좌·카드 식별자/PDF 비밀/키/세션은 제외한다. 거래처는 포함하고 메모는 선택 포함한다. 은행의 송금메모가 거래명에 합쳐져 반출되지 않도록 원천 적요와 메모를 분리한다. 불명 청구일은 빈값과 안내로 남기고 월 귀속을 추정하지 않는다. 내보내기 파일은 서버 저장하지 않으며 외부 AI 자동 전송은 없다.
+- 원파일·이미 내려받은 사본과 백업은 즉시 삭제할 수 없다. **최신 삭제 기록을 별도 보호 확보하고 삭제를 재적용·검증하기 전 운영 복원은 금지**한다. 실제 보존/복원 조건은 PIN-48/49와 운영 담당자가 소유하며 이 구현으로 시점 복원 완료를 주장하지 않는다.
+
 ## 전송·로그·캐시·보존·내보내기
 
 - 전체 금융 응답과 오류에 `Cache-Control: no-store`; HTTPS, credential 포함 fetch, 동일 origin 기본. CDN·Service Worker·HTTP cache·browser persistence·offline queue에 저장하지 않는다. 금융 route에는 session replay·본문 수집 Analytics를 적용하지 않는다. 계좌/카드·상대방·메모·금액·암호·원파일 hash를 URL/로그/에러/APM context에 넣지 않는다. URL은 월·고정 화면 enum·무작위 내부 ID 정도로 제한한다.
@@ -147,7 +158,7 @@ Raw를 선택하는 학습 목표는 적재→정규화→중복 후보→원자
 - 원파일과 PDF 평문은 서버 비보관. 정상 반영 Raw/비즈니스/이력은 사용자가 해당 자료를 보관하는 기간에 유지한다. 미반영 server staging은 최대 24시간, operation 결과는 30일(복구용 설계값) 후 본문 없이 만료시킨다. 이 기간 뒤에도 원문 문서의 중복 제약은 자료 보유 동안 유지한다. 실패한 요청에 원문을 저장하는 기본 경로는 만들지 않는다.
 - 암호 삭제는 credential과 활성 attempt 폐기, 금융 자료 삭제는 Raw·비즈니스·보정·분류/매칭 연결·파생 요약·저장 리뷰 입력 사본·staging을 함께 삭제하고 관련 cache를 무효화한다. 계정 삭제는 모든 개인 자료와 secret을 포함한다. 삭제와 진행 중 import를 직렬화해 늦은 커밋으로 자료가 부활하지 않게 한다.
 - 삭제 시점·대상만 최소 tombstone으로 남겨 백업 복원 뒤 재삭제한다. 백업 즉시 소거·공유 키 폐기로 특정 사용자만 완전 삭제를 약속하지 않는다. 실제 백업 보존일/만료, tombstone 수명, 복원 후 삭제 재적용·구키 보유를 PIN-49/운영 검토에서 확정하고 출시한다. 선택 저장 암호가 백업에 남을 수 있음을 안내한다.
-- export는 owner만 요청·다운로드하는 no-store JSON/CSV로 원천 근거·비즈니스 현재 값·보정/분류/연결·coverage·revision/버전을 구별해 제공한다. 원파일은 미보관이므로 포함할 수 없고 PDF 암호·key·ciphertext는 export하지 않는다. 동기 export가 한도를 넘으면 안전한 실패를 반환하고 새 큐를 자동 도입하지 않는다.
+- export는 owner만 요청·다운로드하는 no-store XLSX로 원천 근거·비즈니스 현재 값·보정/분류/연결·coverage·revision/버전을 구별해 제공한다. 원파일은 미보관이므로 포함할 수 없고 PDF 암호·key·ciphertext는 export하지 않는다. 동기 export가 한도를 넘으면 안전한 실패를 반환하고 새 큐를 자동 도입하지 않는다.
 - 파일 방식에는 외부 계정 연결 권한이 없다. ‘관리 중지’는 신규 수집을 멈추고 기존 자료의 기준일을 표시하며 삭제와 구별한다. 향후 Sheets/AI 연결 철회·사본 삭제는 실제 연동을 만들 때 추가한다. 현재 외부 AI로 원문/금융 값/암호를 전송하지 않는다.
 
 ## API 계약 초안과 부분 실패
@@ -163,7 +174,7 @@ Raw를 선택하는 학습 목표는 적재→정규화→중복 후보→원자
 | `POST /imports/:operationId/resolutions` | 현재 base revision·대상 후보·명시 선택. 검토 이후 변경되면 409이며 원문/사용자 보정을 함께 보여준다. |
 | `PATCH /transactions/:id`, `POST /transactions/:id/restore` | base revision·허용 보정 필드, 저장된 유효 값·revision·배분·영향 월. 원천 필드와 혼용하지 않는다. |
 | `GET /reviews`, `GET /transactions`, `GET /calendar` | 필터·cursor, 정확한 money·scope/coverage·as-of·생성 시각·revision·근거. 일정의 미확인 값 뒤 전망은 보류한다. |
-| `POST /exports`, `DELETE /sources/:id` | 범위·revision·확인된 삭제 의도, 결과 및 삭제 상태. export 스트림 시작 후 실패는 정상 다운로드로 표시하지 않는다. |
+| `POST /transactions/export`, `GET /transactions/:id/impact`, `POST /transactions/delete` | 범위·revision·확인된 삭제 의도, 결과 및 삭제 상태. export 스트림 시작 후 실패는 정상 다운로드로 표시하지 않는다. |
 
 후보 오류: 401 재인증, 403 승인/기대 사용자·Origin 불일치, 404 자기 소유 객체 없음, 409 revision/중복/선택 충돌, 413 한도, 422 구조/대사 불일치, 429 제한, 503 일시 인프라/키 불가. 세부 코드는 기존 공용 오류 envelope에 추가 검토한다. 오류 메시지/validation detail에 입력값을 넣지 않는다.
 

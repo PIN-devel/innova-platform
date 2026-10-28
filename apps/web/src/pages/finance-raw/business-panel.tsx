@@ -7,6 +7,7 @@ import {businessListQuery,businessDetailQuery} from '@/entities/finance-business
 import {useCurrentUser,useSessionScope} from '@/features/auth/hooks';
 import {Button} from '@/shared/ui/button';
 const reasons:Record<BusinessReason,string>={
+ 'user-deleted':'사용자가 일부 거래를 영구 삭제했습니다. 원천 합계·잔액 연결과 전체 자료를 확정하지 않습니다.',
  'invalid-source':'해석할 수 없는 값이 있어 자료 확인이 필요합니다.','bank-check-failed':'입출금·잔액 또는 이어지는 기간의 잔액이 맞지 않습니다.',
  'missing-source-identity':'계좌·카드 식별 근거가 부족합니다.','different-bank-account':'기존 월급·소비 통장과 다른 계좌여서 반영을 보류했습니다.',
  'overlapping-document':'다른 자료와 기간이 겹쳐 중복·정정 확인이 필요합니다.','possible-duplicate':'같은 구매·명세일 가능성이 있어 새 반영을 보류했습니다.',
@@ -16,7 +17,7 @@ const reasons:Record<BusinessReason,string>={
 };
 const stateLabel=(state:BusinessDocument['state'])=>state==='accepted'?'반영됨':state==='needs-review'?'확인 필요 · 반영 보류':'검산 실패 · 반영 보류';
 const money=(value:string|null)=>value===null?'확인 불가':`${BigInt(value).toLocaleString('ko-KR')}원`;
-const kindLabel:Record<BusinessEvent['kind'],string>={'bank-cash':'통장 입출금','card-purchase':'카드 이용 관측','card-charge':'청구 원금','card-fee':'수수료 관측','card-adjustment':'자료 조정 · 확인 필요'};
+const kindLabel:Record<BusinessEvent['kind'],string>={'manual-expense':'수기 지출','bank-cash':'통장 입출금','card-purchase':'카드 이용 관측','card-charge':'청구 원금','card-fee':'수수료 관측','card-adjustment':'자료 조정 · 확인 필요'};
 const cashLabel:Record<NonNullable<BusinessEvent['cashRole']>,string>={'salary-candidate':'급여 표시 · 분류 확인 필요','card-settlement-candidate':'카드대금 출금 후보 · 소비 재합산 제외','transfer-candidate':'계좌 이동 후보 · 상대 계좌 잔액 미확인','unclassified':'입출금 성격 확인 필요'};
 export function ProcessRawButton({rawFileId}:{rawFileId:string}){
  const fetcher=useFetcher<{businessState?:BusinessState;error?:string}>();
@@ -36,7 +37,7 @@ function Detail({detail}:{detail:BusinessDetail}){
    <p className="break-words">{event.description||'설명 없음'}</p>
    {event.kind==='bank-cash'?<p>입금 {money(event.inflow)} / 출금 {money(event.outflow)} / 잔액 {money(event.balance)}</p>:<p>금액 {money(event.amount)}{event.fee!==null?` / 수수료 ${money(event.fee)}`:''}{event.installment?` / 할부 ${event.installment.number}/${event.installment.total}`:''}</p>}
    {event.cashRole&&<p>{cashLabel[event.cashRole]}</p>}{event.reason&&<p>{reasons[event.reason]}</p>}
-   <p className="text-xs text-muted-foreground">가져온 자료 {event.sourcePage}페이지 · {event.sourceRow}행 (추적 순서 {event.rawSequence}){event.relatedSequences.length?` · 연결된 자료 순서 ${event.relatedSequences.join(', ')}`:''}</p>
+   <Link className="text-primary underline" to={`/motifin/transactions?event=${event.id}`}>이 거래 관리·영구 삭제</Link><p className="text-xs text-muted-foreground">가져온 자료 {event.sourcePage}페이지 · {event.sourceRow}행 (추적 순서 {event.rawSequence}){event.relatedSequences.length?` · 연결된 자료 순서 ${event.relatedSequences.join(', ')}`:''}</p>
   </li>)}</ul>
   {detail.events.length>count&&<Button variant="outline" onClick={()=>setCount(n=>n+100)}>거래 100개 더 보기</Button>}
  </article>;

@@ -1,3 +1,4 @@
+import {financeRevision} from './finance-write-scope.js';
 import { createHmac, hkdfSync } from 'node:crypto';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { businessDetailSchema, businessDocumentSchema, businessEventSchema, type BusinessDetail, type BusinessList } from '@innova/contracts';
@@ -11,6 +12,7 @@ import { financeBusinessDocuments as docs, financeBusinessEvents as events, fina
 const version = 'kb-business-v1';
 const aad = (owner:string,id:string,kind:string) => JSON.stringify(['finance-business',1,owner,id,kind]);
 export interface FinanceBusinessRepository {
+  revision?(owner:string):Promise<number>;
   process(owner:string,rawFileId:string):Promise<BusinessDetail>;
   find(owner:string,id:string):Promise<BusinessDetail|undefined>;
   list(owner:string):Promise<BusinessList>;
@@ -28,16 +30,19 @@ export function createFinanceBusinessRepository(db:ReturnType<typeof createDatab
     return rows.map(row=>({document:summary(owner,row),scopeKeys:row.scopeKeys}));
   }
   const repository:FinanceBusinessRepository = {
+    revision:owner=>financeRevision(db,owner),
     async find(owner,id) {
       const [row] = await db.select().from(docs).where(and(eq(docs.ownerId,owner),eq(docs.id,id)));
       if (!row) return undefined;
       const records = await db.select().from(events).where(and(eq(events.ownerId,owner),eq(events.documentId,id)));
       const result = businessDetailSchema.parse({document:summary(owner,row),events:records.map(e=>cipher.open(e.payloadCiphertext,aad(owner,e.id,'event')))});
-      result.events.sort((a,b)=>a.rawSequence-b.rawSequence||a.kind.localeCompare(b.kind));
+      result.events.sort((a,b)=>(a.rawSequence??0)-(b.rawSequence??0)||a.kind.localeCompare(b.kind));
       if (result.events.length !== result.document.eventCount) throw Error('Incomplete business readback');
       return result;
     },
     async process(owner,rawFileId) {
+      const [existing] = await db.select().from(docs).where(and(eq(docs.ownerId,owner),eq(docs.rawFileId,rawFileId),eq(docs.processorVersion,version)));
+      if(existing)return (await repository.find(owner,existing.id))!;
       const source = await raw.find(owner,rawFileId);
       if (!source) throw new AppError(404,'NOT_FOUND','Source file not found');
       const normalized = normalizeRaw(source,value=>fingerprint(owner,value));
