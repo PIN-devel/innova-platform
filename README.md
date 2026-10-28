@@ -10,6 +10,7 @@ React, Fastify, PostgreSQL 기반 모노레포입니다. `/exam`에서 Exam Dril
 | 필요한 정보만 읽고 조사·검증·전달하기 | [AI 작업 흐름](./docs/ai-workflow.md) |
 | 브랜치·PR·릴리스 | [Git 운영](./docs/git-workflow.md) |
 | Label·Milestone·Issue 역할, 개선 Inbox, 상태 자동화 | [Linear 운영](./docs/linear-workflow.md) |
+| 신규 테이블의 식별·감사·소유권·계보 설계 | [테이블 메타데이터 기준](./docs/database-table-metadata.md) |
 | 앱 실행과 현행 기준 | [Web](./apps/web/README.md), [API](./apps/api/README.md) |
 
 과거 측정 기록은 비교·재현할 때만 읽는다. 정책 원문과 구현·검증 결과는 각 소유 문서/이슈에서 관리한다.

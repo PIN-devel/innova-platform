@@ -1,0 +1,12 @@
+import type {QueryClient} from '@tanstack/react-query';
+import {data,type LoaderFunctionArgs,type ActionFunctionArgs} from 'react-router';
+import {scheduleCommandSchema} from '@innova/contracts';
+import {requireAccess} from '@/features/auth/route-session';
+import {assertSessionVersion} from '@/entities/auth/session-version';
+import {scheduleQuery} from '@/entities/finance-schedule/queries';
+import {saveSchedule} from '@/features/finance-schedule/save-schedule';
+import {selectedReviewMonth} from '@/shared/lib/finance-month';
+import {loadRouteQuery} from '@/shared/lib/router-query/route-query';
+import {ApiError} from '@/shared/api/client';
+export const scheduleLoader=(client:QueryClient)=>async({request,context}:LoaderFunctionArgs)=>{const {user,epoch}=requireAccess(context,client,request,'exam');await loadRouteQuery(client,scheduleQuery(client,user!.id,epoch,selectedReviewMonth(request.url)),request,()=>assertSessionVersion(client,epoch));return null;};
+export const scheduleAction=(client:QueryClient)=>async({request,context}:ActionFunctionArgs)=>{const {user,epoch}=requireAccess(context,client,request,'exam');try{const form=await request.formData(),command=scheduleCommandSchema.parse(JSON.parse(String(form.get('command'))));return await saveSchedule(client,user!.id,epoch,selectedReviewMonth(request.url),command,request.signal);}catch(error){assertSessionVersion(client,epoch);request.signal.throwIfAborted();const conflict=error instanceof ApiError&&error.code==='CONFLICT';return data({conflict,error:conflict?'다른 일정 수정이 먼저 저장되었습니다. 최신 내역을 다시 조회해 주세요.':'일정 날짜·금액·연결 거래와 로그인 상태를 확인해 주세요.'},{status:conflict?409:400});}};

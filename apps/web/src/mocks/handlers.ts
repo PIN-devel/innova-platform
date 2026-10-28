@@ -1,3 +1,4 @@
+import { createFinanceRawHandlers } from "./finance-raw-handlers.ts";
 import {
   authResponseSchema,
   adminApprovalResponseSchema,
@@ -95,6 +96,7 @@ function mockChapter(subject: unknown, chapter: unknown) {
 }
 
 export const handlers = [
+  ...createFinanceRawHandlers(() => currentMockUser,password=>!!currentMockUser&&mockUsers.get(currentMockUser.email)?.password===password),
   http.get("*/api/curriculum/subjects", () => curriculumAccess() ?? HttpResponse.json({ subjects: [mockCurriculum.subject] }, { headers })),
   http.get("*/api/curriculum/subjects/:subjectId", ({ params }) => curriculumAccess() ?? (params.subjectId === mockCurriculum.subject.id ? HttpResponse.json(mockCurriculum.subject, { headers }) : apiError(404, "NOT_FOUND", "Curriculum Subject not found"))),
   http.get("*/api/curriculum/subjects/:subjectId/chapters", ({ params }) => curriculumAccess() ?? (params.subjectId === mockCurriculum.subject.id ? HttpResponse.json({ subject: mockCurriculum.subject, chapters: mockCurriculum.chapters }, { headers }) : apiError(404, "NOT_FOUND", "Curriculum Subject not found"))),

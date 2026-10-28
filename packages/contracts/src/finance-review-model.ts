@@ -1,0 +1,42 @@
+import type {BusinessDetail,BusinessList} from './finance-business.js';
+import type {ClassificationView} from './finance-classification.js';
+import {financeReviewSchema,reviewMonthSchema,type FinanceReview,type ReviewFlowId} from './finance-review.js';
+const dayNumber=(day:string)=>Date.parse(day+'T00:00:00Z')/86400000;
+const bounds=(month:string)=>({start:month+'-01',end:month+'-'+new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5)),0)).getUTCDate()});
+const previousMonth=(month:string)=>new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5))-2,1)).toISOString().slice(0,7);
+const sum=(values:string[])=>values.reduce((s,v)=>s+BigInt(v),0n).toString();
+export function buildFinanceReview(month:string,list:BusinessList,bankDetails:BusinessDetail[],classification:ClassificationView,computedAt:string):FinanceReview {
+ reviewMonthSchema.parse(month);
+ const banks=bankDetails.filter(d=>d.document.state==='accepted'&&d.document.kind==='kb-bank-pdf');
+ const allBank=banks.flatMap(d=>{
+  const rows=d.events.filter(e=>e.kind==='bank-cash');
+  // Printed row order may be descending, including rows in the same second.
+  // Keep the balance-verified direction before the stable timestamp merge.
+  const ordered=[rows,[...rows].reverse()].find(events=>events.every((e,i)=>i===0||(events[i-1]!.occurredAt!<=e.occurredAt!&&events[i-1]!.balance!==null&&e.inflow!==null&&e.outflow!==null&&e.balance!==null&&BigInt(events[i-1]!.balance!)+BigInt(e.inflow)-BigInt(e.outflow)===BigInt(e.balance))))??rows;
+  return ordered.map(event=>({documentId:d.document.id,event}));
+ }).sort((a,b)=>(a.event.occurredAt??a.event.occurredOn??'').localeCompare(b.event.occurredAt??b.event.occurredOn??''));
+ const summary=(selected:string):FinanceReview['current']=>{
+  const {start,end}=bounds(selected),documents=banks.filter(d=>d.document.period.start&&d.document.period.end&&d.document.period.start<=end&&d.document.period.end>=start);
+  const rows=allBank.filter(r=>r.event.occurredOn&&r.event.occurredOn>=start&&r.event.occurredOn<=end);
+  const periods=documents.map(d=>({documentId:d.document.id,start:d.document.period.start!<start?start:d.document.period.start!,end:d.document.period.end!>end?end:d.document.period.end!})).sort((a,b)=>a.start.localeCompare(b.start));
+  let covered=dayNumber(start)-1;for(const p of periods){if(dayNumber(p.start)>covered+1)break;covered=Math.max(covered,dayNumber(p.end));}
+  const complete=periods.length>0&&covered>=dayNumber(end);
+  const conflict=list.documents.some(d=>d.kind==='kb-bank-pdf'&&d.state!=='accepted'&&(d.candidateDocumentIds.some(id=>documents.some(p=>p.document.id===id))||!!(d.period.start&&d.period.end&&d.period.start<=end&&d.period.end>=start)));
+  const boundary=(day:string,inclusive:boolean)=>{const d=documents.find(d=>d.document.period.start!<=day&&d.document.period.end!>=day);if(!d||d.document.totals.opening===null)return null;return (BigInt(d.document.totals.opening)+d.events.filter(e=>e.kind==='bank-cash'&&e.occurredOn&&(inclusive?e.occurredOn<=day:e.occurredOn<day)).reduce((s,e)=>s+BigInt(e.inflow!)-BigInt(e.outflow!),0n)).toString();};
+  let opening=boundary(start,false),closing=boundary(end,true),chain=true;
+  if(complete&&opening!==null){let running=BigInt(opening);for(const r of rows){running+=BigInt(r.event.inflow!)-BigInt(r.event.outflow!);if(r.event.balance===null||running!==BigInt(r.event.balance))chain=false;}if(closing===null||running!==BigInt(closing))chain=false;}
+  const state=conflict||!chain?'conflict':!documents.length?'missing':complete?'reported-month':'partial';
+  if(state==='conflict'){opening=null;closing=null;}
+  const flowIds:ReviewFlowId[]=['in-salary','in-transfer','in-other','out-card','out-transfer','out-other'];
+  const flows=flowIds.map(id=>{const direction=id.startsWith('in-')?'inflow':'outflow';const role=id==='in-salary'?'salary-candidate':id.endsWith('transfer')?'transfer-candidate':id==='out-card'?'card-settlement-candidate':null;const included=rows.filter(r=>BigInt(r.event[direction]??'0')>0n&&(role?r.event.cashRole===role:direction==='inflow'?!['salary-candidate','transfer-candidate'].includes(r.event.cashRole??''):!['card-settlement-candidate','transfer-candidate'].includes(r.event.cashRole??'')));return {id,amount:sum(included.map(r=>r.event[direction]!)),eventIds:included.map(r=>r.event.id)};});
+  const transactions=classification.transactions.filter(t=>(t.effective?.occurredOn??t.basisDate)?.slice(0,7)===selected),known=transactions.filter(t=>t.effective),categories=new Map<string,{name:string;amount:bigint;ids:Set<string>}>();
+  for(const t of known)for(const a of t.effective!.allocations){const v=categories.get(a.categoryId)??{name:classification.categories.find(c=>c.id===a.categoryId)?.name??'미분류',amount:0n,ids:new Set<string>()};v.amount+=BigInt(a.amount);v.ids.add(t.event.id);categories.set(a.categoryId,v);}
+  return {month:selected,bank:{state,periods,opening,inflow:documents.length?sum(rows.map(r=>r.event.inflow!)):null,outflow:documents.length?sum(rows.map(r=>r.event.outflow!)):null,closing,change:state==='reported-month'&&opening!==null&&closing!==null?(BigInt(closing)-BigInt(opening)).toString():null,flows},card:{coverage:transactions.length?'unknown':'missing',observedTotal:known.length?sum(known.map(t=>t.effective!.amount)):null,transactionCount:known.length,excludedCount:transactions.length-known.length,sourceReview:transactions.some(t=>t.sourceReview),categories:[...categories].map(([id,v])=>({id,name:v.name,amount:v.amount.toString(),eventIds:[...v.ids]}))}};
+ };
+ const current=summary(month),previous=summary(previousMonth(month));
+ const comparable=current.card.observedTotal!==null&&previous.card.observedTotal!==null&&!current.card.excludedCount&&!previous.card.excludedCount&&!current.card.sourceReview&&!previous.card.sourceReview;
+ const observedDifference=comparable?(BigInt(current.card.observedTotal!)-BigInt(previous.card.observedTotal!)).toString():null;
+ const categoryChanges=comparable?[...new Set([...current.card.categories,...previous.card.categories].map(c=>c.id))].map(categoryId=>{const now=current.card.categories.find(c=>c.id===categoryId),before=previous.card.categories.find(c=>c.id===categoryId);return {categoryId,name:now?.name??before!.name,amount:(BigInt(now?.amount??'0')-BigInt(before?.amount??'0')).toString()};}).filter(c=>c.amount!=='0').sort((a,b)=>{const x=BigInt(a.amount)<0n?-BigInt(a.amount):BigInt(a.amount),y=BigInt(b.amount)<0n?-BigInt(b.amount):BigInt(b.amount);return x===y?a.categoryId.localeCompare(b.categoryId):x>y?-1:1;}).slice(0,2):[];
+ const months=new Set<string>([month]);for(const d of list.documents)for(const date of [d.period.start,d.period.end,d.billingMonth,d.dueDate])if(date&&reviewMonthSchema.safeParse(date.slice(0,7)).success)months.add(date.slice(0,7));for(const t of classification.transactions){const m=(t.effective?.occurredOn??t.basisDate)?.slice(0,7);if(m&&reviewMonthSchema.safeParse(m).success)months.add(m);}for(const r of allBank){const m=r.event.occurredOn?.slice(0,7);if(m&&reviewMonthSchema.safeParse(m).success)months.add(m);}
+ return financeReviewSchema.parse({calculationVersion:'monthly-review-v1',computedAt,classificationRevision:classification.revision,sourceDocumentIds:list.documents.map(d=>d.id),months:[...months].sort().reverse(),current,previous,observedDifference,monthlyComparison:'insufficient-coverage',categoryChanges,bankEvidence:allBank.filter(r=>r.event.occurredOn?.slice(0,7)===month),cardEvidence:classification.transactions.filter(t=>(t.effective?.occurredOn??t.basisDate)?.slice(0,7)===month),billing:list.documents.filter(d=>d.kind==='kb-card-xlsx'&&d.state==='accepted'&&(d.billingMonth===month||d.dueDate?.slice(0,7)===month||(!d.billingMonth&&classification.transactions.some(t=>t.documentId===d.id&&(t.effective?.occurredOn??t.basisDate)?.slice(0,7)===month)))).map(d=>({documentId:d.id,billingMonth:d.billingMonth,dueDate:d.dueDate,billedTotal:d.totals.billedTotal,settlement:list.settlements.find(s=>s.cardDocumentId===d.id)??null})),attention:list.documents.filter(d=>d.state!=='accepted'&&((d.period.start&&d.period.end&&d.period.start<=bounds(month).end&&d.period.end>=bounds(month).start)||d.candidateDocumentIds.some(id=>banks.some(b=>b.document.id===id&&b.document.period.start!<=bounds(month).end&&b.document.period.end!>=bounds(month).start)||classification.transactions.some(t=>t.documentId===id&&(t.effective?.occurredOn??t.basisDate)?.slice(0,7)===month))))});
+}

@@ -83,9 +83,12 @@ test("signup validates input, stores Argon2 hash, and signs in with HttpOnly coo
   assert.match(String(signup.headers["set-cookie"]), /SameSite=Lax/i);
   assert.match(String(signup.headers["set-cookie"]), /Max-Age=900/i);
   const token = cookieFrom(signup).split("=")[1]!;
-  const payload = app.jwt.verify<{ sub: string; exp: number }>(token);
-  assert.deepEqual(Object.keys(payload).sort(), ["exp", "iat", "sub"]);
+  const payload = app.jwt.verify<{ sub: string; exp: number; iat:number; auth_time:number; jti:string }>(token);
+  assert.deepEqual(Object.keys(payload).sort(), ["auth_time", "exp", "iat", "jti", "sub"]);
   assert.equal(payload.sub, stored.id);
+  assert.match(payload.jti,/^[a-f0-9-]{36}$/);
+  assert.ok(Math.abs(payload.auth_time-payload.iat)<=1);
+  assert.equal(payload.exp-payload.iat,900);
   assert.ok(payload.exp > Math.floor(Date.now() / 1000));
   const duplicate = await app.inject({ method: "POST", url: "/api/auth/signup", payload: { email: "USER@example.com", password: "anotherpass123" } });
   assert.equal(duplicate.statusCode, 409);

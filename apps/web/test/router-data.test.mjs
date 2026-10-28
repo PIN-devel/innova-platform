@@ -158,6 +158,11 @@ test("URL canonicalization, history restoration and missing-bank retry use route
   await r.revalidate(); assert.equal(r.state.errors, null);
   assert.equal(examLocation(new URL("https://example.com/exam?view=lesson")).view, "home");
   for (const value of ["//evil.test", "/\\evil.test", "https://evil.test", "/login", "/signup-rejected", "/%2f%2fevil.test"]) assert.equal(safeReturnTo(value), "/exam");
+  for (const route of ["import", "review", "spending", "analysis", "schedule", "security"]) {
+    const target = `/motifin/${route}?month=2026-02`;
+    assert.equal(safeReturnTo(target), target);
+  }
+  assert.equal(safeReturnTo("/motifin/unknown?month=2026-02"), "/exam");
 });
 
 test("a temporary UI observer unmount cannot cancel a loader read (StrictMode)", async () => {

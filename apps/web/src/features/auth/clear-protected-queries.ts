@@ -6,9 +6,21 @@ import { examBankKeys } from "@/entities/exam-bank/queries";
 import { curriculumKeys } from "@/entities/curriculum/queries";
 import { advanceSessionVersion, isSessionTransitioning, setSessionTransitioning } from "@/entities/auth/session-version";
 import { ApiError } from "@/shared/api/client";
+import { businessKeys } from "@/entities/finance-business/queries";
+import { financeRawKeys } from "@/entities/finance-raw/queries";
+
+import {classificationKeys} from '@/entities/finance-classification/queries';
+
+import {reviewKeys} from '@/entities/finance-review/queries';
+
+import {analysisKeys} from '@/entities/finance-analysis/queries';
+
+import {scheduleKeys} from '@/entities/finance-schedule/queries';
+
+import {pdfPasswordKeys} from '@/entities/finance-pdf-password/queries';
 
 export function isProtectedQueryKey(key: readonly unknown[]) {
-  return [adminUserKeys.all, examBankKeys.all, curriculumKeys.all].some((prefix) => prefix.every((part, index) => key[index] === part));
+  return [adminUserKeys.all, examBankKeys.all, curriculumKeys.all, financeRawKeys.all, businessKeys.all, classificationKeys.all, reviewKeys.all,analysisKeys.all,scheduleKeys.all,pdfPasswordKeys.all].some((prefix) => prefix.every((part, index) => key[index] === part));
 }
 
 export function clearProtectedQueries(queryClient: QueryClient) {
@@ -17,6 +29,13 @@ export function clearProtectedQueries(queryClient: QueryClient) {
   queryClient.removeQueries({ queryKey: adminUserKeys.all });
   queryClient.removeQueries({ queryKey: examBankKeys.all });
   queryClient.removeQueries({ queryKey: curriculumKeys.all });
+  queryClient.removeQueries({ queryKey: financeRawKeys.all });
+  queryClient.removeQueries({ queryKey: businessKeys.all });
+  queryClient.removeQueries({ queryKey: classificationKeys.all });
+  queryClient.removeQueries({ queryKey: reviewKeys.all });
+  queryClient.removeQueries({ queryKey: analysisKeys.all });
+  queryClient.removeQueries({ queryKey: scheduleKeys.all });
+  queryClient.removeQueries({ queryKey: pdfPasswordKeys.all });
 }
 
 export function cacheAuthenticatedUser(queryClient: QueryClient, user: AuthUser) {

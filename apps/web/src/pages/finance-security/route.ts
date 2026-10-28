@@ -1,0 +1,10 @@
+import type {QueryClient} from '@tanstack/react-query';
+import {data,type LoaderFunctionArgs,type ActionFunctionArgs} from 'react-router';
+import {requireAccess} from '@/features/auth/route-session';
+import {assertSessionVersion} from '@/entities/auth/session-version';
+import {pdfPasswordStatusQuery} from '@/entities/finance-pdf-password/queries';
+import {removeSavedPdfPassword} from '@/features/finance-pdf-password/delete-password';
+import {loadRouteQuery} from '@/shared/lib/router-query/route-query';
+import {ApiError} from '@/shared/api/client';
+export const securityLoader=(client:QueryClient)=>async({request,context}:LoaderFunctionArgs)=>{const {user,epoch}=requireAccess(context,client,request,'exam');await loadRouteQuery(client,pdfPasswordStatusQuery(client,user!.id,epoch),request,()=>assertSessionVersion(client,epoch));return null;};
+export const securityAction=(client:QueryClient)=>async({request,context}:ActionFunctionArgs)=>{const {user,epoch}=requireAccess(context,client,request,'exam');try{const form=await request.formData();if(form.get('intent')!=='delete-pdf-password')throw Error('Invalid action');let accountPassword=String(form.get('accountPassword')??'');form.delete('accountPassword');try{return await removeSavedPdfPassword(client,user!.id,epoch,Number(form.get('revision')),accountPassword,request.signal);}finally{accountPassword='';}}catch(error){assertSessionVersion(client,epoch);request.signal.throwIfAborted();return data({error:error instanceof ApiError&&error.code==='RATE_LIMITED'?'재확인 요청이 많습니다. 5분 뒤 다시 시도해 주세요.':'저장 암호를 변경·삭제하지 못했습니다. 계정 비밀번호와 최신 저장 상태를 확인해 주세요.'},{status:400});}};

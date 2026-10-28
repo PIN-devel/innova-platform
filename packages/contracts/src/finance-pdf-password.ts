@@ -1,0 +1,11 @@
+import {z} from 'zod';
+export const pdfPasswordStatusSchema=z.object({stored:z.boolean(),revision:z.number().int().nonnegative(),updatedAt:z.string().nullable(),available:z.boolean(),canUse:z.boolean(),reauthRequired:z.boolean()});
+export const pdfAttemptStartSchema=z.object({attemptId:z.uuid(),expectedRevision:z.number().int().nonnegative(),purpose:z.enum(['save','use','delete','rotate']),accountPassword:z.string().min(1).max(128).optional()}).strict();
+export const pdfAttemptSchema=z.object({attemptId:z.uuid(),revision:z.number().int().nonnegative(),expiresAt:z.string(),expiresInMs:z.number().int().min(0).max(600000)});
+export const pdfAttemptUseSchema=z.object({attemptId:z.uuid(),expectedRevision:z.number().int().nonnegative()}).strict();
+export const pdfPasswordSaveSchema=pdfAttemptUseSchema.extend({secret:z.string().min(1).max(128),unlocked:z.literal(true)}).strict();
+export const pdfPasswordRevealSchema=z.object({secret:z.string().min(1).max(128),revision:z.number().int().positive()});
+export type PdfPasswordStatus=z.infer<typeof pdfPasswordStatusSchema>;
+export type PdfAttemptStart=z.infer<typeof pdfAttemptStartSchema>;
+export type PdfAttempt=z.infer<typeof pdfAttemptSchema>;
+export type PdfAttemptUse=z.infer<typeof pdfAttemptUseSchema>;

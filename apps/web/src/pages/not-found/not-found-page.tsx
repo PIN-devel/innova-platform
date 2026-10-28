@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Button } from "@/shared/ui/button";
+import { buttonVariants } from "@/shared/ui/button-variants";
 import {
   Card,
   CardContent,
@@ -16,7 +16,7 @@ function NotFoundPage() {
         <CardDescription>주소를 확인하거나 홈으로 돌아가세요.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Button render={<Link to="/" />}>홈으로</Button>
+        <Link to="/" className={buttonVariants()}>홈으로</Link>
       </CardContent>
     </Card>
   );

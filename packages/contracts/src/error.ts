@@ -6,6 +6,7 @@ export const apiErrorCodeSchema = z.enum([
   "FORBIDDEN",
   "NOT_FOUND",
   "CONFLICT",
+  "RATE_LIMITED",
   "BUSINESS_RULE_VIOLATION",
   "INTERNAL_ERROR",
   "INVALID_CREDENTIALS",
