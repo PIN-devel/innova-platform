@@ -25,7 +25,7 @@
 | Linear 조회·생성·분류·갱신·종료, 공통 개선 후보 기록 | [Linear 운영](docs/linear-workflow.md) |
 | DB 스키마·migration 변경과 복구 준비 | [API DB 변경 지침](apps/api/docs/database-migrations.md) |
 | 신규 테이블의 식별·감사·소유권·추적 메타 설계 | [테이블 메타데이터 기준](docs/database-table-metadata.md) |
-| 중대 아키텍처 결정 추적·기록, 인프라·MSA 전환 기준 | [ADR-0001](docs/adr/0001-record-architecture-decisions.md), [ADR-0002](docs/adr/0002-google-cloud-run-msa-and-exit-strategy.md) |
+| 중대 아키텍처 결정 확인·작성, 설계 변경 맥락 | `docs/adr/` 내 관련 결정 ([ADR-0001](docs/adr/0001-record-architecture-decisions.md) 체계 준수) |
 
 ## Linear 작업 관리
 
