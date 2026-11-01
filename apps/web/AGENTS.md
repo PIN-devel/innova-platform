@@ -1,4 +1,4 @@
-# Codex @innova/web 지침
+# AI 에이전트 @innova/web 지침
 
 루트 `AGENTS.md`에 추가로 적용한다. 구현 경로는 `apps/web/src/`, 테스트·설정 경로는 `apps/web/` 기준이다.
 
