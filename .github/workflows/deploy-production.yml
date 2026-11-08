@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/pin-74-apisix-gateway
   workflow_dispatch:
 
 concurrency:
