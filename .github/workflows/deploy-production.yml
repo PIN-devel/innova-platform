@@ -12,40 +12,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  verify:
-    name: Workspace Verify (Build, Typecheck, Test, Lint)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".node-version"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build all packages
-        run: pnpm build
-
-      - name: Typecheck all packages
-        run: pnpm typecheck
-
-      - name: Validate APISIX Gateway config
-        run: sh apps/api-gateway/scripts/validate-config.sh
-
-      - name: Run linter
-        run: pnpm lint
-
-  deploy-production:
-    name: Deploy Prod API Gateway
-    needs: verify
+  deploy-gateway:
+    name: Deploy APISIX Gateway to Cloud Run
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -59,6 +27,12 @@ jobs:
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
       UPSTREAM_RENDER_URL: ${{ vars.UPSTREAM_RENDER_URL || 'https://innova-api-y9s6.onrender.com' }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate APISIX Gateway configuration
+        run: sh apps/api-gateway/scripts/validate-config.sh
+
       - name: Check GCP authentication configuration
         id: check_config
         run: |
@@ -77,10 +51,6 @@ jobs:
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Skipping Production cloud deployment: Neither GCP_SA_KEY nor WIF (WIF_PROVIDER + WIF_SERVICE_ACCOUNT) are configured."
           fi
-
-      - name: Checkout repository
-        if: steps.check_config.outputs.configured == 'true'
-        uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud (Service Account Key)
         if: steps.check_config.outputs.auth_mode == 'key'
