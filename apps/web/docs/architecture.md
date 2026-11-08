@@ -181,7 +181,7 @@ PIN-52의 승인 디자인을 `/motifin/*` 실제 페이지에 적용했다. `ap
 - Chapter의 `readingOrder`는 모든 SourceBlock ID를 정확히 한 번 담는 명시적 순서다. Section/block position은 기존 sibling scope를 유지한다. parent/child 콘텐츠가 교차할 수 있으므로 API는 읽기 순서가 없는 Chapter를 409로 차단하며 page/PDF 위치 기반 heuristic을 사용하지 않는다. Section TOC의 sibling 정렬은 탐색만 담당하며 본문을 재정렬하지 않는다.
 - `/api/curriculum`은 매 요청 DB-current approved guard와 no-store/Vary Cookie를 적용한다. Chapter 읽기는 JSONB 콘텐츠를 그대로 제공하고 Quiz 조회는 답안을 제외한다. grade 응답에서 답안과 교재 해설/evidence를 제공한다. `exact`는 문자열 그대로 비교하며 trim, synonym, Unicode normalization, fuzzy/LLM 평가를 사용하지 않는다. self-assessment와 unresolved는 자동 정답 판정을 하지 않는다.
 - 그림은 인증된 block/content-index API로만 읽는다. 선택적인 `CURRICULUM_ASSET_ROOT` 아래 assetKey 상대 경로의 PNG/JPEG/WebP/GIF를 허용하며 traversal·root 밖 symlink·SVG/HTML을 거부한다. 런타임 자산이 없으면 명시적인 unavailable 안내를 표시하고 콘텐츠를 생성하여 대체하지 않는다.
-- private assets는 Git 및 Vercel public bundle에 포함하지 않는다. 현재 로컬 private runtime에서 사용 가능하나 Render/Vercel 운영 환경에 해당 디렉터리가 제공되는 방식은 배포 후속 작업이다. 이번 Slice는 Production PostgreSQL 적재와 로컬 후보 코드의 API/Router/UI 검증이며 main 병합·운영 애플리케이션 배포를 포함하지 않는다.
+- private assets는 Git 및 프런트엔드 public bundle에 포함하지 않는다. 현재 로컬 private runtime 및 GCS 비공개 버킷에서 사용 가능하며, 운영 환경에서 제공되는 방식은 Cloud Storage/볼륨 마운트 연동을 따른다. 이번 Slice는 Production PostgreSQL 적재와 로컬 후보 코드의 API/Router/UI 검증이며 main 병합·운영 애플리케이션 배포를 포함하지 않는다.
 - MSW의 Curriculum은 합성 샘플만 제공하며 동일한 승인 제한과 exact 채점을 재현한다. 계약/import/API/Router·cache·render 회귀도 합성 데이터로 수행한다.
 
 ### 저장된 카드 소비 분류

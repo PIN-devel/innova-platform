@@ -36,10 +36,10 @@ Raw 추출 필드·비즈니스·보정/이력·일정/이력은 DB에 보관하
 ## 운영 적용 순서
 
 1. 최종 diff/검증 결과를 검토하고 요청된 Git 전달 절차를 진행한다. 원격 기준 및 운영 migration journal을 확인해 **아직 없는 파일만** 적용 대상으로 확정한다. 이 브랜치의 신규 migration은 `0003` Raw, `0004` 비즈니스, `0005` 분류, `0006` 일정, `0007` PDF 선택 암호다. dev에는 `0000`–`0007` 총 8개가 적용돼 있다. 운영 이력은 미확인이다.
-2. 대상 Production DB/Render API/Vercel Web과 배포 commit, 쓰기 중단·복구 기준 시점·키 보관 책임을 승인받는다. 실제 Build/Pre-deploy command에 migration이 포함되는지 확인한다. 저장소에는 Render Blueprint/CI 배포 워크플로가 없으므로 자동 적용을 추정하지 않는다.
+2. 대상 Production DB/Render API/Firebase Hosting Web과 배포 commit, 쓰기 중단·복구 기준 시점·키 보관 책임을 승인받는다. 실제 Build/Pre-deploy command에 migration이 포함되는지 확인한다. 저장소에는 Render Blueprint/CI 배포 워크플로가 없으므로 자동 적용을 추정하지 않는다.
 3. `DATABASE_URL`, `JWT_SECRET`, `FINANCE_RAW_ENCRYPTION_KEY`, 정확한 HTTPS Web origin의 `FINANCE_ALLOWED_ORIGINS`를 대상별로 설정한다. 선택 저장은 별도 `FINANCE_PDF_PASSWORD_KEYRING`/`FINANCE_PDF_PASSWORD_ACTIVE_KEY_VERSION`이 필요하다. 로컬 dev 키를 운영으로 복사하지 않는다. 키 유실 시 Raw/비즈니스/보정/일정 복호화 또는 저장 암호 재사용이 불가능하다.
 4. 승인된 대상에 migration을 한 번 실행하고 journal hash/schema/FK를 readback한다. 이어 API를 배포하고 `/health`, `/ready`, 비로그인 거부·승인 사용자 owner 격리·실제 금융 endpoint를 검증한다. `/ready` 성공만으로 금융 키/테이블/API 검증을 대체하지 않는다.
-5. Web을 배포한다. `apps/web/vercel.json`은 `/api/*`를 Render API로 전달한다. 실제 HTTPS origin·쿠키·프록시·no-store·PDF worker/CSP·파일 선택과 응답 오류를 배포 주소에서 확인한다. Vercel Preview가 운영 API로 쓰지 않도록 해당 주소의 연결 대상을 먼저 확인한다.
+5. Web을 배포한다. `firebase.json`은 `/api/**`를 Cloud Run API Gateway로 전달한다. 실제 HTTPS origin·쿠키·프록시·no-store·PDF worker/CSP·파일 선택과 응답 오류를 배포 주소에서 확인한다. Firebase Preview가 운영 API로 쓰지 않도록 해당 주소의 연결 대상을 먼저 확인한다.
 6. 승인된 합성 전용 QA 계정으로 최소 가져오기→readback→리뷰→보정→일정→선택 암호 삭제를 실행하고 QA 자료만 정리한다. 배포 commit·migration hash·실제 Android 결과·잔여 위험을 PIN-64→PIN-54에 기록한다. 실제 금융 파일은 별도 동의 없이 운영 검증에 사용하지 않는다.
 
 실패하면 후속 배포/재시도를 멈추고 적용 여부부터 확인한다. 추가형 schema는 유지하고 호환되는 이전 API/Web artifact로 복구하거나 후속 migration을 적용한다. DB를 삭제하거나 적용된 SQL/journal을 고쳐 rollback으로 취급하지 않는다. 데이터 복구가 필요하면 위 격리 복원 절차를 적용한다. 로그는 route/status/request ID와 지연·오류율로 확인하고 body/암호/키를 추가하지 않는다.

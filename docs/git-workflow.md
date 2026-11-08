@@ -36,7 +36,7 @@ release에서 추가한 수정이나 main 독립 변경은 main → develop 또�
 
 Hotfix는 최신 main에서 최소 수정 → main merge → 필요한 운영 결과 확인 → develop 역반영 merge 순으로 완료한다. 충돌은 최신 develop 기반 sync 브랜치에 main을 merge해 해결한다. 반복 cherry-pick·tree 복사로 장기 브랜치 동기화를 대체하지 않는다.
 
-운영 배포·DB migration·환경 설정이 AC에 포함되면 적용 순서와 실제 결과를 확인한다. PR 병합이나 Vercel 체크만으로 운영 적용까지 완료되었다고 기록하지 않는다.
+운영 배포·DB migration·환경 설정이 AC에 포함되면 적용 순서와 실제 결과를 확인한다. PR 병합이나 CI 체크만으로 운영 적용까지 완료되었다고 기록하지 않는다.
 
 ## 보호 설정 확인
 
@@ -47,7 +47,7 @@ Hotfix는 최신 main에서 최소 수정 → main merge → 필요한 운영 �
 | 허용 방식 | merge | squash, merge |
 | 선형 이력 강제 | 없음 | 없음 |
 | PR·대화 해결 필수, 삭제/force push 차단 | 적용 | 적용 |
-| 필수 체크 | Vercel, GitGuardian Security Checks | GitGuardian Security Checks |
+| 필수 체크 | GitGuardian Security Checks | GitGuardian Security Checks |
 | 필수 승인 수 / 체크의 최신 base 요구 | 0 / 꺼짐 | 0 / 꺼짐 |
 
 [main ruleset](https://github.com/PIN-devel/innova-platform/rules/24040542), [develop ruleset](https://github.com/PIN-devel/innova-platform/rules/24040617)이 실제 설정의 기준이다. 저장소 병합 후 자동 삭제·auto-merge는 꺼져 있다. 정책이 출발 브랜치별 방식을 자동 강제하지 않으며 자체 코드 검증 CI도 아직 없다. 기존 Linear 상태 자동화는 별도로 존재한다.
