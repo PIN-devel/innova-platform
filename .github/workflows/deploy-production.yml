@@ -53,26 +53,42 @@ jobs:
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
       GCP_REGION: asia-northeast3
       GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'innova-containers' }}
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
       WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
       UPSTREAM_RENDER_URL: ${{ vars.UPSTREAM_RENDER_URL || 'https://innova-api-y9s6.onrender.com' }}
     steps:
-      - name: Check GCP WIF configuration
+      - name: Check GCP authentication configuration
         id: check_config
         run: |
-          if [ -z "$GCP_PROJECT_ID" ] || [ -z "$WIF_PROVIDER" ] || [ -z "$WIF_SERVICE_ACCOUNT" ]; then
+          if [ -z "$GCP_PROJECT_ID" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping Production cloud deployment because GCP_PROJECT_ID / WIF secrets are not yet configured."
-          else
+            echo "::notice::Skipping Production deployment: GCP_PROJECT_ID is not configured."
+          elif [ -n "$GCP_SA_KEY" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "auth_mode=key" >> "$GITHUB_OUTPUT"
+            echo "Using Service Account Key authentication."
+          elif [ -n "$WIF_PROVIDER" ] && [ -n "$WIF_SERVICE_ACCOUNT" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "auth_mode=wif" >> "$GITHUB_OUTPUT"
+            echo "Using Workload Identity Federation (WIF) authentication."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping Production cloud deployment: Neither GCP_SA_KEY nor WIF (WIF_PROVIDER + WIF_SERVICE_ACCOUNT) are configured."
           fi
 
       - name: Checkout repository
         if: steps.check_config.outputs.configured == 'true'
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud via WIF
-        if: steps.check_config.outputs.configured == 'true'
+      - name: Authenticate to Google Cloud (Service Account Key)
+        if: steps.check_config.outputs.auth_mode == 'key'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        if: steps.check_config.outputs.auth_mode == 'wif'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
@@ -109,3 +125,10 @@ jobs:
             --memory=256Mi \
             --cpu=1 \
             --set-env-vars="UPSTREAM_RENDER_URL=${UPSTREAM_RENDER_URL}"
+
+          GATEWAY_URL=$(gcloud run services describe innova-api-gateway --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
+          echo "Production Cloud Run Gateway URL: ${GATEWAY_URL}"
+          echo "### 🚀 Production Gateway Deployed!" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Cloud Run URL:** ${GATEWAY_URL}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Health Check:** ${GATEWAY_URL}/api/health" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Image:** \`${IMAGE_URI}\`" >> "$GITHUB_STEP_SUMMARY"
