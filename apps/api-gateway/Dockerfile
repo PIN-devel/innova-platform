@@ -9,13 +9,17 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Copy custom configurations and entrypoint with apisix ownership
-COPY --chown=apisix:apisix conf/ /app/conf/
-COPY --chown=apisix:apisix docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh \
-    && chown -R apisix:apisix /app \
+# Ensure runtime config directory is owned by apisix
+RUN mkdir -p /usr/local/apisix/conf /usr/local/apisix/logs \
     && chown -R apisix:0 /usr/local/apisix \
     && chmod -R g=u /usr/local/apisix
+
+# Copy custom configurations and entrypoint owned by root (read-only for non-root, S6504 compliant)
+COPY --chown=root:root conf/ /app/conf/
+COPY --chown=root:root docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod 755 /app/docker-entrypoint.sh \
+    && chmod 755 /app/conf \
+    && chmod 644 /app/conf/*
 
 # Cloud Run default port
 EXPOSE 8080
