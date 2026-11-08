@@ -3,7 +3,7 @@ import {createFinanceTransactionRepository,type FinanceTransactionRepository} fr
 import {createFinanceExport} from './finance-export/export.js';
 import {financeTransactionRoutes} from './routes/finance-transactions.js';
 import Fastify from "fastify";
-import { LogController, type FastifyBaseLogger } from "fastify";
+import { LogController, type FastifyBaseLogger, type FastifyRequest, type FastifyReply } from "fastify";
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import { randomUUID } from "node:crypto";
@@ -134,7 +134,7 @@ export function buildApp({
   });
 
   app.addHook("onResponse", async (request, reply) => {
-    if (request.routeOptions.url === "/health") return;
+    if (request.routeOptions.url === "/health" || request.routeOptions.url === "/api/health") return;
     const routePath = request.routeOptions.url;
     const path = routePath && routePath !== "*"
       ? routePath
@@ -157,8 +157,11 @@ export function buildApp({
   });
 
   app.get("/", async () => ({ hello: "world" }));
-  app.get("/health", async () => ({ status: "ok" }));
-  app.get("/ready", async (request, reply) => {
+  const handleHealth = async () => ({ status: "ok" });
+  app.get("/health", handleHealth);
+  app.get("/api/health", handleHealth);
+
+  const handleReady = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       await runReadinessCheck(checkReadiness, readinessTimeoutMs);
       return { status: "ready" };
@@ -167,7 +170,9 @@ export function buildApp({
       request.log.error({ event: "app.readiness.failed", reason }, "readiness check failed");
       return reply.code(503).send({ status: "not_ready" });
     }
-  });
+  };
+  app.get("/ready", handleReady);
+  app.get("/api/ready", handleReady);
   app.register(authRoutes, { prefix: "/api/auth", users });
   if (finance) app.register(financeRawRoutes, { prefix: "/api/finance/raw", repository: finance, requireAuth: createApprovedAuthGuard(users), allowedOrigins: financeAllowedOrigins });
   if (business) app.register(financeBusinessRoutes, { prefix: "/api/finance/business", repository: business, classification, review, schedule, requireAuth: createApprovedAuthGuard(users), allowedOrigins: financeAllowedOrigins });
