@@ -12,14 +12,13 @@ apisix:
   enable_control: false
   dns_resolver:
     - 127.0.0.11                # Docker local network resolver
-    - 169.254.169.254           # GCP internal DNS
-    - 8.8.8.8                   # Public DNS fallback
-    - 1.1.1.1
+    - 8.8.8.8                   # Public DNS
+    - 1.1.1.1                   # Cloudflare DNS
   dns_resolver_valid: 30
 
 nginx_config:
   error_log: "/dev/stderr"
-  error_log_level: "warn"
+  error_log_level: "info"
   worker_processes: "auto"
   events:
     worker_connections: 10620

@@ -10,10 +10,12 @@ upstreams:
     upstream_host: "${UPSTREAM_RENDER_HOST}"
     nodes:
       "${UPSTREAM_RENDER_HOST}:${UPSTREAM_RENDER_PORT}": 1
+    tls:
+      verify: false
     timeout:
-      connect: 6s
+      connect: 60s
       send: 60s
-      read: 60s
+      read: 120s
 
 routes:
   - id: gateway-health

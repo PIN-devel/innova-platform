@@ -18,8 +18,8 @@ fi
 echo "SUCCESS: /health returned HTTP 200. Body: $BODY"
 
 # 2. Cookie Bridge verification test
-echo "--> 2. Testing __session Cookie propagation (/api/health or mock)"
-COOKIE_TEST=$(curl -s -i -H "Cookie: __session=test-jwt-session-token-1234" "$GATEWAY_URL/api/health" || true)
+echo "--> 2. Testing __session Cookie propagation (/api/auth/me)"
+COOKIE_TEST=$(curl -s -i -H "Cookie: __session=test-jwt-session-token-1234" "$GATEWAY_URL/api/auth/me" || true)
 echo "$COOKIE_TEST" | head -n 15
 
 echo "==> [test-cookie-bridge] Completed."
