@@ -4,6 +4,7 @@
 - 결정일: 2026-11-01
 - 적용 범위: 저장소 공통
 - 관련 이슈: Linear [PIN-71](https://linear.app/pin-dev/issue/PIN-71), [PIN-73](https://linear.app/pin-dev/issue/PIN-73)
+- 후속 결정: [ADR-0003](0003-adopt-apache-apisix-standalone-api-gateway.md)
 
 ## 1. 맥락과 문제 정의 (Context)
 
@@ -160,7 +161,7 @@ flowchart LR
 
 ### 후속 작업 / 영향받는 영역
 - 하위 이슈 순차 실행:
-  - [PIN-74](https://linear.app/pin-dev/issue/PIN-74): Firebase Hosting 전환 및 Cloud Run API Gateway 도입 (기존 Render BE 프록시)
+  - [PIN-74](https://linear.app/pin-dev/issue/PIN-74): Firebase Hosting 전환 및 Cloud Run API Gateway 도입 ([ADR-0003](0003-adopt-apache-apisix-standalone-api-gateway.md), 기존 Render BE 프록시)
   - [PIN-75](https://linear.app/pin-dev/issue/PIN-75): Auth / Admin 마이크로서비스 분리 및 라우팅 전환
   - [PIN-76](https://linear.app/pin-dev/issue/PIN-76): Learning 마이크로서비스 분리 및 에셋 GCS 1:1 이전
   - [PIN-77](https://linear.app/pin-dev/issue/PIN-77): Finance 마이크로서비스 분리 및 라우팅 전환

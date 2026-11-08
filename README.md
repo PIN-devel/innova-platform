@@ -5,7 +5,7 @@ React, Fastify, PostgreSQL 기반 모노레포입니다. `/exam`에서 Exam Dril
 
 | 목적 | 문서 |
 | --- | --- |
-| AI 공통·앱별 지침 | [공통 AGENTS](./AGENTS.md), [Web AGENTS](./apps/web/AGENTS.md), [API AGENTS](./apps/api/AGENTS.md) |
+| AI 공통·앱별 지침 | [공통 AGENTS](./AGENTS.md), [Web AGENTS](./apps/web/AGENTS.md), [API AGENTS](./apps/api/AGENTS.md), [Gateway AGENTS](./apps/api-gateway/AGENTS.md) |
 | 문서 위치·파일명·참조 관리 | [문서 정책](./docs/documentation-policy.md) |
 | 필요한 정보만 읽고 조사·검증·전달하기 | [AI 작업 흐름](./docs/ai-workflow.md) |
 | 브랜치·PR·릴리스 | [Git 운영](./docs/git-workflow.md) |

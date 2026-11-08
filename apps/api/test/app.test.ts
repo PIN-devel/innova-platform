@@ -28,7 +28,7 @@ function createExamTestRepository(): ExamRepository {
 }
 
 test("health routes", async (t) => {
-  const app = buildApp({ logger: false, examRepository: createExamTestRepository(), userRepository: users, jwtSecret });
+  const app = buildApp({ logger: false, examRepository: createExamTestRepository(), userRepository: users, jwtSecret, readinessCheck: async () => {} });
   t.after(() => app.close());
 
   const root = await app.inject({ method: "GET", url: "/" });
@@ -37,6 +37,18 @@ test("health routes", async (t) => {
 
   const health = await app.inject({ method: "GET", url: "/health" });
   assert.deepEqual(health.json(), { status: "ok" });
+
+  const apiHealth = await app.inject({ method: "GET", url: "/api/health" });
+  assert.equal(apiHealth.statusCode, 200);
+  assert.deepEqual(apiHealth.json(), { status: "ok" });
+
+  const ready = await app.inject({ method: "GET", url: "/ready" });
+  assert.equal(ready.statusCode, 200);
+  assert.deepEqual(ready.json(), { status: "ready" });
+
+  const apiReady = await app.inject({ method: "GET", url: "/api/ready" });
+  assert.equal(apiReady.statusCode, 200);
+  assert.deepEqual(apiReady.json(), { status: "ready" });
 });
 
 test("exam bank API requires JWT cookie and preserves validated records", async (t) => {
