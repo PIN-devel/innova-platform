@@ -21,8 +21,7 @@ jobs:
     env:
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
       GCP_REGION: asia-northeast3
-      GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'innova-containers' }}
-      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || secrets.GAR_REPOSITORY }}
       WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
       UPSTREAM_RENDER_URL: ${{ vars.UPSTREAM_RENDER_URL || secrets.UPSTREAM_RENDER_URL }}
@@ -38,31 +37,23 @@ jobs:
         run: |
           if [ -z "$GCP_PROJECT_ID" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping Production deployment: GCP_PROJECT_ID is not configured."
+            echo "::notice::Skipping deployment: GCP_PROJECT_ID is not configured in Variables or Secrets."
+          elif [ -z "$GAR_REPOSITORY" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping deployment: GAR_REPOSITORY is not configured in Variables or Secrets."
           elif [ -z "$UPSTREAM_RENDER_URL" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping Production deployment: UPSTREAM_RENDER_URL is not configured in Secrets or Variables."
-          elif [ -n "$GCP_SA_KEY" ]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-            echo "auth_mode=key" >> "$GITHUB_OUTPUT"
-            echo "Using Service Account Key authentication."
-          elif [ -n "$WIF_PROVIDER" ] && [ -n "$WIF_SERVICE_ACCOUNT" ]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-            echo "auth_mode=wif" >> "$GITHUB_OUTPUT"
-            echo "Using Workload Identity Federation (WIF) authentication."
-          else
+            echo "::notice::Skipping deployment: UPSTREAM_RENDER_URL is not configured in Variables or Secrets."
+          elif [ -z "$WIF_PROVIDER" ] || [ -z "$WIF_SERVICE_ACCOUNT" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping Production cloud deployment: Neither GCP_SA_KEY nor WIF (WIF_PROVIDER + WIF_SERVICE_ACCOUNT) are configured."
+            echo "::notice::Skipping deployment: WIF_PROVIDER or WIF_SERVICE_ACCOUNT is not configured in Secrets."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "All required deployment configuration present. Proceeding with WIF authentication."
           fi
 
-      - name: Authenticate to Google Cloud (Service Account Key)
-        if: steps.check_config.outputs.auth_mode == 'key'
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Authenticate to Google Cloud (Workload Identity Federation)
-        if: steps.check_config.outputs.auth_mode == 'wif'
+      - name: Authenticate to Google Cloud via WIF
+        if: steps.check_config.outputs.configured == 'true'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
