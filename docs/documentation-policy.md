@@ -34,7 +34,7 @@
 | `docs/ai-workflow.md` | 조사·구현·검증·전달과 읽기 범위 |
 | `docs/git-workflow.md` | Git 병합·릴리스·정리 기준 |
 | `docs/linear-workflow.md` | 이슈 관리와 자동화 경계 |
-| `docs/adr/*.md` | 중대 아키텍처 결정의 배경·대안·영향 기록; 불변성 유지 (ADR-0001) |
+| `docs/adr/*.md` | 중대 아키텍처 결정의 배경·대안·영향 기록; 불변성 유지 ([ADR-0001](./adr/0001-record-architecture-decisions.md) 체계 준수) |
 | `apps/api/docs/database-migrations.md` | API DB 스키마 변경·dev 검증·복구 준비와 변경별 기록 양식 |
 | `apps/web/docs/architecture.md` | 현행 Web 구조; 앱이 소유 |
 | `apps/web/docs/design.md` | 현행 Web UI 기준; 앱이 소유 |

@@ -1,4 +1,4 @@
-# Codex @innova/api 지침
+# AI 에이전트 @innova/api 지침
 
 이 파일은 `apps/api/` 작업에 적용되며 루트 `AGENTS.md`를 함께 따른다.
 
