@@ -1,24 +1,6 @@
 # Apache APISIX Stand-alone Declarative Configuration
 # Note: Always keep the #END marker at the end of this file for APISIX hot-reload integrity.
 
-upstreams:
-  - id: legacy-render
-    name: "Legacy Render Fastify Backend"
-    type: roundrobin
-    scheme: ${UPSTREAM_RENDER_SCHEME}
-    pass_host: rewrite
-    upstream_host: "${UPSTREAM_RENDER_HOST}"
-    nodes:
-      - host: "${UPSTREAM_RENDER_HOST}"
-        port: ${UPSTREAM_RENDER_PORT}
-        weight: 1
-    tls:
-      verify: false
-    timeout:
-      connect: 60s
-      send: 60s
-      read: 120s
-
 routes:
   - id: gateway-health
     uri: /health
@@ -37,7 +19,19 @@ routes:
 
   - id: legacy-api-proxy
     uri: /api/*
-    upstream_id: legacy-render
+    upstream:
+      type: roundrobin
+      scheme: ${UPSTREAM_RENDER_SCHEME}
+      pass_host: rewrite
+      upstream_host: "${UPSTREAM_RENDER_HOST}"
+      nodes:
+        "${UPSTREAM_RENDER_HOST}:${UPSTREAM_RENDER_PORT}": 1
+      tls:
+        verify: false
+      timeout:
+        connect: 60s
+        send: 60s
+        read: 120s
     plugins:
       serverless-pre-function:
         phase: rewrite
