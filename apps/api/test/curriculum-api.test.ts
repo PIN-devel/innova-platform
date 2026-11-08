@@ -5,7 +5,7 @@ import { buildApp } from "../src/app.js";
 import { CurriculumReadingOrderError, type CurriculumReadRepository } from "../src/db/curriculum-read.js";
 import type { UserRepository } from "../src/db/users.js";
 import { createSyntheticCurriculum } from "./fixtures/curriculum-bundle.js";
-import { createBlobCurriculumAssetReader } from "../src/curriculum-assets.js";
+import { createGcsCurriculumAssetReader } from "../src/curriculum-assets.js";
 import { createApplicationLogger } from "../src/logger.js";
 
 const b = createSyntheticCurriculum();
@@ -82,11 +82,11 @@ test("Chapter without normalized reading order is blocked instead of guessed", a
   assert.equal(response.statusCode, 409); assert.equal(response.json().error.code, "BUSINESS_RULE_VIOLATION");
 });
 
-test("Blob SDK failures expose no credential or URL in Curriculum responses or logs", async (t) => {
+test("Remote storage failures expose no credential or URL in Curriculum responses or logs", async (t) => {
   const lines: string[] = [];
   const logger = createApplicationLogger({ level: "info", destination: new Writable({ write(chunk, _encoding, callback) { lines.push(String(chunk)); callback(); } }) });
-  const marker = "synthetic-blob-credential-marker";
-  const urlMarker = "https://synthetic.private.blob.vercel-storage.com/private-marker.png";
+  const marker = "synthetic-gcs-credential-marker";
+  const urlMarker = "https://storage.googleapis.com/synthetic-private-bucket/private-marker.png";
   let reads = 0;
   let missing = false;
   const users: UserRepository = {
@@ -104,7 +104,15 @@ test("Blob SDK failures expose no credential or URL in Curriculum responses or l
       if (image.type === "diagram") image.assetKey = "synthetic/diagram.png";
       return copy;
     } },
-    curriculumAssets: createBlobCurriculumAssetReader(marker, async () => { reads++; if (missing) return null; throw new Error(`${marker} ${urlMarker}`); }),
+    curriculumAssets: createGcsCurriculumAssetReader({
+      bucket: "synthetic-bucket",
+      token: marker,
+      fetchFn: async () => {
+        reads++;
+        if (missing) return new Response(null, { status: 404 });
+        throw new Error(`${marker} ${urlMarker}`);
+      },
+    }),
   });
   t.after(async () => { await app.close(); logger.flush(); });
   await app.ready();
