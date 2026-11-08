@@ -29,9 +29,9 @@ routes:
       tls:
         verify: false
       timeout:
-        connect: 60s
-        send: 60s
-        read: 120s
+        connect: 60
+        send: 60
+        read: 120
     plugins:
       serverless-pre-function:
         phase: rewrite
