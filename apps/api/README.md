@@ -43,8 +43,8 @@ pnpm typecheck
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
 | GET | `/` | Fastify 기본 응답 |
-| GET | `/health` | 프로세스 생존 상태 확인 |
-| GET | `/ready` | DB 연결 준비 상태 확인 |
+| GET | `/health`, `/api/health` | 프로세스 생존 상태 확인 (게이트웨이 프록시 호환) |
+| GET | `/ready`, `/api/ready` | DB 연결 준비 상태 확인 (게이트웨이 프록시 호환) |
 | POST | `/api/auth/signup` | 회원가입 및 자동 로그인 |
 | POST | `/api/auth/login` | 로그인 |
 | GET | `/api/auth/me` | 현재 사용자 조회 |

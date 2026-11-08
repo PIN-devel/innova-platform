@@ -70,8 +70,8 @@
 | --- | --- |
 | Backlog / Todo | 미정리 후보 / 범위·AC가 정리된 작업 |
 | In Progress | 실제 착수 시 필요한 수동 갱신 |
-| 일반 PR 생성 → In Review | 기존 Linear 자동화; Codex는 확인만 |
-| PR 병합 → Done | 기존 Linear 자동화; Codex는 확인·결과 보완 |
+| 일반 PR 생성 → In Review | 기존 Linear 자동화; AI 에이전트는 확인만 |
+| PR 병합 → Done | 기존 Linear 자동화; AI 에이전트는 확인·결과 보완 |
 | PR 없는 작업의 완료 | 실제 AC 충족 후 필요한 수동 갱신 |
 | Canceled / Duplicate | 실제 폐기 / 대표 이슈 확인과 연결 |
 
@@ -85,7 +85,7 @@
 
 사용자가 제공한 2026-10-02 Pin 팀 Workflows & automations 화면 기준:
 
-| 이벤트 | 규칙 | Codex 동작 |
+| 이벤트 | 규칙 | AI 에이전트 동작 |
 | --- | --- | --- |
 | Draft PR 생성 | No action | In Review로 임의 전환하지 않음 |
 | 일반 PR 생성 | In Review | 같은 상태 전환 생략 |
