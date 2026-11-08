@@ -86,7 +86,7 @@ jobs:
             --allow-unauthenticated \
             --port=8080 \
             --min-instances=0 \
-            --max-instances=2 \
+            --max-instances=1 \
             --memory=256Mi \
             --cpu=1 \
             --set-env-vars="UPSTREAM_RENDER_URL=${UPSTREAM_RENDER_URL}"
