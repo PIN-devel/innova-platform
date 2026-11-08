@@ -10,7 +10,7 @@ test('Raw MSW mirrors actor isolation, duplicate/conflict, and no-store readback
  const server=setupServer(...createFinanceRawHandlers(()=>user));server.listen({onUnhandledRequest:'error'});t.after(()=>server.close());
  const base='http://localhost/api/finance/raw';
  const headers=()=>({'x-expected-user':user.id,'x-finance-request':'1',origin:'http://localhost','content-type':'application/json'});
- const document={kind:'kb-bank-pdf',fileHash:'b'.repeat(64),parserVersion:'kb-raw-v1',metadata:[],rows:[{sequence:1,page:1,sourceRow:1,kind:'transaction',cells:bankRawColumns.map(column=>({column,value:null,type:'blank'}))}]};
+ const document={kind:'kb-bank-pdf',fileHash:'b'.repeat(64),parserVersion:'kb-raw-v1',metadata:[{key:'account',value:'synthetic',page:1}],rows:[{sequence:1,page:1,sourceRow:1,kind:'transaction',cells:bankRawColumns.map(column=>({column,value:null,type:'blank'}))}]};
  const post=(doc=document)=>fetch(base+'/imports',{method:'POST',headers:headers(),body:JSON.stringify({batchId:crypto.randomUUID(),document:doc})});
  const first=await post();assert.equal(first.status,200);const saved=await first.json();assert.equal(saved.duplicate,false);
  assert.equal((await (await post()).json()).duplicate,true);

@@ -1,6 +1,5 @@
 import { readFile, realpath } from "node:fs/promises";
 import { resolve, sep, extname } from "node:path";
-import { get, BlobNotFoundError } from "@vercel/blob";
 import { AppError } from "./errors.js";
 
 export type CurriculumAssetReader = (key: string) => Promise<{ bytes: Buffer; contentType: string } | undefined>;
@@ -30,32 +29,50 @@ export function createCurriculumAssetReader(root = process.env.CURRICULUM_ASSET_
   };
 }
 
-export function createBlobCurriculumAssetReader(token: string | undefined, readBlob: typeof get = get): CurriculumAssetReader {
+export type GcsFetch = typeof fetch;
+
+export function createGcsCurriculumAssetReader({
+  bucket = process.env.CURRICULUM_ASSET_BUCKET,
+  token = process.env.GCP_STORAGE_TOKEN,
+  fetchFn = fetch,
+}: { bucket?: string; token?: string; fetchFn?: GcsFetch } = {}): CurriculumAssetReader {
   return async (key) => {
     const contentType = assetContentType(key);
-    if (!token || !contentType) return undefined;
+    if (!bucket || !contentType) return undefined;
     try {
-      const result = await readBlob(key, { access: "private", token });
-      if (!result) return undefined;
-      if (result.statusCode !== 200) throw new Error("Unexpected conditional response");
-      if (result.blob.pathname !== key || result.blob.contentType !== contentType) {
-        await result.stream.cancel();
+      const encodedKey = encodeURIComponent(key);
+      const url = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucket)}/o/${encodedKey}?alt=media`;
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const response = await fetchFn(url, { headers });
+      if (response.status === 404) return undefined;
+      if (!response.ok) {
+        throw new Error(`GCS response error: status ${response.status}`);
+      }
+      const responseContentType = response.headers.get("content-type")?.split(";")[0]?.trim();
+      if (responseContentType && responseContentType !== contentType) {
         return undefined;
       }
-      return { bytes: Buffer.from(await new Response(result.stream).arrayBuffer()), contentType };
-    } catch (error) {
-      if (error instanceof BlobNotFoundError) return undefined;
-      // Discard SDK errors and causes: they may contain credentials or storage URLs.
+      const arrayBuffer = await response.arrayBuffer();
+      return { bytes: Buffer.from(arrayBuffer), contentType };
+    } catch {
+      // Discard SDK/HTTP errors and causes: they may contain credentials or storage URLs.
       throw new AppError(503, "INTERNAL_ERROR", "Private asset storage is unavailable");
     }
   };
 }
 
-// Runtime priority: Blob token, then local root, then unavailable.
-// Explicit filesystem readers remain independent of Blob credentials.
+// Runtime priority: GCS bucket, then local root, then unavailable.
+// Explicit filesystem readers remain independent of cloud credentials.
 export function createRuntimeCurriculumAssetReader({
-  token = process.env.BLOB_READ_WRITE_TOKEN,
+  bucket = process.env.CURRICULUM_ASSET_BUCKET,
+  token = process.env.GCP_STORAGE_TOKEN,
   root = process.env.CURRICULUM_ASSET_ROOT,
-}: { token?: string; root?: string } = {}, readBlob: typeof get = get): CurriculumAssetReader {
-  return token ? createBlobCurriculumAssetReader(token, readBlob) : createCurriculumAssetReader(root);
+  fetchFn = fetch,
+}: { bucket?: string; token?: string; root?: string; fetchFn?: GcsFetch } = {}): CurriculumAssetReader {
+  if (bucket) {
+    return createGcsCurriculumAssetReader({ bucket, token, fetchFn });
+  }
+  return createCurriculumAssetReader(root);
 }

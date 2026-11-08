@@ -5,6 +5,7 @@ node_modules/
 *.log
 .DS_Store
 # Private exam bank imports and credentials must never be staged.
+.firebase/
 **/private-data/
 **/sample-bank.json
 *.exam-bank.json
