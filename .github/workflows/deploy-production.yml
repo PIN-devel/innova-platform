@@ -25,7 +25,7 @@ jobs:
       GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
       WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
-      UPSTREAM_RENDER_URL: ${{ vars.UPSTREAM_RENDER_URL || 'https://innova-api-y9s6.onrender.com' }}
+      UPSTREAM_RENDER_URL: ${{ vars.UPSTREAM_RENDER_URL || secrets.UPSTREAM_RENDER_URL }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,12 +33,15 @@ jobs:
       - name: Validate APISIX Gateway configuration
         run: sh apps/api-gateway/scripts/validate-config.sh
 
-      - name: Check GCP authentication configuration
+      - name: Check deployment configuration
         id: check_config
         run: |
           if [ -z "$GCP_PROJECT_ID" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Skipping Production deployment: GCP_PROJECT_ID is not configured."
+          elif [ -z "$UPSTREAM_RENDER_URL" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping Production deployment: UPSTREAM_RENDER_URL is not configured in Secrets or Variables."
           elif [ -n "$GCP_SA_KEY" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
             echo "auth_mode=key" >> "$GITHUB_OUTPUT"
