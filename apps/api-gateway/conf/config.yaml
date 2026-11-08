@@ -10,11 +10,14 @@ apisix:
   node_listen: 8080             # Cloud Run default port
   enable_admin: false           # Admin API disabled in Stand-alone mode
   enable_control: false
-  dns_resolver:
-    - 127.0.0.11                # Docker local network resolver
-    - 8.8.8.8                   # Public DNS
-    - 1.1.1.1                   # Cloudflare DNS
-  dns_resolver_valid: 30
+
+# DNS resolver configuration (Root level in APISIX schema)
+dns_resolver:
+  - 8.8.8.8                     # Google Public DNS (first for external domain resolution)
+  - 1.1.1.1                     # Cloudflare DNS
+  - 127.0.0.11                  # Docker local network resolver
+dns_resolver_valid: 30
+resolver_timeout: 5
 
 nginx_config:
   error_log: "/dev/stderr"

@@ -9,7 +9,9 @@ upstreams:
     pass_host: rewrite
     upstream_host: "${UPSTREAM_RENDER_HOST}"
     nodes:
-      "${UPSTREAM_RENDER_HOST}:${UPSTREAM_RENDER_PORT}": 1
+      - host: "${UPSTREAM_RENDER_HOST}"
+        port: ${UPSTREAM_RENDER_PORT}
+        weight: 1
     tls:
       verify: false
     timeout:
