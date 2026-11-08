@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://innova-api-y9s6.onrender.com/api/$1"
+      "destination": "https://innova-api-gateway-ooxm4hia2a-du.a.run.app/api/$1"
     },
     {
       "source": "/(.*)",
