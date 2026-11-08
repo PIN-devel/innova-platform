@@ -129,7 +129,7 @@ flowchart TD
   - `conf/apisix.yaml` 및 `conf/config.yaml`(Stand-alone 모드 활성화) 템플릿 작성.
   - `serverless-pre-function` 및 `serverless-post-function` Lua 쿠키 브릿지 스크립트 작성 및 로컬 단위 테스트.
 - 환경 변수 주입 및 GitOps 파이프라인 구성:
-  - GitHub Actions 워크플로(`.github/workflows/deploy-preview.yml`, `deploy-production.yml`)에 APISIX Gateway 빌드 및 배포 단계 추가.
+  - GitHub Actions 워크플로(`.github/workflows/deploy-production.yml`)에 WIF 기반 APISIX Gateway 빌드 및 Cloud Run 자동 배포 단계 구성 (Preview 파이프라인은 별도 후속 작업으로 분리).
   - `UPSTREAM_RENDER_URL` 환경 변수 주입 검증.
 - `docs/documentation-policy.md` 및 `README.md`에 본 ADR(ADR-0003) 링크 반영.
 - Linear 이슈 [PIN-74](https://linear.app/pin-dev/issue/PIN-74) 실행 계획 최신화.

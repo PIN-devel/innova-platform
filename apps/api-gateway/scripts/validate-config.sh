@@ -26,12 +26,21 @@ if [ "$LAST_LINE" != "#END" ]; then
 fi
 echo "==> [validate-config] #END marker check passed."
 
-# 2. Check YAML syntax using node
-node -e "
-  const fs = require('fs');
-  const template = fs.readFileSync('$TEMPLATE_YAML', 'utf8');
-  // Dummy substitute for YAML parse check
-  const replaced = template.replace(/\\\${[A-Z0-9_]+}/g, 'dummy-value');
-  console.log('==> [validate-config] Template size:', replaced.length, 'bytes');
-"
+# 2. Check root-level dns_resolver in config.yaml
+if ! grep -q "^dns_resolver:" "$CONFIG_YAML"; then
+  echo "Error: $CONFIG_YAML must define 'dns_resolver:' at root level."
+  exit 1
+fi
+echo "==> [validate-config] Root-level dns_resolver check passed."
+
+# 3. Check required environment variable placeholders in apisix.yaml.template
+for VAR in UPSTREAM_RENDER_SCHEME UPSTREAM_RENDER_HOST UPSTREAM_RENDER_PORT; do
+  if ! grep -q "\${${VAR}}" "$TEMPLATE_YAML"; then
+    echo "Error: $TEMPLATE_YAML is missing required placeholder \${${VAR}}."
+    exit 1
+  fi
+done
+
+TEMPLATE_BYTES=$(wc -c < "$TEMPLATE_YAML" | tr -d ' ')
+echo "==> [validate-config] Template size: ${TEMPLATE_BYTES} bytes"
 echo "==> [validate-config] All configuration checks passed successfully."
