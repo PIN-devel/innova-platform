@@ -1,0 +1,25 @@
+# Apache APISIX Stand-alone Configuration for Cloud Run
+# Refer to: https://apisix.apache.org/docs/apisix/deployment-modes/#stand-alone
+
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+
+apisix:
+  node_listen: 8080             # Cloud Run default port
+  enable_admin: false           # Admin API disabled in Stand-alone mode
+  enable_control: false
+  dns_resolver:
+    - 127.0.0.11                # Docker local network resolver
+    - 169.254.169.254           # GCP internal DNS
+    - 8.8.8.8                   # Public DNS fallback
+    - 1.1.1.1
+  dns_resolver_valid: 30
+
+nginx_config:
+  error_log: "/dev/stderr"
+  error_log_level: "warn"
+  worker_processes: "auto"
+  events:
+    worker_connections: 10620

@@ -29,7 +29,7 @@
 | 문서 | 역할·처리 |
 | --- | --- |
 | 루트·API·Web README | 현재 위치 유지; 실행·문서 탐색 |
-| 루트·API·Web AGENTS | 현재 위치 유지; 공통/앱 지침의 적용 경계 |
+| 루트·API·Web·Gateway AGENTS | 현재 위치 유지; 공통/앱 지침의 적용 경계 |
 | `docs/documentation-policy.md` | 이 문서; 위치·명명·참조의 기준 |
 | `docs/ai-workflow.md` | 조사·구현·검증·전달과 읽기 범위 |
 | `docs/git-workflow.md` | Git 병합·릴리스·정리 기준 |

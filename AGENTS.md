@@ -1,6 +1,6 @@
 # AI 에이전트 공용 지침
 
-이 파일은 저장소 전체에 적용된다. `apps/web/AGENTS.md`와 `apps/api/AGENTS.md`는 각 앱을 작업할 때 이 지침에 추가로 적용된다. 저장소 루트에서 AI 에이전트를 시작했다면 해당 앱을 수정하기 전에 그 앱의 `AGENTS.md`를 직접 읽는다.
+이 파일은 저장소 전체에 적용된다. `apps/web/AGENTS.md`, `apps/api/AGENTS.md`, `apps/api-gateway/AGENTS.md`는 각 앱을 작업할 때 이 지침에 추가로 적용된다. 저장소 루트에서 AI 에이전트를 시작했다면 해당 앱을 수정하기 전에 그 앱의 `AGENTS.md`를 직접 읽는다.
 
 ## 저장소와 작업 원칙
 
