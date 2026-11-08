@@ -14,7 +14,8 @@
   - Firebase Hosting이 전달하는 단일 세션 쿠키(`__session`)와 백엔드 세션 쿠키(`exam_drill_auth`) 간의 양방향 변환을 유지한다.
   - 요청 단계(`serverless-pre-function`): `Cookie: __session=<TOKEN>`을 추출하여 업스트림 전달 시 `Cookie: exam_drill_auth=<TOKEN>`으로 변환한다.
   - 응답 단계(`serverless-post-function`): 업스트림의 `Set-Cookie: exam_drill_auth=<TOKEN>`을 감지하여 `Set-Cookie: __session=<TOKEN>; Path=/; SameSite=Lax; Secure; HttpOnly`로 클라이언트에 전달한다.
-- **시스템 및 컨테이너 설정 (`conf/config.yaml`)**:
+- **시스템 및 컨테이너 설정 (`conf/config.yaml`, `Dockerfile`)**:
+  - 컨테이너 보안을 위해 최소 권한 원칙(Least Privilege)을 적용하여 공식 시스템 사용자(`USER apisix`, UID/GID 636)로 실행한다. root 권한 실행을 금지한다.
   - Cloud Run 표준 포트 바인딩(`node_listen: 8080`)과 GCP 내부 DNS(`169.254.169.254`) 및 Docker 로컬 DNS(`127.0.0.11`) resolver를 유지한다.
   - Admin API 및 Control Plane은 비활성화(`enable_admin: false`)하여 공격 표면을 최소화한다.
 - **검증 절차**:
