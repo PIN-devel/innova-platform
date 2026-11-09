@@ -11,8 +11,167 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  changes:
+    name: Detect Changed Components
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      auth: ${{ steps.filter.outputs.auth }}
+      gateway: ${{ steps.filter.outputs.gateway }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Paths Filter
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            auth:
+              - 'services/auth/**'
+              - 'packages/auth-kit/**'
+              - 'packages/contracts/**'
+              - '.github/workflows/deploy-production.yml'
+            gateway:
+              - 'apps/api-gateway/**'
+              - '.github/workflows/deploy-production.yml'
+            frontend:
+              - 'apps/web/**'
+              - 'packages/contracts/**'
+              - '.github/workflows/deploy-production.yml'
+
+  deploy-auth:
+    name: Deploy Auth Service to Cloud Run
+    needs: changes
+    if: needs.changes.outputs.auth == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      auth_url: ${{ steps.deploy.outputs.auth_url }}
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
+      GCP_REGION: asia-northeast3
+      GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || secrets.GAR_REPOSITORY }}
+      WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+      AUTH_DATABASE_URL: ${{ secrets.AUTH_DATABASE_URL }}
+      LEGACY_DATABASE_URL: ${{ secrets.LEGACY_DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check deployment configuration
+        id: check_config
+        run: |
+          if [ -z "$GCP_PROJECT_ID" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping deployment: GCP_PROJECT_ID is not configured in Variables or Secrets."
+          elif [ -z "$GAR_REPOSITORY" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping deployment: GAR_REPOSITORY is not configured in Variables or Secrets."
+          elif [ -z "$AUTH_DATABASE_URL" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping deployment: AUTH_DATABASE_URL is not configured in Secrets."
+          elif [ -z "$JWT_SECRET" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping deployment: JWT_SECRET is not configured in Secrets."
+          elif [ -z "$WIF_PROVIDER" ] || [ -z "$WIF_SERVICE_ACCOUNT" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping deployment: WIF_PROVIDER or WIF_SERVICE_ACCOUNT is not configured in Secrets."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "All required deployment configuration present. Proceeding with WIF authentication."
+          fi
+
+      - name: Authenticate to Google Cloud via WIF
+        if: steps.check_config.outputs.configured == 'true'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        if: steps.check_config.outputs.configured == 'true'
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker for Artifact Registry
+        if: steps.check_config.outputs.configured == 'true'
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Install pnpm
+        if: steps.check_config.outputs.configured == 'true'
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        if: steps.check_config.outputs.configured == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.check_config.outputs.configured == 'true'
+        run: pnpm install --frozen-lockfile --filter @innova/auth...
+
+      - name: Run DB migration for Auth Service
+        if: steps.check_config.outputs.configured == 'true'
+        run: |
+          pnpm --filter @innova/contracts build
+          pnpm --filter @innova/auth db:migrate
+        env:
+          DATABASE_URL: ${{ env.AUTH_DATABASE_URL }}
+
+      - name: Build and push innova-auth-api image
+        if: steps.check_config.outputs.configured == 'true'
+        run: |
+          IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GAR_REPOSITORY}/innova-auth-api:${GITHUB_SHA}"
+          docker build -f services/auth/Dockerfile -t "${IMAGE_URI}" .
+          docker push "${IMAGE_URI}"
+          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
+
+      - name: Deploy innova-auth-api to Cloud Run
+        id: deploy
+        if: steps.check_config.outputs.configured == 'true'
+        run: |
+          ENV_VARS="^||^NODE_ENV=production||PORT=8080||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${AUTH_DATABASE_URL}||JWT_SECRET=${JWT_SECRET}"
+          if [ -n "${LEGACY_DATABASE_URL}" ]; then
+            ENV_VARS="${ENV_VARS}||LEGACY_DATABASE_URL=${LEGACY_DATABASE_URL}"
+          fi
+
+          gcloud run deploy innova-auth-api \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --image="${IMAGE_URI}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --min-instances=0 \
+            --max-instances=1 \
+            --memory=256Mi \
+            --cpu=1 \
+            --set-env-vars="${ENV_VARS}"
+
+          AUTH_URL=$(gcloud run services describe innova-auth-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
+          echo "auth_url=${AUTH_URL}" >> "$GITHUB_OUTPUT"
+          echo "Production Cloud Run Auth URL: ${AUTH_URL}"
+          echo "### 🚀 Production Auth Service Deployed!" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Cloud Run URL:** ${AUTH_URL}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Health Check:** ${AUTH_URL}/api/health" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Image:** \`${IMAGE_URI}\`" >> "$GITHUB_STEP_SUMMARY"
+
   deploy-gateway:
     name: Deploy APISIX Gateway to Cloud Run
+    needs: [changes, deploy-auth]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      (needs.changes.outputs.gateway == 'true' || needs.changes.outputs.auth == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,6 +183,7 @@ jobs:
       WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
       UPSTREAM_RENDER_URL: ${{ vars.UPSTREAM_RENDER_URL || secrets.UPSTREAM_RENDER_URL }}
+      UPSTREAM_AUTH_URL: ${{ needs.deploy-auth.outputs.auth_url || vars.UPSTREAM_AUTH_URL || secrets.UPSTREAM_AUTH_URL }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -66,6 +226,21 @@ jobs:
         if: steps.check_config.outputs.configured == 'true'
         run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
 
+      - name: Resolve Upstream Auth URL
+        if: steps.check_config.outputs.configured == 'true'
+        id: resolve_auth_url
+        run: |
+          RESOLVED="${UPSTREAM_AUTH_URL}"
+          if [ -z "$RESOLVED" ]; then
+            RESOLVED=$(gcloud run services describe innova-auth-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)' 2>/dev/null || true)
+          fi
+          if [ -z "$RESOLVED" ]; then
+            RESOLVED="${UPSTREAM_RENDER_URL}"
+            echo "Notice: innova-auth-api not found; falling back to UPSTREAM_RENDER_URL for auth routing."
+          fi
+          echo "resolved_url=${RESOLVED}" >> "$GITHUB_OUTPUT"
+          echo "Resolved UPSTREAM_AUTH_URL: ${RESOLVED}"
+
       - name: Build and push innova-api-gateway image
         if: steps.check_config.outputs.configured == 'true'
         run: |
@@ -77,6 +252,7 @@ jobs:
       - name: Deploy innova-api-gateway to Cloud Run
         if: steps.check_config.outputs.configured == 'true'
         run: |
+          AUTH_URL="${{ steps.resolve_auth_url.outputs.resolved_url }}"
           gcloud run deploy innova-api-gateway \
             --project="${GCP_PROJECT_ID}" \
             --region="${GCP_REGION}" \
@@ -88,7 +264,7 @@ jobs:
             --max-instances=1 \
             --memory=256Mi \
             --cpu=1 \
-            --set-env-vars="UPSTREAM_RENDER_URL=${UPSTREAM_RENDER_URL}"
+            --set-env-vars="^||^UPSTREAM_RENDER_URL=${UPSTREAM_RENDER_URL}||UPSTREAM_AUTH_URL=${AUTH_URL}"
 
           GATEWAY_URL=$(gcloud run services describe innova-api-gateway --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "Production Cloud Run Gateway URL: ${GATEWAY_URL}"
@@ -99,7 +275,12 @@ jobs:
 
   deploy-frontend:
     name: Deploy Web Frontend to Firebase Hosting
-    needs: deploy-gateway
+    needs: [changes, deploy-gateway]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      (needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: read

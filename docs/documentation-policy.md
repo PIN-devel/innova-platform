@@ -8,8 +8,8 @@
 | --- | --- |
 | 루트 `README.md` | 설치·실행·공통 검증과 문서 진입점 |
 | 루트 `AGENTS.md` | AI가 항상 적용할 공통 핵심 지침과 조건별 참조 |
-| `apps/<app>/README.md` | 해당 앱의 실행·환경·문서 진입점 |
-| `apps/<app>/AGENTS.md` | 해당 앱에만 적용하는 구현·검증 지침 |
+| `apps/<app>/README.md`, `services/<service>/README.md` | 해당 앱/서비스의 실행·환경·문서 진입점 |
+| `apps/<app>/AGENTS.md`, `services/<service>/AGENTS.md` | 해당 앱/서비스에만 적용하는 구현·검증 지침 |
 | `docs/*.md` | 여러 앱에 공통인 문서·AI·Git·Linear 운영 정책 |
 | `docs/adr/*.md` | 아키텍처 의사결정 기록(ADR)과 변경 이력 (시계열 보존) |
 | `apps/<app>/docs/*.md` | 해당 앱의 상세 설계·운영 절차·디자인·측정 기록 |

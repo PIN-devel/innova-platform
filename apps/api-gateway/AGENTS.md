@@ -10,11 +10,11 @@
   - APISIX 3.19.x의 보안 지원은 최신 마이너 버전 중심이므로, 마이너 릴리스 주기(약 1.5~2.5개월)와 호환성 영향 변경(Breaking Changes)을 주기적으로 확인한다.
 - **공개 저장소 보안 원칙**:
   - `conf/apisix.yaml.template` 및 CI 워크플로에 실제 운영 백엔드 URL(Render 및 Cloud Run FQDN)이나 저장소 이름을 하드코딩하지 않는다.
-  - 기동 시 `docker-entrypoint.sh`가 `UPSTREAM_RENDER_URL`을 파싱하여 `${UPSTREAM_RENDER_SCHEME}`, `${UPSTREAM_RENDER_HOST}`, `${UPSTREAM_RENDER_PORT}`를 `envsubst`로 치환하며, 실제 값은 GitHub Actions Variables/Secrets 및 Cloud Run 환경 변수로 주입한다.
+  - 기동 시 `docker-entrypoint.sh`가 `UPSTREAM_RENDER_URL` 및 `UPSTREAM_AUTH_URL`(미설정 시 Render URL 폴백)을 파싱하여 `${UPSTREAM_RENDER_*}` 및 `${UPSTREAM_AUTH_*}`를 `envsubst`로 치환하며, 실제 값은 GitHub Actions Variables/Secrets 및 Cloud Run 환경 변수로 주입한다.
 - **Firebase Hosting 쿠키 브릿지**:
-  - Firebase Hosting이 전달하는 단일 세션 쿠키(`__session`)와 백엔드 세션 쿠키(`exam_drill_auth`) 간의 양방향 변환을 유지한다.
-  - 요청 단계(`serverless-pre-function`): `Cookie: __session=<TOKEN>`을 추출하여 업스트림 전달 시 `Cookie: exam_drill_auth=<TOKEN>`으로 변환한다.
-  - 응답 단계(`serverless-post-function`): 업스트림의 `Set-Cookie: exam_drill_auth=<TOKEN>`을 감지하여 `Set-Cookie: __session=<TOKEN>; Path=/; SameSite=Lax; Secure; HttpOnly`로 클라이언트에 전달한다.
+  - Firebase Hosting이 전달하는 단일 세션 쿠키(`__session`)와 백엔드 세션 쿠키(`innova_auth`, 레거시 `exam_drill_auth`) 간의 양방향 변환을 유지한다.
+  - 요청 단계(`serverless-pre-function`): `Cookie: __session=<TOKEN>`을 추출하여 업스트림 전달 시 `Cookie: innova_auth=<TOKEN>; exam_drill_auth=<TOKEN>`으로 변환한다.
+  - 응답 단계(`serverless-post-function`): 업스트림의 `Set-Cookie: innova_auth=<TOKEN>` 또는 `Set-Cookie: exam_drill_auth=<TOKEN>`을 감지하여 `Set-Cookie: __session=<TOKEN>; Path=/; SameSite=Lax; Secure; HttpOnly`로 클라이언트에 전달한다.
 - **시스템 및 컨테이너 설정 (`conf/config.yaml`, `Dockerfile`)**:
   - 컨테이너 보안을 위해 최소 권한 원칙(Least Privilege)과 SonarLint `docker:S6504`를 준수한다. 설정 템플릿과 스크립트는 `root:root` 소유 읽기 전용(`755`/`644`)으로 복사하고, 런타임 출력 경로(`/usr/local/apisix/conf`, `/usr/local/apisix/logs`)에만 `apisix:0` 쓰기 권한을 부여한 뒤 비루트 사용자(`USER apisix`)로 실행한다.
   - Cloud Run 표준 포트 바인딩(`node_listen: 8080`)을 유지하며, `dns_resolver`(`8.8.8.8`, `1.1.1.1`, `127.0.0.11`)는 반드시 `config.yaml`의 최상위 루트 레벨에 선언한다.
