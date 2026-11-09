@@ -63,7 +63,7 @@ test('XLSX has four sheets, exact typed text, opt-in notes and session/owner/Ori
  await writeFile('/private/tmp/innova-finance-synthetic-export.xlsx',bytes);
  const users={findById:async(id:string)=>({id,email:'synthetic@example.invalid',passwordHash:'unused',role:id===f.other?'admin':'member',approvalStatus:'approved'})} as UserRepository,exams={find:async()=>undefined} as ExamRepository;
  const app=buildApp({logger:false,userRepository:users,examRepository:exams,financeManualRepository:f.manual,financeTransactionRepository:f.transactions,financeExporter:f.exporter,jwtSecret:'test-only-secret-at-least-thirty-two-characters'});t.after(()=>app.close());await app.ready();
- const headers={cookie:`exam_drill_auth=${app.jwt.sign({sub:f.owner})}`,'x-expected-user':f.owner,'x-finance-request':'1',origin:'http://localhost:5174'};
+ const headers={cookie:`innova_auth=${app.jwt.sign({sub:f.owner})}`,'x-expected-user':f.owner,'x-finance-request':'1',origin:'http://localhost:5174'};
  assert.equal((await app.inject({url:'/api/finance/transactions/'})).statusCode,401);assert.equal((await app.inject({url:'/api/finance/transactions/',headers:{...headers,'x-expected-user':f.other}})).statusCode,403);
  const download=await app.inject({method:'POST',url:'/api/finance/transactions/export',headers,payload:{from:'2026-01',to:'2026-01'}});assert.equal(download.statusCode,200,download.body);assert.equal(download.headers['cache-control'],'no-store');assert.ok(String(download.headers['content-type']).includes('spreadsheetml'));
  assert.equal((await app.inject({method:'POST',url:'/api/finance/transactions/export',headers:{...headers,origin:'https://evil.invalid'},payload:{from:'2026-01',to:'2026-01'}})).statusCode,403);

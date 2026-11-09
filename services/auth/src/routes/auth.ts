@@ -1,0 +1,61 @@
+import { loginRequestSchema, signupRequestSchema, toValidationErrorDetails } from "@innova/contracts";
+import type { AuthUser } from "@innova/contracts";
+import { randomUUID } from "node:crypto";
+import type { FastifyPluginAsync, FastifyReply } from "fastify";
+import * as argon2 from "argon2";
+import { AUTH_COOKIE_NAME, AppError, JWT_EXPIRES_IN, authCookieOptions, clearAuthCookieOptions, createAuthGuard, invalidInput } from "@innova/auth-kit";
+import type { UserRecord, UserRepository } from "../db/users.js";
+
+function publicUser(user: UserRecord): AuthUser {
+  return { id: user.id, email: user.email, approvalStatus: user.approvalStatus, role: user.role };
+}
+
+export const authRoutes: FastifyPluginAsync<{ users: UserRepository }> = async (app, { users }) => {
+  const requireAuth = createAuthGuard(users);
+  app.addHook("onRequest", async (_request, reply) => {
+    reply.header("Cache-Control", "no-store").header("Vary", "Cookie");
+  });
+
+  async function issueCookie(user: UserRecord, reply: FastifyReply) {
+    // Status claims are a snapshot for downstream services; guards still read the DB.
+    const token = await reply.jwtSign({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      approvalStatus: user.approvalStatus,
+      jti: randomUUID(),
+      auth_time: Math.floor(Date.now() / 1000),
+    }, { expiresIn: JWT_EXPIRES_IN });
+    reply.setCookie(AUTH_COOKIE_NAME, token, authCookieOptions());
+  }
+
+  app.post("/signup", async (request, reply) => {
+    const parsed = signupRequestSchema.safeParse(request.body);
+    if (!parsed.success) throw invalidInput("Invalid signup input", toValidationErrorDetails(parsed.error, request.body));
+    const { email, password } = parsed.data;
+    if (await users.findByEmail(email)) throw new AppError(409, "EMAIL_ALREADY_EXISTS", "Email already exists");
+    const passwordHash = await argon2.hash(password);
+    const user = await users.create(email, passwordHash);
+    if (!user) throw new AppError(409, "EMAIL_ALREADY_EXISTS", "Email already exists");
+    await issueCookie(user, reply);
+    return reply.code(201).send({ user: publicUser(user) });
+  });
+
+  app.post("/login", async (request, reply) => {
+    const parsed = loginRequestSchema.safeParse(request.body);
+    if (!parsed.success) throw invalidInput("Invalid login input", toValidationErrorDetails(parsed.error, request.body));
+    const user = await users.findByEmail(parsed.data.email);
+    if (!user || !(await argon2.verify(user.passwordHash, parsed.data.password))) {
+      throw new AppError(401, "INVALID_CREDENTIALS", "Invalid email or password");
+    }
+    await issueCookie(user, reply);
+    return reply.send({ user: publicUser(user) });
+  });
+
+  app.get("/me", { preHandler: requireAuth }, async (request) => ({ user: request.authUser! }));
+
+  app.post("/logout", async (_request, reply) => {
+    reply.clearCookie(AUTH_COOKIE_NAME, clearAuthCookieOptions());
+    return reply.code(204).send();
+  });
+};

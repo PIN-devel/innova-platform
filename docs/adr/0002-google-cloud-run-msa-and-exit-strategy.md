@@ -1,10 +1,10 @@
 # ADR-0002: Google 생태계·Cloud Run MSA 전환 및 클라우드·에이전트 탈출 전략
 
-- 상태: 승인됨(Accepted)
+- 상태: 부분 대체됨(Partially Superseded by [ADR-0004](0004-split-domain-services-into-packages.md))
 - 결정일: 2026-11-01
 - 적용 범위: 저장소 공통
 - 관련 이슈: Linear [PIN-71](https://linear.app/pin-dev/issue/PIN-71), [PIN-73](https://linear.app/pin-dev/issue/PIN-73)
-- 후속 결정: [ADR-0003](0003-adopt-apache-apisix-standalone-api-gateway.md)
+- 후속 결정: [ADR-0003](0003-adopt-apache-apisix-standalone-api-gateway.md), [ADR-0004](0004-split-domain-services-into-packages.md)
 
 ## 1. 맥락과 문제 정의 (Context)
 

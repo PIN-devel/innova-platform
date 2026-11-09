@@ -34,7 +34,7 @@ fi
 echo "==> [validate-config] Root-level dns_resolver check passed."
 
 # 3. Check required environment variable placeholders in apisix.yaml.template
-for VAR in UPSTREAM_RENDER_SCHEME UPSTREAM_RENDER_HOST UPSTREAM_RENDER_PORT; do
+for VAR in UPSTREAM_RENDER_SCHEME UPSTREAM_RENDER_HOST UPSTREAM_RENDER_PORT UPSTREAM_AUTH_SCHEME UPSTREAM_AUTH_HOST UPSTREAM_AUTH_PORT; do
   if ! grep -q "\${${VAR}}" "$TEMPLATE_YAML"; then
     echo "Error: $TEMPLATE_YAML is missing required placeholder \${${VAR}}."
     exit 1

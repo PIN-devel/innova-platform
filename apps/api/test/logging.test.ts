@@ -95,7 +95,7 @@ test("unexpected errors are correlated in logs and return only the safe API erro
   const app = buildApp({ logger, examRepository: exams, userRepository: users, jwtSecret });
   t.after(async () => { await app.close(); logger.flush(); });
   await app.ready();
-  const cookie = `exam_drill_auth=${app.jwt.sign({ sub: userId }, { expiresIn: "15m" })}`;
+  const cookie = `innova_auth=${app.jwt.sign({ sub: userId }, { expiresIn: "15m" })}`;
 
   const response = await app.inject({ method: "GET", url: "/api/exam/banks/default", headers: { cookie } });
   assert.equal(response.statusCode, 500);

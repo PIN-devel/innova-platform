@@ -83,9 +83,12 @@ test("signup validates input, stores Argon2 hash, and signs in with HttpOnly coo
   assert.match(String(signup.headers["set-cookie"]), /SameSite=Lax/i);
   assert.match(String(signup.headers["set-cookie"]), /Max-Age=900/i);
   const token = cookieFrom(signup).split("=")[1]!;
-  const payload = app.jwt.verify<{ sub: string; exp: number; iat:number; auth_time:number; jti:string }>(token);
-  assert.deepEqual(Object.keys(payload).sort(), ["auth_time", "exp", "iat", "jti", "sub"]);
+  const payload = app.jwt.verify<{ sub: string; exp: number; iat:number; auth_time:number; jti:string; email:string; role:string; approvalStatus:string }>(token);
+  assert.deepEqual(Object.keys(payload).sort(), ["approvalStatus", "auth_time", "email", "exp", "iat", "jti", "role", "sub"]);
   assert.equal(payload.sub, stored.id);
+  assert.equal(payload.email, "user@example.com");
+  assert.equal(payload.role, "member");
+  assert.equal(payload.approvalStatus, "pending");
   assert.match(payload.jti,/^[a-f0-9-]{36}$/);
   assert.ok(Math.abs(payload.auth_time-payload.iat)<=1);
   assert.equal(payload.exp-payload.iat,900);
@@ -117,10 +120,10 @@ test("login hides account existence, issues cookie, and me rejects invalid sessi
   assert.deepEqual(me.json(), login.json());
   for (const headers of [
     {},
-    { cookie: "exam_drill_auth=malformed" },
-    { cookie: `exam_drill_auth=${app.jwt.sign({ sub: userId }, { expiresIn: "15m" }).replace(/.{10}$/, "abcdefghij")}` },
-    { cookie: `exam_drill_auth=${app.jwt.sign({ sub: userId }, { expiresIn: "-1s" })}` },
-    { cookie: `exam_drill_auth=${app.jwt.sign({ sub: randomUUID() }, { expiresIn: "15m" })}` },
+    { cookie: "innova_auth=malformed" },
+    { cookie: `innova_auth=${app.jwt.sign({ sub: userId }, { expiresIn: "15m" }).replace(/.{10}$/, "abcdefghij")}` },
+    { cookie: `innova_auth=${app.jwt.sign({ sub: userId }, { expiresIn: "-1s" })}` },
+    { cookie: `innova_auth=${app.jwt.sign({ sub: randomUUID() }, { expiresIn: "15m" })}` },
     { authorization: `Bearer ${app.jwt.sign({ sub: userId }, { expiresIn: "15m" })}` },
   ]) {
     const denied = await app.inject({ method: "GET", url: "/api/auth/me", headers });
@@ -152,7 +155,7 @@ test("Fastify parsing errors serialize as INVALID_INPUT and unexpected errors as
   }, jwtSecret });
   t.after(() => app.close());
   await app.ready();
-  const cookie = `exam_drill_auth=${app.jwt.sign({ sub: errorTestUserId }, { expiresIn: "15m" })}`;
+  const cookie = `innova_auth=${app.jwt.sign({ sub: errorTestUserId }, { expiresIn: "15m" })}`;
   const malformed = await app.inject({ method: "POST", url: "/api/auth/login", headers: { "content-type": "application/json" }, payload: "{" });
   assert.equal(malformed.statusCode, 400);
   assert.equal(malformed.json().error.code, "INVALID_INPUT");
@@ -169,7 +172,7 @@ test("logout clears cookie and is idempotent", async (t) => {
   for (const headers of [{ cookie }, {}]) {
     const logout = await app.inject({ method: "POST", url: "/api/auth/logout", headers });
     assert.equal(logout.statusCode, 204);
-    assert.match(String(logout.headers["set-cookie"]), /exam_drill_auth=;/);
+    assert.match(String(logout.headers["set-cookie"]), /innova_auth=;/);
     assert.match(String(logout.headers["set-cookie"]), /Max-Age=0/i);
   }
   const me = await app.inject({ method: "GET", url: "/api/auth/me" });
