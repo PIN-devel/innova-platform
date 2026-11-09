@@ -56,7 +56,7 @@ function fixture() {
     async create(value) { return { id: "created-bank", bank: value }; },
   };
   const app = buildApp({ logger: false, examRepository: exams, userRepository: users, jwtSecret });
-  const cookieFor = (id: string) => `exam_drill_auth=${app.jwt.sign({ sub: id }, { expiresIn: "15m" })}`;
+  const cookieFor = (id: string) => `innova_auth=${app.jwt.sign({ sub: id }, { expiresIn: "15m" })}`;
   return { app, records, cookieFor };
 }
 

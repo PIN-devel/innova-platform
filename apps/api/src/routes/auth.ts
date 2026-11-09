@@ -19,7 +19,7 @@ export const authRoutes: FastifyPluginAsync<{ users: UserRepository }> = async (
   });
 
   async function issueCookie(user: UserRecord, reply: import("fastify").FastifyReply) {
-    const token = await reply.jwtSign({ sub: user.id,jti:randomUUID(),auth_time:Math.floor(Date.now()/1000) }, { expiresIn: JWT_EXPIRES_IN });
+    const token = await reply.jwtSign({ sub: user.id, email: user.email, role: user.role, approvalStatus: user.approvalStatus, jti: randomUUID(), auth_time: Math.floor(Date.now() / 1000) }, { expiresIn: JWT_EXPIRES_IN });
     reply.setCookie(AUTH_COOKIE_NAME, token, authCookieOptions());
   }
 

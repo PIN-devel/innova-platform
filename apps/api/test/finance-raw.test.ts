@@ -49,7 +49,7 @@ test('Raw route requires approved owner and expected actor/Origin; errors never 
  const users={findById:async(id:string)=>({id,email:'synthetic@example.invalid',passwordHash:'unused',role:id===admin?'admin':'member',approvalStatus:id===pending?'pending':'approved'})} as UserRepository;
  const exams={find:async()=>undefined,create:async()=>{throw Error('unused');}} as ExamRepository;
  const app=buildApp({logger:false,userRepository:users,examRepository:exams,financeRawRepository:repo,jwtSecret:'test-only-secret-at-least-thirty-two-characters'});t.after(()=>app.close());await app.ready();
- const headers=(id=owner)=>({cookie:`exam_drill_auth=${app.jwt.sign({sub:id})}`,'x-expected-user':id,'x-finance-request':'1',origin:'http://localhost:5174'});
+ const headers=(id=owner)=>({cookie:`innova_auth=${app.jwt.sign({sub:id})}`,'x-expected-user':id,'x-finance-request':'1',origin:'http://localhost:5174'});
  const noauth=await app.inject({url:'/api/finance/raw/files'});assert.equal(noauth.statusCode,401);assert.equal(noauth.headers['cache-control'],'no-store');
  const data=input();const saved=await app.inject({method:'POST',url:'/api/finance/raw/imports',payload:data,headers:headers()});assert.equal(saved.statusCode,200,saved.body);
  const id=saved.json().file.id;
@@ -73,6 +73,6 @@ test('AEAD rejects tampering and different owner/file/row purpose',()=>{
  const users={findById:async(id:string)=>({id,email:'synthetic@example.invalid',passwordHash:'unused',role:'member',approvalStatus:'approved'})} as UserRepository;
  const exams={find:async()=>undefined,create:async()=>{throw Error('unused');}} as ExamRepository;
  const app=buildApp({logger,userRepository:users,examRepository:exams,financeRawRepository:{...repo,list:async()=>{throw Error('SYNTHETIC_SECRET_DB_ERROR');}},jwtSecret:'test-only-secret-at-least-thirty-two-characters'});t.after(()=>app.close());await app.ready();
- const headers={cookie:`exam_drill_auth=${app.jwt.sign({sub:owner})}`,'x-expected-user':owner};
+ const headers={cookie:`innova_auth=${app.jwt.sign({sub:owner})}`,'x-expected-user':owner};
  const response=await app.inject({url:'/api/finance/raw/files',headers});assert.equal(response.statusCode,500);assert.equal(response.headers['cache-control'],'no-store');assert.equal(response.body.includes('SYNTHETIC_SECRET_DB_ERROR'),false);assert.equal(logs.includes('SYNTHETIC_SECRET_DB_ERROR'),false);
  });

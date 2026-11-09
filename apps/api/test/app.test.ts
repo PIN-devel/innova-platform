@@ -55,7 +55,7 @@ test("exam bank API requires JWT cookie and preserves validated records", async 
   const app = buildApp({ logger: false, examRepository: createExamTestRepository(), userRepository: users, jwtSecret });
   t.after(() => app.close());
   await app.ready();
-  const cookie = `exam_drill_auth=${app.jwt.sign({ sub: userId }, { expiresIn: "15m" })}`;
+  const cookie = `innova_auth=${app.jwt.sign({ sub: userId }, { expiresIn: "15m" })}`;
   const authenticated = { cookie };
   const unauthorized = await app.inject({ method: "GET", url: "/api/exam/banks/default" });
   assert.equal(unauthorized.statusCode, 401);

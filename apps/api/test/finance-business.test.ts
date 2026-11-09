@@ -61,7 +61,7 @@ test('business API keeps owner/expected actor/Origin boundaries and no-store res
  const users={findById:async(id:string)=>({id,email:'synthetic@example.invalid',passwordHash:'unused',role:id===f.admin?'admin':'member',approvalStatus:'approved'})} as UserRepository;
  const exams={find:async()=>undefined,create:async()=>{throw Error('unused');}} as ExamRepository;
  const app=buildApp({logger:false,userRepository:users,examRepository:exams,financeRawRepository:f.raw,financeBusinessRepository:f.business,jwtSecret:'test-only-secret-at-least-thirty-two-characters'});t.after(()=>app.close());await app.ready();
- const headers=(id=f.owner)=>({cookie:`exam_drill_auth=${app.jwt.sign({sub:id})}`,'x-expected-user':id,'x-finance-request':'1',origin:'http://localhost:5174'});
+ const headers=(id=f.owner)=>({cookie:`innova_auth=${app.jwt.sign({sub:id})}`,'x-expected-user':id,'x-finance-request':'1',origin:'http://localhost:5174'});
  const id=await f.save(bankSource());
  assert.equal((await app.inject({url:'/api/finance/business/documents'})).statusCode,401);
  const result=await app.inject({method:'POST',url:'/api/finance/business/process',headers:headers(),payload:{rawFileId:id}});assert.equal(result.statusCode,200,result.body);assert.equal(result.headers['cache-control'],'no-store');

@@ -31,7 +31,7 @@ test("Curriculum API approval, scope, no-store, answer concealment and exact gra
     curriculumAssets: async () => { assetReads++; return { bytes: Buffer.from("synthetic-image"), contentType: "image/png" }; },
   });
   t.after(() => app.close()); await app.ready();
-  const headers = { cookie: `exam_drill_auth=${app.jwt.sign({ sub: userId })}` };
+  const headers = { cookie: `innova_auth=${app.jwt.sign({ sub: userId })}` };
   for (const status of [null, "pending", "rejected"] as const) {
     if (status) approvalStatus = status;
     for (const path of ["/api/curriculum/subjects", base, `${base}/quiz`, `${base}/blocks/block-body/assets/2`]) {
@@ -78,7 +78,7 @@ test("Curriculum API approval, scope, no-store, answer concealment and exact gra
 test("Chapter without normalized reading order is blocked instead of guessed", async (t) => {
   const app = buildApp({ logger: false, jwtSecret: "synthetic-only-secret-with-32-characters", examRepository: { async find() {}, async create() { throw new Error("unused"); } }, userRepository: { async findById() { return { id: userId, email: "test@example.com", passwordHash: "unused", role: "member", approvalStatus: "approved" }; }, async findByEmail() {}, async create() {}, async findPending() { return []; }, async approvePending() {}, async rejectPending() {} }, curriculumRepository: { ...repository, async chapter() { throw new CurriculumReadingOrderError("Chapter requires explicit reading order"); } } });
   t.after(() => app.close()); await app.ready();
-  const response = await app.inject({ url: base, headers: { cookie: `exam_drill_auth=${app.jwt.sign({ sub: userId })}` } });
+  const response = await app.inject({ url: base, headers: { cookie: `innova_auth=${app.jwt.sign({ sub: userId })}` } });
   assert.equal(response.statusCode, 409); assert.equal(response.json().error.code, "BUSINESS_RULE_VIOLATION");
 });
 
@@ -119,7 +119,7 @@ test("Remote storage failures expose no credential or URL in Curriculum response
   const url = `${base}/blocks/block-body/assets/2`;
   assert.equal((await app.inject({ url })).statusCode, 401);
   assert.equal(reads, 0);
-  const headers = { cookie: `exam_drill_auth=${app.jwt.sign({ sub: userId })}` };
+  const headers = { cookie: `innova_auth=${app.jwt.sign({ sub: userId })}` };
   const response = await app.inject({ url, headers });
   assert.equal(response.statusCode, 503);
   assert.deepEqual(response.json(), { error: { code: "INTERNAL_ERROR", message: "Private asset storage is unavailable" } });

@@ -1,0 +1,14 @@
+**/node_modules/
+**/dist/
+.git/
+.github/
+**/.env
+**/.env.*
+!**/.env.example
+apps/web/
+apps/api-gateway/
+apps/api/
+docs/
+.firebase/
+*.log
+.DS_Store

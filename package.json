@@ -3,12 +3,14 @@
   "private": true,
   "packageManager": "pnpm@12.6.0",
   "scripts": {
-    "dev": "pnpm --filter @innova/contracts build && (pnpm --filter @innova/api dev & pnpm --filter @innova/web dev:api & wait)",
+    "build:shared": "pnpm --filter @innova/contracts build && pnpm --filter @innova/auth-kit build",
+    "dev": "pnpm build:shared && (pnpm --filter @innova/api dev & pnpm --filter @innova/web dev:api & wait)",
     "dev:web": "pnpm --filter @innova/contracts build && pnpm --filter @innova/web dev",
-    "dev:api": "pnpm --filter @innova/contracts build && pnpm --filter @innova/api dev",
+    "dev:api": "pnpm build:shared && pnpm --filter @innova/api dev",
+    "dev:auth": "pnpm build:shared && pnpm --filter @innova/auth dev",
     "build": "pnpm -r build",
-    "typecheck": "pnpm --filter @innova/contracts build && pnpm -r --filter './apps/**' typecheck",
-    "test": "pnpm --filter @innova/contracts build && pnpm -r --filter './apps/**' test",
+    "typecheck": "pnpm build:shared && pnpm -r --filter './apps/**' --filter './services/**' --filter @innova/auth-kit typecheck",
+    "test": "pnpm build:shared && pnpm -r --filter './apps/**' --filter './services/**' test",
     "lint": "pnpm -r lint"
   },
   "devDependencies": {
