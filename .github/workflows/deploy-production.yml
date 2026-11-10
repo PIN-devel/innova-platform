@@ -139,7 +139,7 @@ jobs:
         id: deploy
         if: steps.check_config.outputs.configured == 'true'
         run: |
-          ENV_VARS="^||^NODE_ENV=production||PORT=8080||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${AUTH_DATABASE_URL}||JWT_SECRET=${JWT_SECRET}"
+          ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${AUTH_DATABASE_URL}||JWT_SECRET=${JWT_SECRET}"
           if [ -n "${LEGACY_DATABASE_URL}" ]; then
             ENV_VARS="${ENV_VARS}||LEGACY_DATABASE_URL=${LEGACY_DATABASE_URL}"
           fi
