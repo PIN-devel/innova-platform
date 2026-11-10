@@ -1,10 +1,11 @@
 # AI 에이전트 공용 지침
 
-이 파일은 저장소 전체에 적용된다. `apps/web/AGENTS.md`, `apps/api/AGENTS.md`, `apps/api-gateway/AGENTS.md`, `services/auth/AGENTS.md`는 각 앱/서비스를 작업할 때 이 지침에 추가로 적용된다. 저장소 루트에서 AI 에이전트를 시작했다면 해당 앱/서비스를 수정하기 전에 그 대상의 `AGENTS.md`를 직접 읽는다.
+이 파일은 저장소 전체에 적용된다. `apps/web/AGENTS.md`, `apps/api/AGENTS.md`, `apps/api-gateway/AGENTS.md`, `services/auth/AGENTS.md`, `services/finance/AGENTS.md`는 각 앱/서비스를 작업할 때 이 지침에 추가로 적용된다. 저장소 루트에서 AI 에이전트를 시작했다면 해당 앱/서비스를 수정하기 전에 그 대상의 `AGENTS.md`를 직접 읽는다.
 
 ## 저장소와 작업 원칙
 
-- 이 저장소는 pnpm 워크스페이스다. `apps/web`은 React 웹 앱, `apps/api-gateway`는 APISIX 게이트웨이, `apps/api`는 기존 Fastify 모놀리스(Render), `services/auth`는 분리된 인증/회원 마이크로서비스(Cloud Run), `packages/contracts`는 공유 Zod 스키마, `packages/auth-kit`은 Fastify 인증 공통 킷이다.
+- 이 저장소는 pnpm 워크스페이스다. `apps/web`은 React 웹 앱, `apps/api-gateway`는 APISIX 게이트웨이, `apps/api`는 기존 Fastify 모놀리스(Render), `services/auth`는 분리된 인증/회원 마이크로서비스(Cloud Run), `services/finance`는 분리된 개인 금융(MOTIFIN) 마이크로서비스(Cloud Run), `packages/contracts`는 공유 Zod 스키마, `packages/auth-kit`은 Fastify 인증 공통 킷이다.
+- **MSA Database-per-Service 원칙**: 각 마이크로서비스(`services/*`)는 자신이 소유한 전용 데이터베이스(`innova_auth`, `innova_finance` 등)에만 접속하며, 다른 마이크로서비스의 데이터베이스에 직접 접속(읽기 전용 포함)하거나 테이블·외래키(FK)·SQL 잠금을 공유하지 않는다([ADR-0004](docs/adr/0004-split-domain-services-into-packages.md)). 타 도메인 데이터의 조회·검증·변경은 반드시 소유 서비스의 HTTP API를 호출하고, 다중 서비스에 걸친 상태 변경이 필요한 경우 보상 트랜잭션(망취소)으로 원자성을 보호한다.
 - 의존성 설치와 공통 검증은 저장소 루트에서 `pnpm`으로 실행한다. 패키지 매니저나 잠금 파일을 임의로 바꾸지 않는다.
 - 작업 전에 관련 코드와 기존 수정 사항을 확인한다. 이미 있는 수정 사항을 보존하고, 요청과 무관한 파일은 수정하지 않는다.
 - API 요청과 응답의 형태를 바꿀 때는 `packages/contracts`를 기준으로 `@innova/web`과 `@innova/api`의 사용처를 함께 확인한다. 공유 계약을 변경한 뒤에는 루트에서 `pnpm build` 또는 `pnpm typecheck`로 두 앱을 검증한다.

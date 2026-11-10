@@ -52,15 +52,23 @@
   - `apps/api`: 기존 Render Fastify 모놀리스 (전환 완료 및 검증 시까지 롤백 대비용으로 보존)
 - **`services/`**: 도메인별 백엔드 마이크로서비스 독립 패키지
   - `services/auth` (`@innova/auth`): 인증 및 회원 관리 전용 서비스 (Cloud Run `innova-auth-api`)
-  - 향후 `services/learning`, `services/finance` 순차 분리
+  - `services/finance` (`@innova/finance`): 개인 금융(MOTIFIN) 전용 서비스 (Cloud Run `innova-finance-api`, [PIN-77](https://linear.app/pin-dev/issue/PIN-77))
+  - 향후 `services/learning` 분리
 - **`packages/`**: 모노레포 내부 공유 패키지
   - `packages/contracts` (`@innova/contracts`): 프런트/백엔드 공유 Zod 스키마, 타입, 인터페이스 계약 (순수 스키마 유지)
   - `packages/auth-kit` (`@innova/auth-kit`): Fastify 전용 공통 인증 가드, 세션 쿠키 설정, JWT 클레임 타입, 오류(`AppError`), 로거(`pino`) 유틸리티
 
-### 2) Database-per-Service 및 전환기 이중 쓰기 (Dual-Write)
-- Neon PostgreSQL 내에 서비스별 독립 Database를 생성한다:
-  - Auth 서비스: **`innova_auth`** 데이터베이스 (`users` 테이블 소유).
-- **이중 쓰기 안전장치**: 기존 Render 모놀리스의 Finance 모듈이 `neondb.users`에 대해 `FOR SHARE` 원자적 잠금을 수행하므로, PIN-78(최종 레거시 정리) 전까지 `services/auth`는 `LEGACY_DATABASE_URL`이 설정되어 있을 때 회원가입/승인/거절 이벤트를 `neondb.users`에도 미러링하여 데이터 정합성을 보장한다.
+### 2) Database-per-Service 원칙 및 전환기 이중 쓰기 (Dual-Write)
+- **엄격한 Database-per-Service 경계**:
+  - 각 마이크로서비스(`services/*`)는 자신이 소유한 전용 데이터베이스에만 접속하며, **다른 마이크로서비스의 데이터베이스에 직접 접속(읽기 전용 포함)하거나 테이블·외래키(FK)·SQL 잠금을 공유하는 행위를 엄격히 금지**한다.
+  - Neon PostgreSQL 내에 서비스별 독립 Database를 운영한다:
+    - Auth 서비스(`@innova/auth`): **`innova_auth`** 데이터베이스 (`users` 테이블 단독 소유).
+    - Finance 서비스(`@innova/finance`): **`innova_finance`** 데이터베이스 (`finance_*` 16개 테이블 단독 소유, `users` 테이블·외래키 없음).
+    - 향후 Learning 서비스(`@innova/learning`): **`innova_learning`** 데이터베이스 분리 예정.
+  - **서비스 간 통신 및 정합성 보호**:
+    - 타 도메인의 상태 조회·검증이 필요한 경우 반드시 해당 도메인 서비스가 노출하는 **HTTP API**를 호출한다.
+    - 여러 마이크로서비스에 걸친 상태 변경이 필요한 경우 소유 서비스의 API를 호출하고 **보상 트랜잭션(Saga / 망취소)** 패턴으로 원자성과 최종 정합성을 보호한다. 단, 서비스 경계를 지키면서 API 조회만으로 단순하게 해결 가능한 경우에는 불필요한 분산 트랜잭션 복잡성을 도입하지 않는다.
+- **전환기 이중 쓰기 안전장치**: 기존 Render 모놀리스(`apps/api`)의 모듈이 `neondb.users`를 참조하므로, PIN-78(최종 레거시 정리) 전까지 `services/auth`는 `LEGACY_DATABASE_URL`이 설정되어 있을 때 회원가입/승인/거절 이벤트를 레거시 `neondb.users`에 한시적으로 미러링하여 Strangler Fig 전환기 데이터 정합성을 보장한다.
 
 ### 3) 공통 세션 쿠키 명칭 통일 및 양방향 브릿지
 - 기존 레거시 명칭인 `exam_drill_auth`를 폐기하고, 플랫폼 공통 쿠키 명칭 **`innova_auth`**로 통일한다.
@@ -70,6 +78,12 @@
 
 ### 4) 클라우드 탈출 전략(Cloud Exit Strategy) 재정의
 - ADR-0002의 단일 모놀리스 `SERVICE_DOMAINS=all` 기동 방식 대신, 향후 모든 도메인 서비스가 분리된 후에는 모노레포 루트의 **`docker-compose.yml`을 통해 개별 서비스 컨테이너들(`auth`, `learning`, `finance`, `gateway`)을 단일 네트워크로 오케스트레이션**하여 타 클라우드, VPS, 홈랩으로 즉시 이전하는 방식을 탈출 전략으로 확정한다.
+
+### 5) Finance 서비스의 사용자 참조 및 서비스 간 API 연동 (PIN-77)
+- `innova_finance`는 `users` 테이블을 갖지 않으며 `innova_auth` DB에 직접 접속하지 않는다. `finance_*.owner_id`는 Auth 서비스가 소유한 불투명 사용자 식별자(UUID)이며 DB 외래키·`FOR SHARE` 조인을 두지 않는다.
+- 매 요청의 사용자 존재·승인 상태(`approvalStatus`) 확인과 PDF 암호 저장/재사용 시의 계정 비밀번호 재인증(step-up authentication)은 `UserLookup`이 **Auth 마이크로서비스 HTTP API(`AUTH_SERVICE_URL`: `GET /api/auth/me`, `POST /api/auth/login`)**를 호출하여 판정한다.
+- 소유자 단위 쓰기 직렬화는 `innova_finance` 내부의 `finance_business_scopes` / `finance_pdf_secrets` revision CAS가 담당한다.
+- **수용한 트레이드오프**: 분리 전에는 쓰기 SQL이 승인된 사용자 행을 공유 잠금해 승인 철회와의 경합을 DB가 막았다. 분리 후에는 요청 진입 시점의 Auth API 승인 검사만 적용되며 이미 진입한 쓰기 요청과의 경합은 허용한다. 계정 삭제 시 금융 데이터 정리는 서비스 간 API 연동(후속 과제)으로 다룬다.
 
 ---
 

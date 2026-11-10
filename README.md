@@ -5,14 +5,14 @@ React, Fastify, PostgreSQL 기반 모노레포입니다. `/exam`에서 Exam Dril
 
 | 목적 | 문서 |
 | --- | --- |
-| AI 공통·앱별 지침 | [공통 AGENTS](./AGENTS.md), [Web AGENTS](./apps/web/AGENTS.md), [API AGENTS](./apps/api/AGENTS.md), [Gateway AGENTS](./apps/api-gateway/AGENTS.md), [Auth AGENTS](./services/auth/AGENTS.md) |
+| AI 공통·앱별 지침 | [공통 AGENTS](./AGENTS.md), [Web AGENTS](./apps/web/AGENTS.md), [API AGENTS](./apps/api/AGENTS.md), [Gateway AGENTS](./apps/api-gateway/AGENTS.md), [Auth AGENTS](./services/auth/AGENTS.md), [Finance AGENTS](./services/finance/AGENTS.md) |
 | 문서 위치·파일명·참조 관리 | [문서 정책](./docs/documentation-policy.md) |
 | 필요한 정보만 읽고 조사·검증·전달하기 | [AI 작업 흐름](./docs/ai-workflow.md) |
 | 브랜치·PR·릴리스 | [Git 운영](./docs/git-workflow.md) |
 | Label·Milestone·Issue 역할, 개선 Inbox, 상태 자동화 | [Linear 운영](./docs/linear-workflow.md) |
 | 신규 테이블의 식별·감사·소유권·계보 설계 | [테이블 메타데이터 기준](./docs/database-table-metadata.md) |
 | 아키텍처 결정 기록(ADR)과 변경 맥락 | `docs/adr/` ([ADR-0001](./docs/adr/0001-record-architecture-decisions.md) 체계 준수) |
-| 앱/서비스 실행과 현행 기준 | [Web](./apps/web/README.md), [API](./apps/api/README.md), [Auth](./services/auth/README.md) |
+| 앱/서비스 실행과 현행 기준 | [Web](./apps/web/README.md), [API](./apps/api/README.md), [Auth](./services/auth/README.md), [Finance](./services/finance/README.md) |
 
 과거 측정 기록은 비교·재현할 때만 읽는다. 정책 원문과 구현·검증 결과는 각 소유 문서/이슈에서 관리한다.
 

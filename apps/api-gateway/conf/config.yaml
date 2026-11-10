@@ -25,3 +25,5 @@ nginx_config:
   worker_processes: "auto"
   events:
     worker_connections: 10620
+  http:
+    client_max_body_size: 10m
