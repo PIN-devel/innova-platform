@@ -345,6 +345,40 @@ importers:
         specifier: ~6.0.2
         version: 6.0.3
 
+  services/ai:
+    dependencies:
+      '@fastify/cookie':
+        specifier: ^11.1.2
+        version: 11.1.2
+      '@fastify/jwt':
+        specifier: ^10.2.2
+        version: 10.2.2
+      '@innova/auth-kit':
+        specifier: workspace:*
+        version: link:../../packages/auth-kit
+      '@innova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      dotenv:
+        specifier: ^18.0.3
+        version: 18.0.3
+      fastify:
+        specifier: ^5.12.5
+        version: 5.12.5
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.2
+        version: 26.6.2
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   services/auth:
     dependencies:
       '@fastify/cookie':

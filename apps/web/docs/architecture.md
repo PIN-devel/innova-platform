@@ -22,6 +22,7 @@ PIN-21 기준 Router는 createBrowserRouter/RouterProvider만 사용하고 loade
 | `/logout` | fetcher.Form → auth Action | 서버 실패 메시지, 성공/이미 만료 시 login 이동 |
 | `/approval-pending`, `/signup-rejected` | 상태별 middleware + live guard | 계정 정보, 문의, Router 상태 재확인 |
 | `/admin/users` | admin middleware → Loader → Query 구독, 결정 Action/useFetcher | Skeleton, cache 유지·갱신 경고, 성공 항목 제거 |
+| `/ai` | ai middleware + RequireAiAdmin live guard, SSE 스트리밍 채팅 | 모델 상태 뱃지, reasoning_effort 선택, 펄스 대기 인디케이터, 런타임 메모리(Zero Persistence) |
 | `/exam` | approved middleware → Loader → Query 구독, import/Quiz Action/useFetcher | 은행 또는 교재 Subject/Chapter/view는 URL, 학습·답변은 local |
 
 PIN-8의 Shell/콘텐츠 layout 및 단일 main, PIN-9의 최초 Skeleton/기존 데이터 갱신/오류·빈 결과 구분, PIN-10의 entity query key/options와 성공 응답 우선 cache patch를 유지했다. 접근 검사와 재검증의 시작 책임은 Router로 옮겼고 기존 useMutation 실행 경로와 은행 localStorage 선택은 제거했다.
@@ -91,14 +92,14 @@ Query signal은 HTTP GET까지 전달한다. Router request.signal은 자동으�
 
 root session middleware가 먼저 me를 확인하고 child access middleware가 검사한 뒤 next를 호출한다. 이후 Loader는 병렬로 실행될 수 있다. 각 보호 Loader/Action도 `requireAccess`를 호출하며 유효한 context/epoch 없이 HTTP를 시작하지 않는다. 부모 Loader의 실행 순서를 가정하지 않는다.
 
-| 상태 | Exam | 관리자 | 상태 페이지/공개 인증 |
-| --- | --- | --- | --- |
-| anonymous | login + returnTo | login + returnTo | 상태 페이지는 login; 인증 폼 허용 |
-| pending member | pending | pending | pending |
-| pending admin | pending | 허용 | pending |
-| approved member | 허용 | exam | exam |
-| approved admin | 허용 | 허용 | exam 또는 안전한 returnTo |
-| rejected | rejected | rejected | rejected |
+| 상태 | Exam | 관리자 | AI Lab (/ai) | 상태 페이지/공개 인증 |
+| --- | --- | --- | --- | --- |
+| anonymous | login + returnTo | login + returnTo | login + returnTo | 상태 페이지는 login; 인증 폼 허용 |
+| pending member | pending | pending | 403 차단 | pending |
+| pending admin | pending | 허용 | 403 차단 | pending |
+| approved member | 허용 | exam | 403 차단 | exam |
+| approved admin | 허용 | 허용 | 허용 | exam 또는 안전한 returnTo |
+| rejected | rejected | rejected | rejected | rejected |
 
 홈/404는 항상 public이다. me 네트워크 오류는 public 콘텐츠와 폼을 허용하며 보호 route는 error boundary로 차단한다. auth POST는 me 장애로 막지 않는다. logout은 public-only guard 하위에 두지 않는다.
 
