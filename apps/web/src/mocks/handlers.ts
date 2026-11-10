@@ -1,5 +1,6 @@
 import { createFinanceRawHandlers } from "./finance-raw-handlers.ts";
 import {
+  aiChatStreamRequestSchema,
   authResponseSchema,
   adminApprovalResponseSchema,
   adminRejectionResponseSchema,
@@ -222,6 +223,41 @@ export const handlers = [
     const record = ExamBankRecordSchema.parse({ id: crypto.randomUUID(), bank: parsed.data });
     banks.set(record.id, record);
     return HttpResponse.json(record, { status: 201, headers });
+  }),
+
+  http.post("*/api/ai/chat/stream", async ({ request }) => {
+    if (!currentMockUser) return apiError(401, "UNAUTHORIZED", "Authentication required");
+    if (currentMockUser.approvalStatus === "rejected") return apiError(403, "SIGNUP_REJECTED", "Signup request was rejected");
+    if (currentMockUser.role !== "admin") return apiError(403, "FORBIDDEN", "Administrator access required");
+
+    let payload: unknown;
+    try {
+      payload = await request.json();
+    } catch {
+      return apiError(400, "INVALID_INPUT", "Invalid chat stream payload");
+    }
+
+    const parsed = aiChatStreamRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return apiError(400, "INVALID_INPUT", "요청 데이터가 올바르지 않습니다.", toValidationErrorDetails(parsed.error, payload));
+    }
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "reasoning", delta: "모의 추론 중입니다..." })}\n\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "content", delta: "안녕하세요! 무엇을 도와드릴까요?" })}\n\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
+        controller.close();
+      },
+    });
+
+    return new HttpResponse(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
   }),
 
   http.all("*/api", () => apiError(404, "NOT_FOUND", "API route not found")),

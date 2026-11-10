@@ -5,13 +5,14 @@ import RootLayout from "./root-layout";
 import { MotifinContentLayout } from "./motifin-content-layout";
 import { ExamContentLayout, StandardContentLayout } from "./content-layouts";
 import Home from "../pages/home";
-import { PublicOnly, RequireAdmin, RequireApprovalPending, RequireAuth, RequireSignupRejected } from "@/features/auth/auth-boundary";
+import { PublicOnly, RequireAdmin, RequireAiAdmin, RequireApprovalPending, RequireAuth, RequireSignupRejected } from "@/features/auth/auth-boundary";
 import ApprovalPendingPage from "@/pages/approval-pending";
 import SignupRejectedPage from "@/pages/signup-rejected";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
 import { MotifinContentErrorBoundary, ExamContentErrorBoundary, RootRouteErrorBoundary, StandardContentErrorBoundary } from "./route-error-boundary";
 import { accessMiddleware, sessionMiddleware } from "@/features/auth/route-session";
 import { adminAction, adminLoader } from "@/pages/admin-users/route";
+import { aiLoader } from "@/pages/ai/route";
 import { authAction } from "@/pages/auth/route";
 import { examAction, examLoader } from "@/pages/exam/route";
 import { InitialRouteLoading } from "./route-loading";
@@ -41,6 +42,7 @@ export const createAppRoutes = (client: QueryClient): RouteObject[] => ([
         { Component: RequireApprovalPending, middleware: [accessMiddleware(client, "pending")], children: [{ path: "approval-pending", loader: () => null, Component: ApprovalPendingPage }] },
         { Component: RequireSignupRejected, middleware: [accessMiddleware(client, "rejected")], children: [{ path: "signup-rejected", loader: () => null, Component: SignupRejectedPage }] },
         { Component: RequireAdmin, middleware: [accessMiddleware(client, "admin")], children: [{ id: "admin", path: "admin/users", loader: adminLoader(client), action: adminAction(client), lazy: async () => ({ Component: (await import("@/pages/admin-users")).default }) }] },
+        { Component: RequireAiAdmin, middleware: [accessMiddleware(client, "ai")], children: [{ id: "ai", path: "ai", loader: aiLoader(client), lazy: async () => ({ Component: (await import("@/pages/ai/ai-page")).default }) }] },
         { path: "logout", action: authAction(client, "logout"), Component: Home },
         { path: "*", Component: NotFoundPage },
       ] },
