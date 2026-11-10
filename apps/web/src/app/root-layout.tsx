@@ -29,6 +29,7 @@ export default function RootLayout({ children }: { children?: ReactNode }) {
             <NavLink to="/" end className={primaryNavigationClass}>홈</NavLink>
             <NavLink to="/exam" className={primaryNavigationClass}>Exam Drill</NavLink>
             <NavLink to="/motifin/review" className={primaryNavigationClass}>MOTIFIN</NavLink>
+            {currentUser.data?.role === "admin" && currentUser.data.approvalStatus !== "rejected" && <NavLink to="/ai" className={primaryNavigationClass}>AI Lab</NavLink>}
           </nav>
           <nav className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-sm sm:ml-auto" aria-label="계정 메뉴">
             {currentUser.isPending ? <span role="status" className="text-xs text-muted-foreground">계정 확인 중…</span>

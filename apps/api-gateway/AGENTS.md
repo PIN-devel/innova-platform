@@ -10,8 +10,8 @@
   - APISIX 3.19.x의 보안 지원은 최신 마이너 버전 중심이므로, 마이너 릴리스 주기(약 1.5~2.5개월)와 호환성 영향 변경(Breaking Changes)을 주기적으로 확인한다.
 - **공개 저장소 보안 원칙**:
   - `conf/apisix.yaml.template` 및 CI 워크플로에 실제 운영 백엔드 URL(Render 및 Cloud Run FQDN)이나 저장소 이름을 하드코딩하지 않는다.
-  - 기동 시 `docker-entrypoint.sh`가 `UPSTREAM_RENDER_URL`, `UPSTREAM_AUTH_URL`, `UPSTREAM_FINANCE_URL`(미설정 시 Render URL 폴백)을 파싱하여 `${UPSTREAM_RENDER_*}`, `${UPSTREAM_AUTH_*}`, `${UPSTREAM_FINANCE_*}`를 `envsubst`로 치환하며, 실제 값은 GitHub Actions Variables/Secrets 및 Cloud Run 환경 변수로 주입한다.
-- **도메인 라우팅**: `/api/auth/*`·`/api/admin/*`는 Auth, `/api/finance/*`는 Finance 서비스로 우선 라우팅(priority 10)하고 나머지는 Render(priority 0)로 보낸다. 롤백은 해당 `UPSTREAM_*_URL`을 Render로 되돌리는 것으로 한다.
+  - 기동 시 `docker-entrypoint.sh`가 `UPSTREAM_RENDER_URL`, `UPSTREAM_AUTH_URL`, `UPSTREAM_FINANCE_URL`, `UPSTREAM_AI_URL`(미설정 시 Render URL 폴백)을 파싱하여 `${UPSTREAM_RENDER_*}`, `${UPSTREAM_AUTH_*}`, `${UPSTREAM_FINANCE_*}`, `${UPSTREAM_AI_*}`를 `envsubst`로 치환하며, 실제 값은 GitHub Actions Variables/Secrets 및 Cloud Run 환경 변수로 주입한다.
+- **도메인 라우팅**: `/api/auth/*`·`/api/admin/*`는 Auth, `/api/finance/*`는 Finance, `/api/ai/*`는 AI 서비스로 우선 라우팅(priority 10)하고 나머지는 Render(priority 0)로 보낸다. 롤백은 해당 `UPSTREAM_*_URL`을 Render로 되돌리는 것으로 한다.
 - **Firebase Hosting 쿠키 브릿지**:
   - Firebase Hosting이 전달하는 단일 세션 쿠키(`__session`)와 백엔드 세션 쿠키(`innova_auth`, 레거시 `exam_drill_auth`) 간의 양방향 변환을 유지한다.
   - 요청 단계(`serverless-pre-function`): `Cookie: __session=<TOKEN>`을 추출하여 업스트림 전달 시 `Cookie: innova_auth=<TOKEN>; exam_drill_auth=<TOKEN>`으로 변환한다.

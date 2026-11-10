@@ -9,6 +9,7 @@
     "dev:api": "pnpm build:shared && pnpm --filter @innova/api dev",
     "dev:auth": "pnpm build:shared && pnpm --filter @innova/auth dev",
     "dev:finance": "pnpm build:shared && pnpm --filter @innova/finance dev",
+    "dev:ai": "pnpm build:shared && pnpm --filter @innova/ai dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm build:shared && pnpm -r --filter './apps/**' --filter './services/**' --filter @innova/auth-kit typecheck",
     "test": "pnpm build:shared && pnpm -r --filter './apps/**' --filter './services/**' test",

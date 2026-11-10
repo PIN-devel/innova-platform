@@ -14,3 +14,4 @@ export * from './finance-schedule.js';
 export * from './finance-pdf-password.js';
 
 export * from './finance-transactions.js';
+export * from "./ai.js";

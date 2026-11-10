@@ -4,15 +4,15 @@ import { isCancelledError, type QueryClient } from "@tanstack/react-query";
 import type { AuthUser } from "@innova/contracts";
 import { currentUserQuery } from "@/entities/auth/queries";
 import { assertSessionVersion, getSessionVersion, isSessionTransitioning } from "@/entities/auth/session-version";
-import { getAdminRedirect, getApprovalPendingRedirect, getExamRedirect, getPostAuthPath, getSignupRejectedRedirect } from "./route-access";
+import { getAdminRedirect, getAiRedirect, getApprovalPendingRedirect, getExamRedirect, getPostAuthPath, getSignupRejectedRedirect } from "./route-access";
 
-export type Access = "public" | "exam" | "admin" | "pending" | "rejected";
+export type Access = "public" | "exam" | "admin" | "pending" | "rejected" | "ai";
 type Scope = { user: AuthUser | null; epoch: number; error?: unknown };
 export const sessionContext = createContext<Scope>();
 export function safeReturnTo(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return "/exam";
   const url = new URL(value, "https://innova.invalid");
-  return url.origin === "https://innova.invalid" && ["/exam", "/admin/users", "/", "/motifin/import", "/motifin/review", "/motifin/spending", "/motifin/analysis", "/motifin/schedule", "/motifin/security", "/motifin/transactions"].includes(url.pathname)
+  return url.origin === "https://innova.invalid" && ["/exam", "/admin/users", "/", "/ai", "/motifin/import", "/motifin/review", "/motifin/spending", "/motifin/analysis", "/motifin/schedule", "/motifin/security", "/motifin/transactions"].includes(url.pathname)
     ? `${url.pathname}${url.search}` : "/exam";
 }
 export const sessionMiddleware = (client: QueryClient): MiddlewareFunction => async ({ request, context }, next) => {
@@ -33,7 +33,7 @@ export function requireAccess(context: Readonly<RouterContextProvider>, client: 
     return scope;
   }
   if (!scope.user) throw replace(`/login?returnTo=${encodeURIComponent(new URL(request.url).pathname + new URL(request.url).search)}`);
-  const path = { exam: getExamRedirect, admin: getAdminRedirect, pending: getApprovalPendingRedirect, rejected: getSignupRejectedRedirect }[access](scope.user);
+  const path = { exam: getExamRedirect, admin: getAdminRedirect, pending: getApprovalPendingRedirect, rejected: getSignupRejectedRedirect, ai: getAiRedirect }[access](scope.user);
   if (path) throw replace(path);
   return scope;
 }

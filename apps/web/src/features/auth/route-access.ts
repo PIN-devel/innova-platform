@@ -2,7 +2,7 @@ import type { AuthUser } from "@innova/contracts";
 
 export function getPostAuthPath(user: AuthUser, requestedPath = "/exam") {
   if (user.approvalStatus === "rejected") return "/signup-rejected";
-  if (user.approvalStatus === "pending" && !(user.role === "admin" && requestedPath.startsWith("/admin/"))) {
+  if (user.approvalStatus === "pending" && !(user.role === "admin" && (requestedPath.startsWith("/admin/") || requestedPath === "/ai"))) {
     return "/approval-pending";
   }
   return requestedPath;
@@ -27,4 +27,9 @@ export function getAdminRedirect(user: AuthUser) {
 export function getSignupRejectedRedirect(user: AuthUser) {
   if (user.approvalStatus === "rejected") return null;
   return user.approvalStatus === "pending" ? "/approval-pending" : "/exam";
+}
+
+export function getAiRedirect(user: AuthUser) {
+  if (user.approvalStatus === "rejected") return "/signup-rejected";
+  return null;
 }

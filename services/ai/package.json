@@ -1,0 +1,32 @@
+{
+  "name": "@innova/ai",
+  "version": "0.1.0",
+  "description": "Innova AI (K-EXAONE 2.5 PoC) service",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "pnpm --filter @innova/auth-kit build && tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "oxlint -c ../../.oxlintrc.json src test",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/jwt": "^10.2.2",
+    "@innova/auth-kit": "workspace:*",
+    "@innova/contracts": "workspace:*",
+    "dotenv": "^18.0.3",
+    "fastify": "^5.12.5",
+    "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
