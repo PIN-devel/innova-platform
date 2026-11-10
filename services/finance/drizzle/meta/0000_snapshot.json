@@ -1,0 +1,1127 @@
+{
+  "id": "038e6ca4-7714-4c6c-8e5f-37b3e7ea3134",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.finance_business_documents": {
+      "name": "finance_business_documents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_file_id": {
+          "name": "raw_file_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "processor_version": {
+          "name": "processor_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scope_keys": {
+          "name": "scope_keys",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_business_documents_owner_id_finance_business_scopes_owner_id_fk": {
+          "name": "finance_business_documents_owner_id_finance_business_scopes_owner_id_fk",
+          "tableFrom": "finance_business_documents",
+          "tableTo": "finance_business_scopes",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "owner_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "finance_business_documents_owner_id_raw_file_id_finance_raw_files_owner_id_id_fk": {
+          "name": "finance_business_documents_owner_id_raw_file_id_finance_raw_files_owner_id_id_fk",
+          "tableFrom": "finance_business_documents",
+          "tableTo": "finance_raw_files",
+          "columnsFrom": [
+            "owner_id",
+            "raw_file_id"
+          ],
+          "columnsTo": [
+            "owner_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "finance_business_documents_owner_raw_unique": {
+          "name": "finance_business_documents_owner_raw_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "raw_file_id",
+            "processor_version"
+          ]
+        },
+        "finance_business_documents_owner_id_raw_unique": {
+          "name": "finance_business_documents_owner_id_raw_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "id",
+            "raw_file_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "finance_business_documents_state_check": {
+          "name": "finance_business_documents_state_check",
+          "value": "\"finance_business_documents\".\"state\" in ('accepted','needs-review','invalid')"
+        },
+        "finance_business_documents_kind_check": {
+          "name": "finance_business_documents_kind_check",
+          "value": "\"finance_business_documents\".\"kind\" in ('kb-bank-pdf','kb-card-xlsx')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_business_events": {
+      "name": "finance_business_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_file_id": {
+          "name": "raw_file_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_sequence": {
+          "name": "raw_sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_business_events_owner_id_document_id_raw_file_id_finance_business_documents_owner_id_id_raw_file_id_fk": {
+          "name": "finance_business_events_owner_id_document_id_raw_file_id_finance_business_documents_owner_id_id_raw_file_id_fk",
+          "tableFrom": "finance_business_events",
+          "tableTo": "finance_business_documents",
+          "columnsFrom": [
+            "owner_id",
+            "document_id",
+            "raw_file_id"
+          ],
+          "columnsTo": [
+            "owner_id",
+            "id",
+            "raw_file_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "finance_business_events_owner_id_raw_file_id_raw_sequence_finance_raw_rows_owner_id_file_id_sequence_fk": {
+          "name": "finance_business_events_owner_id_raw_file_id_raw_sequence_finance_raw_rows_owner_id_file_id_sequence_fk",
+          "tableFrom": "finance_business_events",
+          "tableTo": "finance_raw_rows",
+          "columnsFrom": [
+            "owner_id",
+            "raw_file_id",
+            "raw_sequence"
+          ],
+          "columnsTo": [
+            "owner_id",
+            "file_id",
+            "sequence"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_business_events_kind_check": {
+          "name": "finance_business_events_kind_check",
+          "value": "\"finance_business_events\".\"kind\" in ('bank-cash','card-purchase','card-charge','card-fee','card-adjustment')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_business_scopes": {
+      "name": "finance_business_scopes",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_business_scopes_revision_check": {
+          "name": "finance_business_scopes_revision_check",
+          "value": "\"finance_business_scopes\".\"revision\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_classification_revisions": {
+      "name": "finance_classification_revisions",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operation_id": {
+          "name": "operation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_classification_revisions_owner_id_finance_classification_workspaces_owner_id_fk": {
+          "name": "finance_classification_revisions_owner_id_finance_classification_workspaces_owner_id_fk",
+          "tableFrom": "finance_classification_revisions",
+          "tableTo": "finance_classification_workspaces",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "owner_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "finance_classification_revisions_owner_id_revision_pk": {
+          "name": "finance_classification_revisions_owner_id_revision_pk",
+          "columns": [
+            "owner_id",
+            "revision"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "finance_classification_operation_unique": {
+          "name": "finance_classification_operation_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "operation_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.finance_classification_workspaces": {
+      "name": "finance_classification_workspaces",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_classification_revision_check": {
+          "name": "finance_classification_revision_check",
+          "value": "\"finance_classification_workspaces\".\"revision\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_deleted_transactions": {
+      "name": "finance_deleted_transactions",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_file_id": {
+          "name": "raw_file_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_sequence": {
+          "name": "raw_sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "finance_deleted_transactions_owner_id_event_id_pk": {
+          "name": "finance_deleted_transactions_owner_id_event_id_pk",
+          "columns": [
+            "owner_id",
+            "event_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.finance_manual_transactions": {
+      "name": "finance_manual_transactions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "finance_manual_owner_id_unique": {
+          "name": "finance_manual_owner_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "finance_manual_revision_check": {
+          "name": "finance_manual_revision_check",
+          "value": "\"finance_manual_transactions\".\"revision\">0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_pdf_secret_attempts": {
+      "name": "finance_pdf_secret_attempts",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expected_revision": {
+          "name": "expected_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "session_hash": {
+          "name": "session_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reauthenticated_at": {
+          "name": "reauthenticated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "consumed_at": {
+          "name": "consumed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "result_revision": {
+          "name": "result_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_pdf_secret_attempts_owner_id_finance_pdf_secrets_owner_id_fk": {
+          "name": "finance_pdf_secret_attempts_owner_id_finance_pdf_secrets_owner_id_fk",
+          "tableFrom": "finance_pdf_secret_attempts",
+          "tableTo": "finance_pdf_secrets",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "owner_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "finance_pdf_secret_attempts_owner_id_id_pk": {
+          "name": "finance_pdf_secret_attempts_owner_id_id_pk",
+          "columns": [
+            "owner_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_pdf_attempt_purpose_check": {
+          "name": "finance_pdf_attempt_purpose_check",
+          "value": "\"finance_pdf_secret_attempts\".\"purpose\" in ('save','use','delete','rotate')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_pdf_secret_nonces": {
+      "name": "finance_pdf_secret_nonces",
+      "schema": "",
+      "columns": {
+        "key_version": {
+          "name": "key_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nonce": {
+          "name": "nonce",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "finance_pdf_secret_nonces_key_version_nonce_pk": {
+          "name": "finance_pdf_secret_nonces_key_version_nonce_pk",
+          "columns": [
+            "key_version",
+            "nonce"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.finance_pdf_secrets": {
+      "name": "finance_pdf_secrets",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "key_version": {
+          "name": "key_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nonce": {
+          "name": "nonce",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_started_at": {
+          "name": "rate_started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rate_count": {
+          "name": "rate_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_pdf_revision_check": {
+          "name": "finance_pdf_revision_check",
+          "value": "\"finance_pdf_secrets\".\"revision\" >= 0"
+        },
+        "finance_pdf_payload_check": {
+          "name": "finance_pdf_payload_check",
+          "value": "(\"finance_pdf_secrets\".\"payload_ciphertext\" is null and \"finance_pdf_secrets\".\"key_version\" is null and \"finance_pdf_secrets\".\"nonce\" is null) or (\"finance_pdf_secrets\".\"payload_ciphertext\" is not null and \"finance_pdf_secrets\".\"key_version\" is not null and \"finance_pdf_secrets\".\"nonce\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_raw_batches": {
+      "name": "finance_raw_batches",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "finance_raw_batches_owner_id_id_pk": {
+          "name": "finance_raw_batches_owner_id_id_pk",
+          "columns": [
+            "owner_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.finance_raw_files": {
+      "name": "finance_raw_files",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "batch_id": {
+          "name": "batch_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_hash": {
+          "name": "file_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_digest": {
+          "name": "payload_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parser_version": {
+          "name": "parser_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "row_count": {
+          "name": "row_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata_ciphertext": {
+          "name": "metadata_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_raw_files_owner_id_batch_id_finance_raw_batches_owner_id_id_fk": {
+          "name": "finance_raw_files_owner_id_batch_id_finance_raw_batches_owner_id_id_fk",
+          "tableFrom": "finance_raw_files",
+          "tableTo": "finance_raw_batches",
+          "columnsFrom": [
+            "owner_id",
+            "batch_id"
+          ],
+          "columnsTo": [
+            "owner_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "finance_raw_files_owner_id_unique": {
+          "name": "finance_raw_files_owner_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "id"
+          ]
+        },
+        "finance_raw_files_document_unique": {
+          "name": "finance_raw_files_document_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "kind",
+            "file_hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "finance_raw_files_kind_check": {
+          "name": "finance_raw_files_kind_check",
+          "value": "\"finance_raw_files\".\"kind\" in ('kb-bank-pdf', 'kb-card-xlsx')"
+        },
+        "finance_raw_files_row_count_check": {
+          "name": "finance_raw_files_row_count_check",
+          "value": "\"finance_raw_files\".\"row_count\" between 0 and 5000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_raw_rows": {
+      "name": "finance_raw_rows",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_id": {
+          "name": "file_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_raw_rows_owner_id_file_id_finance_raw_files_owner_id_id_fk": {
+          "name": "finance_raw_rows_owner_id_file_id_finance_raw_files_owner_id_id_fk",
+          "tableFrom": "finance_raw_rows",
+          "tableTo": "finance_raw_files",
+          "columnsFrom": [
+            "owner_id",
+            "file_id"
+          ],
+          "columnsTo": [
+            "owner_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "finance_raw_rows_owner_id_file_id_sequence_pk": {
+          "name": "finance_raw_rows_owner_id_file_id_sequence_pk",
+          "columns": [
+            "owner_id",
+            "file_id",
+            "sequence"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_raw_rows_sequence_check": {
+          "name": "finance_raw_rows_sequence_check",
+          "value": "\"finance_raw_rows\".\"sequence\" between 1 and 5000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_schedule_revisions": {
+      "name": "finance_schedule_revisions",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operation_id": {
+          "name": "operation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_schedule_revisions_owner_id_finance_schedule_workspaces_owner_id_fk": {
+          "name": "finance_schedule_revisions_owner_id_finance_schedule_workspaces_owner_id_fk",
+          "tableFrom": "finance_schedule_revisions",
+          "tableTo": "finance_schedule_workspaces",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "owner_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "finance_schedule_revisions_owner_id_revision_pk": {
+          "name": "finance_schedule_revisions_owner_id_revision_pk",
+          "columns": [
+            "owner_id",
+            "revision"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "finance_schedule_operation_unique": {
+          "name": "finance_schedule_operation_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "owner_id",
+            "operation_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.finance_schedule_workspaces": {
+      "name": "finance_schedule_workspaces",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_ciphertext": {
+          "name": "payload_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "finance_schedule_revision_check": {
+          "name": "finance_schedule_revision_check",
+          "value": "\"finance_schedule_workspaces\".\"revision\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.finance_transaction_operations": {
+      "name": "finance_transaction_operations",
+      "schema": "",
+      "columns": {
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operation_id": {
+          "name": "operation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "transaction_id": {
+          "name": "transaction_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "digest": {
+          "name": "digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "finance_transaction_operations_owner_id_operation_id_pk": {
+          "name": "finance_transaction_operations_owner_id_operation_id_pk",
+          "columns": [
+            "owner_id",
+            "operation_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
