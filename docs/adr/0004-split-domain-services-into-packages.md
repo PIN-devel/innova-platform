@@ -52,8 +52,9 @@
   - `apps/api`: 기존 Render Fastify 모놀리스 (전환 완료 및 검증 시까지 롤백 대비용으로 보존)
 - **`services/`**: 도메인별 백엔드 마이크로서비스 독립 패키지
   - `services/auth` (`@innova/auth`): 인증 및 회원 관리 전용 서비스 (Cloud Run `innova-auth-api`)
+  - `services/learning` (`@innova/learning`): 학습(Exam Drill & Curriculum) 전용 서비스 (Cloud Run `innova-learning-api`, [PIN-76](https://linear.app/pin-dev/issue/PIN-76))
   - `services/finance` (`@innova/finance`): 개인 금융(MOTIFIN) 전용 서비스 (Cloud Run `innova-finance-api`, [PIN-77](https://linear.app/pin-dev/issue/PIN-77))
-  - 향후 `services/learning` 분리
+  - `services/ai` (`@innova/ai`): 어드민 전용 AI(K-EXAONE 2.5 PoC) 서비스 (Cloud Run `innova-ai-api`, [PIN-81](https://linear.app/pin-dev/issue/PIN-81))
 - **`packages/`**: 모노레포 내부 공유 패키지
   - `packages/contracts` (`@innova/contracts`): 프런트/백엔드 공유 Zod 스키마, 타입, 인터페이스 계약 (순수 스키마 유지)
   - `packages/auth-kit` (`@innova/auth-kit`): Fastify 전용 공통 인증 가드, 세션 쿠키 설정, JWT 클레임 타입, 오류(`AppError`), 로거(`pino`) 유틸리티
@@ -63,8 +64,8 @@
   - 각 마이크로서비스(`services/*`)는 자신이 소유한 전용 데이터베이스에만 접속하며, **다른 마이크로서비스의 데이터베이스에 직접 접속(읽기 전용 포함)하거나 테이블·외래키(FK)·SQL 잠금을 공유하는 행위를 엄격히 금지**한다.
   - Neon PostgreSQL 내에 서비스별 독립 Database를 운영한다:
     - Auth 서비스(`@innova/auth`): **`innova_auth`** 데이터베이스 (`users` 테이블 단독 소유).
+    - Learning 서비스(`@innova/learning`): **`innova_learning`** 데이터베이스 (`exam_*` 12개 테이블 단독 소유, `users` 테이블·외래키 없음, [PIN-76](https://linear.app/pin-dev/issue/PIN-76)).
     - Finance 서비스(`@innova/finance`): **`innova_finance`** 데이터베이스 (`finance_*` 16개 테이블 단독 소유, `users` 테이블·외래키 없음).
-    - 향후 Learning 서비스(`@innova/learning`): **`innova_learning`** 데이터베이스 분리 예정.
   - **서비스 간 통신 및 정합성 보호**:
     - 타 도메인의 상태 조회·검증이 필요한 경우 반드시 해당 도메인 서비스가 노출하는 **HTTP API**를 호출한다.
     - 여러 마이크로서비스에 걸친 상태 변경이 필요한 경우 소유 서비스의 API를 호출하고 **보상 트랜잭션(Saga / 망취소)** 패턴으로 원자성과 최종 정합성을 보호한다. 단, 서비스 경계를 지키면서 API 조회만으로 단순하게 해결 가능한 경우에는 불필요한 분산 트랜잭션 복잡성을 도입하지 않는다.
@@ -84,6 +85,10 @@
 - 매 요청의 사용자 존재·승인 상태(`approvalStatus`) 확인과 PDF 암호 저장/재사용 시의 계정 비밀번호 재인증(step-up authentication)은 `UserLookup`이 **Auth 마이크로서비스 HTTP API(`AUTH_SERVICE_URL`: `GET /api/auth/me`, `POST /api/auth/login`)**를 호출하여 판정한다.
 - 소유자 단위 쓰기 직렬화는 `innova_finance` 내부의 `finance_business_scopes` / `finance_pdf_secrets` revision CAS가 담당한다.
 - **수용한 트레이드오프**: 분리 전에는 쓰기 SQL이 승인된 사용자 행을 공유 잠금해 승인 철회와의 경합을 DB가 막았다. 분리 후에는 요청 진입 시점의 Auth API 승인 검사만 적용되며 이미 진입한 쓰기 요청과의 경합은 허용한다. 계정 삭제 시 금융 데이터 정리는 서비스 간 API 연동(후속 과제)으로 다룬다.
+
+### 6) Learning 서비스의 Database-per-Service 및 GCS 무키(Keyless) 서빙 (PIN-76)
+- `innova_learning`은 12개 학습 테이블(Exam 3개, Curriculum 9개)을 소유하며 `users` 테이블을 갖지 않는다. 매 요청의 사용자 승인 여부는 `UserLookup`이 **Auth 마이크로서비스 HTTP API(`AUTH_SERVICE_URL`: `GET /api/auth/me`)**를 호출해 `approvalStatus === 'approved'`를 검증한다.
+- Curriculum 비공개 에셋(`gs://innova-assets`) 서빙은 외부 서비스 계정 키를 주입하지 않고, Cloud Run의 GCP 메타데이터 서버(`http://metadata.google.internal/...`)에서 단기 OAuth2 Bearer 토큰(ADC)을 동적으로 조회·인메모리 캐싱하여 GCS HTTP API로 직접 읽는다. 장애 발생 시 클라이언트에 내부 자격 증명이나 스토리지 URL을 노출하지 않고 `503 INTERNAL_ERROR` (`Private asset storage is unavailable`)로 마스킹한다.
 
 ---
 

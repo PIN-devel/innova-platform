@@ -101,7 +101,32 @@ export UPSTREAM_AI_PORT="$AI_PORT"
 
 echo "==> [innova-api-gateway] AI upstream configured: ${UPSTREAM_AI_SCHEME}://${UPSTREAM_AI_HOST}:${UPSTREAM_AI_PORT}"
 
-# 5. Substitute environment variables in apisix.yaml.template
+# 5. Parse UPSTREAM_LEARNING_URL (defaults to UPSTREAM_RENDER_URL if unset)
+LEARNING_URL="${UPSTREAM_LEARNING_URL:-$UPSTREAM_URL}"
+
+LEARNING_SCHEME=$(echo "$LEARNING_URL" | sed -n 's|^\([a-zA-Z]*\)://.*|\1|p')
+LEARNING_SCHEME="${LEARNING_SCHEME:-http}"
+
+LEARNING_REST=$(echo "$LEARNING_URL" | sed -e 's|^[a-zA-Z]*://||')
+LEARNING_HOST_PORT=$(echo "$LEARNING_REST" | cut -d'/' -f1)
+LEARNING_HOST=$(echo "$LEARNING_HOST_PORT" | cut -d':' -f1)
+LEARNING_PORT=$(echo "$LEARNING_HOST_PORT" | sed -n 's|^.*:\([0-9]*\)$|\1|p')
+
+if [ -z "$LEARNING_PORT" ]; then
+  if [ "$LEARNING_SCHEME" = "https" ]; then
+    LEARNING_PORT="443"
+  else
+    LEARNING_PORT="80"
+  fi
+fi
+
+export UPSTREAM_LEARNING_SCHEME="$LEARNING_SCHEME"
+export UPSTREAM_LEARNING_HOST="$LEARNING_HOST"
+export UPSTREAM_LEARNING_PORT="$LEARNING_PORT"
+
+echo "==> [innova-api-gateway] Learning upstream configured: ${UPSTREAM_LEARNING_SCHEME}://${UPSTREAM_LEARNING_HOST}:${UPSTREAM_LEARNING_PORT}"
+
+# 6. Substitute environment variables in apisix.yaml.template
 CONF_DIR="/usr/local/apisix/conf"
 mkdir -p "$CONF_DIR"
 
@@ -110,12 +135,12 @@ if [ -f "/app/conf/config.yaml" ]; then
 fi
 
 if [ -f "/app/conf/apisix.yaml.template" ]; then
-  envsubst '${UPSTREAM_RENDER_SCHEME} ${UPSTREAM_RENDER_HOST} ${UPSTREAM_RENDER_PORT} ${UPSTREAM_AUTH_SCHEME} ${UPSTREAM_AUTH_HOST} ${UPSTREAM_AUTH_PORT} ${UPSTREAM_FINANCE_SCHEME} ${UPSTREAM_FINANCE_HOST} ${UPSTREAM_FINANCE_PORT} ${UPSTREAM_AI_SCHEME} ${UPSTREAM_AI_HOST} ${UPSTREAM_AI_PORT}' \
+  envsubst '${UPSTREAM_RENDER_SCHEME} ${UPSTREAM_RENDER_HOST} ${UPSTREAM_RENDER_PORT} ${UPSTREAM_AUTH_SCHEME} ${UPSTREAM_AUTH_HOST} ${UPSTREAM_AUTH_PORT} ${UPSTREAM_FINANCE_SCHEME} ${UPSTREAM_FINANCE_HOST} ${UPSTREAM_FINANCE_PORT} ${UPSTREAM_AI_SCHEME} ${UPSTREAM_AI_HOST} ${UPSTREAM_AI_PORT} ${UPSTREAM_LEARNING_SCHEME} ${UPSTREAM_LEARNING_HOST} ${UPSTREAM_LEARNING_PORT}' \
     < /app/conf/apisix.yaml.template > "$CONF_DIR/apisix.yaml"
   echo "==> [innova-api-gateway] Generated $CONF_DIR/apisix.yaml successfully."
 fi
 
-# 6. Execute original APISIX entrypoint or command
+# 7. Execute original APISIX entrypoint or command
 if [ "$1" = "docker-start" ] || [ -z "$1" ]; then
   exec /docker-entrypoint.sh docker-start
 else
