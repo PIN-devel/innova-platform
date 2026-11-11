@@ -4,9 +4,12 @@
 
 ## 작업 전 연결 대상 사용자 확인
 
-스키마 소스 수정·migration 생성·DB 연결을 시작하기 전에, 사용자가 로컬 `apps/api/.env`의 `DATABASE_URL`이 이번 검증용 Neon dev 브랜치의 Connection string인지 확인해 주어야 한다. dev는 해당 스키마 변경을 검증할 Production 기준으로 준비한다. 이 확인은 문서만 작성하거나 DB에 접근하지 않는 읽기 작업에는 요구하지 않는다.
+스키마 소스 수정·migration 생성·DB 연결을 시작하기 전에, 사용자가 로컬 `apps/api/.env` 또는 각 서비스의 로컬 `.env`의 `DATABASE_URL`이 이번 검증용 Neon dev 브랜치의 Connection string인지 확인해 주어야 한다. dev는 해당 스키마 변경을 검증할 Production 기준으로 준비한다. 이 확인은 문서만 작성하거나 DB에 접근하지 않는 읽기 작업에는 요구하지 않는다.
 
-- 사용자에게 확인할 것은 파일 경로와 검증용 dev 대상이다. Connection string·비밀번호·`.env` 원문을 대화, 로그, PR, Linear에 요청하거나 복제하지 않는다.
+- **운영(Production) 자격증명 조회 및 취득 전면 금지**:
+  - Neon MCP(예: `get_connection_string` 등), 클라우드 CLI, REST API 등을 통해 `production` 브랜치나 운영 환경의 데이터베이스 Connection string, 비밀번호, 서비스 계정 키를 AI 에이전트가 직접 조회·취득·저장하는 행위를 엄격히 금지한다.
+  - 사용자에게 확인할 것은 파일 경로와 검증용 dev 대상이다. Connection string·비밀번호·`.env` 원문을 대화, 로그, PR, Linear에 요청하거나 복제하지 않는다.
+  - Connection string이나 비밀번호를 터미널 명령어의 인라인 인자(`DATABASE_URL=... <cmd>`), 쿼리스트링, 일회성 스크립트, 코드에 평문으로 전달하거나 노출하는 행위를 엄격히 금지한다.
 - 확인 전에는 `.env`를 임의로 교체하거나 DB 연결·migration·운영 쓰기를 수행하지 않는다. 대상이 불명확하거나 Production이면 dev 준비와 사용자 확인을 기다린다.
 - 셸이나 실행 도구의 환경 변수가 `.env`를 덮어쓰는지도 비밀 값 출력 없이 확인한다. 실제 실행 대상이 확인받은 대상과 다르면 중단한다.
 - 같은 작업에서 대상이 유지되면 확인을 반복 요청하지 않는다. dev 재생성·Connection string 교체·연결 대상 변경 시 다시 확인받는다.
@@ -41,7 +44,7 @@ Neon 시점 복구는 schema만 되돌리는 작업이 아니다. 선택한 시�
 
 1. dev 검증 결과와 복구 계획을 검토하고, 승인된 Production 대상·migration 파일·배포 commit·적용 순서를 확인한다. Render build에 migration이 포함되어 있으면 배포 트리거도 DB 쓰기를 포함하는 실행으로 취급한다.
 2. 운영 적용 직전의 migration 이력과 복구 기준 시점, 해당 변경에서 필요한 데이터 보존 수단을 확인한다. dev 생성 후 운영 상태에 관련 변경이 생겼다면 검증 범위를 재평가한다.
-3. 승인된 범위에서 migration과 API 배포를 수행한다. 자동 또는 수동 적용 방법은 실제 배포 설정을 기준으로 기록하고 이 문서만으로 설정을 변경하지 않는다. schema migration과 비공개 콘텐츠 import는 별도 실행으로 관리한다.
+3. 승인된 범위에서 migration과 API 배포를 수행한다. **운영 DB migration(`db:migrate`)은 반드시 GitHub Actions CI/CD 파이프라인(`.github/workflows/deploy-production.yml`)의 격리된 환경에서 GitHub Secrets를 통해 실행되어야 하며, 로컬 CLI, 터미널 인라인 환경변수, 임시 스크립트 등을 통해 운영 DB에 직접 마이그레이션을 실행하는 행위를 엄격히 금지한다.** 자동 또는 수동 적용 방법은 실제 배포 설정을 기준으로 기록하고 이 문서만으로 설정을 변경하지 않는다. schema migration과 비공개 콘텐츠 import는 별도 실행으로 관리한다.
 4. DB 적용 이력·전후 schema·API 배포 버전·핵심 읽기/쓰기를 직접 확인한다. 로컬 테스트 통과, DB 적용, 배포 성공, 사용자 QA는 각각 별도 증거로 기록한다.
 5. 실패하면 후속 배포·재시도를 멈추고 먼저 실제 DB 적용 상태와 현재 API 버전을 확인한다. 통신 오류를 미적용으로 단정하지 않는다. 준비한 조건에 따라 API rollback·후속 migration·데이터 복구를 선택하고, 정상화 확인과 남은 영향을 기록한다.
 
