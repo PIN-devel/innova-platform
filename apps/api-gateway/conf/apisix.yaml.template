@@ -225,6 +225,76 @@ routes:
                ngx.header['Set-Cookie'] = new_cookies;
              end"
 
+  - id: learning-service-proxy
+    uris:
+      - /api/exam/*
+      - /api/curriculum/*
+    priority: 10
+    upstream:
+      type: roundrobin
+      scheme: ${UPSTREAM_LEARNING_SCHEME}
+      pass_host: rewrite
+      upstream_host: "${UPSTREAM_LEARNING_HOST}"
+      nodes:
+        "${UPSTREAM_LEARNING_HOST}:${UPSTREAM_LEARNING_PORT}": 1
+      tls:
+        verify: false
+      timeout:
+        connect: 60
+        send: 60
+        read: 120
+    plugins:
+      serverless-pre-function:
+        phase: rewrite
+        functions:
+          - "return function(conf, ctx)
+               local cookie = ngx.var.http_cookie;
+               if cookie then
+                 local m, err = ngx.re.match(cookie, '(?:^|;\\\\s*)__session=([^;]+)', 'jo');
+                 if m and m[1] then
+                   local new_cookie = cookie;
+                   if not ngx.re.find(cookie, '(?:^|;\\\\s*)innova_auth=', 'jo') then
+                     new_cookie = new_cookie .. '; innova_auth=' .. m[1];
+                   end
+                   if not ngx.re.find(cookie, '(?:^|;\\\\s*)exam_drill_auth=', 'jo') then
+                     new_cookie = new_cookie .. '; exam_drill_auth=' .. m[1];
+                   end
+                   if new_cookie ~= cookie then
+                     ngx.req.set_header('Cookie', new_cookie);
+                   end
+                 end
+               end
+             end"
+
+      serverless-post-function:
+        phase: header_filter
+        functions:
+          - "return function(conf, ctx)
+               local headers = ngx.resp.get_headers();
+               local set_cookies = headers['Set-Cookie'];
+               if not set_cookies then return end;
+
+               if type(set_cookies) == 'string' then
+                 set_cookies = { set_cookies };
+               end
+
+               local new_cookies = {};
+               for _, sc in ipairs(set_cookies) do
+                 table.insert(new_cookies, sc);
+                 local m, err = ngx.re.match(sc, '^(?:innova_auth|exam_drill_auth)=([^;]*)', 'jo');
+                 if m and m[1] then
+                   local session_cookie;
+                   if m[1] == '' or string.find(sc, 'Max%-Age=0') or string.find(sc, '1970') then
+                     session_cookie = '__session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=Lax; Secure; HttpOnly';
+                   else
+                     session_cookie = '__session=' .. m[1] .. '; Max-Age=900; Path=/; SameSite=Lax; Secure; HttpOnly';
+                   end
+                   table.insert(new_cookies, session_cookie);
+                 end
+               end
+               ngx.header['Set-Cookie'] = new_cookies;
+             end"
+
   - id: legacy-api-proxy
     uri: /api/*
     priority: 0
