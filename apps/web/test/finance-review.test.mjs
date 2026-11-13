@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import {setupServer} from 'msw/node';
 import {createServer} from 'vite';
 import {createFinanceRawHandlers} from '../src/mocks/finance-raw-handlers.ts';
-import {bankSource,cardSource} from '../../api/test/fixtures/finance-raw.ts';
+import {bankSource,cardSource} from '../../../services/finance/test/fixtures/finance-raw.ts';
 test('reverse-printed same-second bank rows keep the same balances through mock import, processing and review',async t=>{
  const user={id:crypto.randomUUID(),email:'synthetic@example.invalid',role:'member',approvalStatus:'approved'};
  const server=setupServer(...createFinanceRawHandlers(()=>user));server.listen({onUnhandledRequest:'error'});t.after(()=>server.close());

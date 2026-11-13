@@ -3,7 +3,7 @@ import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import { randomUUID } from "node:crypto";
 import { AUTH_COOKIE_NAME, AppError, apiErrorBody, createAdminAuthGuard, createApplicationLogger, invalidInput } from "@innova/auth-kit";
-import { createDatabase, createLegacyDatabase } from "./db/client.js";
+import { createDatabase } from "./db/client.js";
 import { createUserRepository, type UserRepository } from "./db/users.js";
 import { READINESS_TIMEOUT_MS, runReadinessCheck } from "./readiness.js";
 import { authRoutes } from "./routes/auth.js";
@@ -42,7 +42,7 @@ export function buildApp({
     ajv: { customOptions: { coerceTypes: false } },
   });
   const db = userRepository ? undefined : createDatabase();
-  const users = userRepository ?? createUserRepository(db!, { legacyDb: createLegacyDatabase(), logger: logger || undefined });
+  const users = userRepository ?? createUserRepository(db!, { logger: logger || undefined });
   const checkReadiness = readinessCheck ?? (db
     ? async (signal: AbortSignal) => { await db.$client.query("select 1", [], { fetchOptions: { signal } }); }
     : async () => { throw new Error("Database is not configured for readiness checks"); });

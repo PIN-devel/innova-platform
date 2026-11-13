@@ -11,7 +11,7 @@ import {createPdfPasswordRepository,type PdfSecretContext} from '../src/db/finan
 import {createFinanceRawRepository} from '../src/db/finance-raw.js';
 import {createRawCipher} from '../src/finance-raw-crypto.js';
 import {buildApp} from '../src/app.js';
-import {createApplicationLogger} from '../src/logger.js';
+import {createApplicationLogger} from '@innova/auth-kit';
 import type {UserLookup} from '../src/db/users.js';
 import {bankSource} from './fixtures/finance-raw.js';
 const keys=JSON.stringify({v1:'cd'.repeat(32),v2:'ef'.repeat(32)}),secret='SYNTHETIC_PDF_PASSWORD_63';

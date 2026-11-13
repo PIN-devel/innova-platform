@@ -10,7 +10,7 @@ import {join} from 'node:path';
 // financial PDF. Real PDF decoding and Android workers require separate QA.
 test('bank text extraction accepts both printed directions within one second and rejects broken balances',async t=>{
  const cacheDir=await mkdtemp(join(tmpdir(),'finance-bank-parser-'));let vite;
- t.after(async()=>{await vite?.close();await rm(cacheDir,{recursive:true,force:true});});
+ t.after(async()=>{await vite?.close();await rm(cacheDir,{recursive:true,force:true,maxRetries:5,retryDelay:100});});
  vite=await createServer({cacheDir,server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',ssr:{noExternal:['pdfjs-dist']},plugins:[{
   name:'synthetic-pdf-text',enforce:'pre',
   resolveId(id){if(id==='pdfjs-dist')return '\0synthetic-pdf-text';},

@@ -1,10 +1,10 @@
 # DB 스키마 변경과 복구 준비
 
-상태: 현행 지침. API의 DB 스키마·migration 변경과 해당 릴리스에 적용한다. 정책 원문은 이 문서, 변경별 계획·실행 결과는 해당 Linear 이슈가 소유한다.
+상태: 현행 지침. 마이크로서비스(`services/*`)의 DB 스키마·migration 변경과 해당 릴리스에 적용한다. 정책 원문은 이 문서, 변경별 계획·실행 결과는 해당 Linear 이슈가 소유한다.
 
 ## 작업 전 연결 대상 사용자 확인
 
-스키마 소스 수정·migration 생성·DB 연결을 시작하기 전에, 사용자가 로컬 `apps/api/.env` 또는 각 서비스의 로컬 `.env`의 `DATABASE_URL`이 이번 검증용 Neon dev 브랜치의 Connection string인지 확인해 주어야 한다. dev는 해당 스키마 변경을 검증할 Production 기준으로 준비한다. 이 확인은 문서만 작성하거나 DB에 접근하지 않는 읽기 작업에는 요구하지 않는다.
+스키마 소스 수정·migration 생성·DB 연결을 시작하기 전에, 사용자가 각 서비스의 로컬 `.env`의 `DATABASE_URL`이 이번 검증용 Neon dev 브랜치의 Connection string인지 확인해 주어야 한다. dev는 해당 스키마 변경을 검증할 Production 기준으로 준비한다. 이 확인은 문서만 작성하거나 DB에 접근하지 않는 읽기 작업에는 요구하지 않는다.
 
 - **운영(Production) 자격증명 조회 및 취득 전면 금지**:
   - Neon MCP(예: `get_connection_string` 등), 클라우드 CLI, REST API 등을 통해 `production` 브랜치나 운영 환경의 데이터베이스 Connection string, 비밀번호, 서비스 계정 키를 AI 에이전트가 직접 조회·취득·저장하는 행위를 엄격히 금지한다.
@@ -28,11 +28,11 @@ Production 기반 dev의 실제 데이터는 승인된 Neon 검증 범위에서 
 
 ## 변경별 복구 방법
 
-API rollback은 DB rollback이 아니다. DB 변경을 자동으로 반대로 실행하는 공통 절차를 두지 않고, 변경마다 다음 중 적절한 방법을 선택한다.
+서비스 rollback은 DB rollback이 아니다. DB 변경을 자동으로 반대로 실행하는 공통 절차를 두지 않고, 변경마다 다음 중 적절한 방법을 선택한다.
 
 | 상황 | 준비할 방법 | 확인할 내용 |
 | --- | --- | --- |
-| 새 schema가 이전 API와 호환됨 | DB는 유지하고 API만 이전 버전으로 복구 | 복구할 commit·배포 artifact와 이전 API의 읽기·쓰기 동작 |
+| 새 schema가 이전 API와 호환됨 | DB는 유지하고 서비스만 이전 버전으로 복구 | 복구할 commit·배포 artifact와 이전 API의 읽기·쓰기 동작 |
 | 제약조건·변환 로직 등에 문제가 있음 | 후속 migration으로 원인 수정 | 수정 SQL, 적용 순서, 변경 후 데이터 보존과 재실행 판단 |
 | 삭제·손상 등으로 데이터 복구가 필요함 | 보존 자료나 Neon의 복구 기능을 이용한 복구 | 복구 가능 시점·범위·쓰기 중단·허용할 손실·복구 후 데이터 처리 |
 
@@ -42,11 +42,11 @@ Neon 시점 복구는 schema만 되돌리는 작업이 아니다. 선택한 시�
 
 ## 운영 적용과 적용 후 확인
 
-1. dev 검증 결과와 복구 계획을 검토하고, 승인된 Production 대상·migration 파일·배포 commit·적용 순서를 확인한다. Render build에 migration이 포함되어 있으면 배포 트리거도 DB 쓰기를 포함하는 실행으로 취급한다.
+1. dev 검증 결과와 복구 계획을 검토하고, 승인된 Production 대상·migration 파일·배포 commit·적용 순서를 확인한다.
 2. 운영 적용 직전의 migration 이력과 복구 기준 시점, 해당 변경에서 필요한 데이터 보존 수단을 확인한다. dev 생성 후 운영 상태에 관련 변경이 생겼다면 검증 범위를 재평가한다.
-3. 승인된 범위에서 migration과 API 배포를 수행한다. **운영 DB migration(`db:migrate`)은 반드시 GitHub Actions CI/CD 파이프라인(`.github/workflows/deploy-production.yml`)의 격리된 환경에서 GitHub Secrets를 통해 실행되어야 하며, 로컬 CLI, 터미널 인라인 환경변수, 임시 스크립트 등을 통해 운영 DB에 직접 마이그레이션을 실행하는 행위를 엄격히 금지한다.** 자동 또는 수동 적용 방법은 실제 배포 설정을 기준으로 기록하고 이 문서만으로 설정을 변경하지 않는다. schema migration과 비공개 콘텐츠 import는 별도 실행으로 관리한다.
-4. DB 적용 이력·전후 schema·API 배포 버전·핵심 읽기/쓰기를 직접 확인한다. 로컬 테스트 통과, DB 적용, 배포 성공, 사용자 QA는 각각 별도 증거로 기록한다.
-5. 실패하면 후속 배포·재시도를 멈추고 먼저 실제 DB 적용 상태와 현재 API 버전을 확인한다. 통신 오류를 미적용으로 단정하지 않는다. 준비한 조건에 따라 API rollback·후속 migration·데이터 복구를 선택하고, 정상화 확인과 남은 영향을 기록한다.
+3. 승인된 범위에서 migration과 서비스 배포를 수행한다. **운영 DB migration(`db:migrate`)은 반드시 GitHub Actions CI/CD 파이프라인(`.github/workflows/deploy-production.yml`)의 격리된 환경에서 GitHub Secrets를 통해 실행되어야 하며, 로컬 CLI, 터미널 인라인 환경변수, 임시 스크립트 등을 통해 운영 DB에 직접 마이그레이션을 실행하는 행위를 엄격히 금지한다.** 자동 또는 수동 적용 방법은 실제 배포 설정을 기준으로 기록하고 이 문서만으로 설정을 변경하지 않는다. schema migration과 비공개 콘텐츠 import는 별도 실행으로 관리한다.
+4. DB 적용 이력·전후 schema·서비스 배포 버전·핵심 읽기/쓰기를 직접 확인한다. 로컬 테스트 통과, DB 적용, 배포 성공, 사용자 QA는 각각 별도 증거로 기록한다.
+5. 실패하면 후속 배포·재시도를 멈추고 먼저 실제 DB 적용 상태와 현재 API 버전을 확인한다. 통신 오류를 미적용으로 단정하지 않는다. 준비한 조건에 따라 서비스 rollback·후속 migration·데이터 복구를 선택하고, 정상화 확인과 남은 영향을 기록한다.
 
 ## 변경별 Linear 기록 양식
 
@@ -54,12 +54,12 @@ Neon 시점 복구는 schema만 되돌리는 작업이 아니다. 선택한 시�
 
 ```text
 대상: Neon project / branch / database, 기준 commit / migration
-연결 확인: apps/api/.env의 dev 대상에 대한 사용자 확인 일시
+연결 확인: services/<service>/.env의 dev 대상에 대한 사용자 확인 일시
 dev 기준: Production에서 dev를 준비한 시점과 적용 이력
 변경 영향: 호환성, 데이터 변환·손실, 잠금·쓰기 영향
 dev 검증: 실행한 테스트, schema·데이터 확인 결과, 미검증 항목
 복구 조건: 중단·복구 판단에 사용할 증상과 기준
-복구 방법: API rollback / 후속 migration / 데이터 복구
+복구 방법: 서비스 rollback / 후속 migration / 데이터 복구
 복구 순서: commit·SQL 링크, 쓰기 중단 여부, 정상화 확인 방법
 데이터 영향: 변경 이후 쓰기의 보존·재반영·허용 손실
 리허설: dev에서 실행한 복구와 변경 후 데이터 확인 결과
@@ -72,11 +72,8 @@ dev 정리: 접근·비용·유지 기간, 담당자·정리 시점
 
 ## 관련 기준과 참고
 
-- [API 변경 지침](../AGENTS.md)
-- [문서 관리 정책](../../../docs/documentation-policy.md)
-- [Linear 운영 정책](../../../docs/linear-workflow.md)
-- [Git 운영 정책](../../../docs/git-workflow.md)
+- [문서 관리 정책](documentation-policy.md)
+- [Linear 운영 정책](linear-workflow.md)
+- [Git 운영 정책](git-workflow.md)
 - [Neon branching](https://neon.com/docs/introduction/branching)
 - [Neon 시점 복구](https://neon.com/docs/postgres/backup-restore/branch-restore)
-- [Render 배포 단계](https://render.com/docs/deploys#deploy-steps)
-- [Render rollback](https://render.com/docs/rollbacks)

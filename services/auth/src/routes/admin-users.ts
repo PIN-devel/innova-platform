@@ -25,10 +25,6 @@ export const adminUserRoutes: FastifyPluginAsync<{
       throw new AppError(409, "BUSINESS_RULE_VIOLATION", "Only pending users can be approved");
     }
 
-    if (!approved && users.syncLegacyApproval) {
-      await users.syncLegacyApproval(user.id);
-    }
-
     return adminApprovalResponseSchema.parse({
       user: { id: user.id, email: user.email, approvalStatus: user.approvalStatus, role: user.role },
     });

@@ -93,7 +93,7 @@
 - **Step 2 ([PIN-75](https://linear.app/pin-dev/issue/PIN-75))**: `innova-auth-api` 분리 및 API Gateway에서 `/api/auth/**`, `/api/admin/**` 라우팅 전환.
 - **Step 3 ([PIN-76](https://linear.app/pin-dev/issue/PIN-76))**: `innova-learning-api` 분리, 비공개 에셋 GCS 1:1 이전 및 `/api/exam/**`, `/api/curriculum/**` 라우팅 전환.
 - **Step 4 ([PIN-77](https://linear.app/pin-dev/issue/PIN-77))**: `innova-finance-api` 분리, 금융 키 격리 주입 및 `/api/finance/**` 라우팅 전환 (MSA 전환 완료).
-- **Step 5 ([PIN-78](https://linear.app/pin-dev/issue/PIN-78))**: 트래픽 완전 전환 검증 후 `FINANCE_ALLOWED_ORIGINS` 정리, 기존 Render/Vercel 중지, `@vercel/blob`·`vercel.json` 제거 및 클라우드 탈출 패키지 확정.
+- **Step 5 ([PIN-78](https://linear.app/pin-dev/issue/PIN-78))**: 트래픽 완전 전환 검증 후 기존 Render/Vercel 설정 정리, `@vercel/blob`·`vercel.json`·`apps/api` 완전 제거 및 ADR-0004 기반 멀티 컨테이너 `docker-compose.yml` 클라우드 탈출 패키지 완결 (완료).
 
 각 단계 진행 시 Preview(`dev` 브랜치/PR: Firebase Preview + `dev` Cloud Run + Neon `dev` DB)와 Production(`main` 브랜치: Firebase Prod + `prod` Cloud Run + Neon `production` DB) 배포 자동화를 함께 내재화한다.
 

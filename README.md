@@ -1,55 +1,95 @@
 # innova-platform
-React, Fastify, PostgreSQL 기반 모노레포입니다. `/exam`에서 Exam Drill을 사용합니다.
+
+React, Fastify, Apache APISIX, Neon PostgreSQL 기반의 서버리스 마이크로서비스(MSA) 모노레포입니다.
+Google Cloud Run 및 Firebase Hosting 기반으로 운영되며, 벤더 락인을 차단하는 독립 인프라 탈출 패키지(`docker-compose.yml`)를 갖추고 있습니다.
+
+## 아키텍처 구성
+
+```
+[Client (Browser)]
+       │
+       ▼
+[Firebase Hosting] (apps/web)
+       │ /api/**
+       ▼
+[Cloud Run API Gateway] (apps/api-gateway - Apache APISIX Standalone)
+       │
+       ├── /api/auth/**, /api/admin/**  ──► [innova-auth-api]     (services/auth)     ──► DB: innova_auth
+       ├── /api/exam/**, /api/curriculum/** ──► [innova-learning-api] (services/learning) ──► DB: innova_learning, GCS: innova-assets
+       ├── /api/finance/**             ──► [innova-finance-api]  (services/finance)  ──► DB: innova_finance
+       └── /api/ai/**                  ──► [innova-ai-api]       (services/ai)       ──► Exaone API
+```
+
+| 구분 | 패키지/디렉터리 | 역할 및 배포 환경 |
+| --- | --- | --- |
+| **Frontend** | `apps/web` (`@innova/web`) | React 19, Vite, TanStack Query, FSD 아키텍처 (Firebase Hosting) |
+| **API Gateway** | `apps/api-gateway` | Apache APISIX 3.19 Standalone, 쿠키 브릿지 및 리버스 프록시 (Cloud Run) |
+| **Auth** | `services/auth` (`@innova/auth`) | 인증, 회원 관리, 인가/승인 단일 진실 공급원 (Cloud Run) |
+| **Learning** | `services/learning` (`@innova/learning`) | Exam Drill 문항 은행 및 Curriculum 에셋 무키 서빙 (Cloud Run) |
+| **Finance** | `services/finance` (`@innova/finance`) | 개인 금융(MOTIFIN) 원천 데이터 암호화 및 분석 (Cloud Run) |
+| **AI** | `services/ai` (`@innova/ai`) | K-EXAONE 2.5 기반 AI 챗 스트리밍 (Cloud Run) |
+| **공유 계약** | `packages/contracts` (`@innova/contracts`) | 프런트엔드·백엔드 공유 Zod 스키마 및 타입 인터페이스 |
+| **공통 킷** | `packages/auth-kit` (`@innova/auth-kit`) | Fastify 공통 가드, Graceful Shutdown, 구조화 로거, 에러 핸들러 |
+
+---
 
 ## 문서와 작업 기준
 
 | 목적 | 문서 |
 | --- | --- |
-| AI 공통·앱별 지침 | [공통 AGENTS](./AGENTS.md), [Web AGENTS](./apps/web/AGENTS.md), [API AGENTS](./apps/api/AGENTS.md), [Gateway AGENTS](./apps/api-gateway/AGENTS.md), [Auth AGENTS](./services/auth/AGENTS.md), [Learning AGENTS](./services/learning/AGENTS.md), [Finance AGENTS](./services/finance/AGENTS.md), [AI AGENTS](./services/ai/AGENTS.md) |
+| AI 공통·앱별 지침 | [공통 AGENTS](./AGENTS.md), [Web AGENTS](./apps/web/AGENTS.md), [Gateway AGENTS](./apps/api-gateway/AGENTS.md), [Auth AGENTS](./services/auth/AGENTS.md), [Learning AGENTS](./services/learning/AGENTS.md), [Finance AGENTS](./services/finance/AGENTS.md), [AI AGENTS](./services/ai/AGENTS.md) |
 | 문서 위치·파일명·참조 관리 | [문서 정책](./docs/documentation-policy.md) |
 | 필요한 정보만 읽고 조사·검증·전달하기 | [AI 작업 흐름](./docs/ai-workflow.md) |
 | 브랜치·PR·릴리스 | [Git 운영](./docs/git-workflow.md) |
 | Label·Milestone·Issue 역할, 개선 Inbox, 상태 자동화 | [Linear 운영](./docs/linear-workflow.md) |
 | 신규 테이블의 식별·감사·소유권·계보 설계 | [테이블 메타데이터 기준](./docs/database-table-metadata.md) |
 | 아키텍처 결정 기록(ADR)과 변경 맥락 | `docs/adr/` ([ADR-0001](./docs/adr/0001-record-architecture-decisions.md) 체계 준수) |
-| 앱/서비스 실행과 현행 기준 | [Web](./apps/web/README.md), [API](./apps/api/README.md), [Auth](./services/auth/README.md), [Learning](./services/learning/README.md), [Finance](./services/finance/README.md), [AI](./services/ai/README.md) |
+| 앱/서비스 실행과 현행 기준 | [Web](./apps/web/README.md), [Auth](./services/auth/README.md), [Learning](./services/learning/README.md), [Finance](./services/finance/README.md), [AI](./services/ai/README.md) |
 
-과거 측정 기록은 비교·재현할 때만 읽는다. 정책 원문과 구현·검증 결과는 각 소유 문서/이슈에서 관리한다.
+---
 
-## Workspace
+## 로컬 개발 및 실행
 
-pnpm 12를 사용합니다. 저장소 루트에서 한 번만 의존성을 설치하면 됩니다.
+pnpm 12를 사용합니다. 저장소 루트에서 한 번만 의존성을 설치합니다.
 
 ```sh
 pnpm install
 ```
 
-DB를 설정한 뒤 API와 웹을 함께 실행할 때:
-
+### 1) 웹 프론트엔드 단독 개발 (MSW Mock 모드)
+백엔드 서버 없이 브라우저에서 모의 데이터로 전체 UI를 실행합니다:
 ```sh
-pnpm --filter @innova/api db:migrate
-pnpm dev
+pnpm dev:web
+# http://localhost:5173
 ```
 
-웹만 MSW와 함께 실행하려면 `pnpm dev:web`을 사용합니다. 이 모드는 `http://localhost:5173`에서 실행됩니다.
-
-API만 별도로 실행하려면 `pnpm dev:api`를 사용합니다.
-
-API 모드의 웹 주소는 `http://localhost:5174/exam`입니다. Vite가 `/api` 요청을 `http://127.0.0.1:3000`으로 전달합니다. `DATABASE_URL`과 32자 이상의 임의 `JWT_SECRET`은 Git에서 제외되는 `apps/api/.env`에 설정합니다. `/login` 또는 `/signup`에서 인증하면 HttpOnly 쿠키가 발급되고 `/api/exam/*`에 전달됩니다. 배포 환경은 HTTPS를 사용해야 합니다.
-
-Exam Drill의 기본 AWS SAP 은행은 `exam_banks`, `exam_concepts`, `exam_scenarios` 테이블에 저장됩니다. 관리자 승인을 받은 사용자는 기본 은행과 사용자가 가져온 별도 은행의 전체 콘텐츠를 읽을 수 있습니다. 개념, 문제, 정답, 해설 파일은 이 저장소에 두지 않습니다. 새 DB를 시드해야 할 때는 Git 밖에 보관한 비공개 JSON 경로를 `EXAM_BANK_SEED_PATH`로 지정해 `pnpm --filter @innova/api db:seed:exam`을 실행합니다. `pnpm --filter @innova/api db:verify:exam`은 DB 레코드의 형식과 개수만 검사합니다. 앱에서 별도 은행을 가져오면 DB에 저장됩니다. 브라우저 저장소에는 사용자별 학습 통계와 문항 ID만 남고, 문제 문장과 정답은 저장되지 않습니다.
-
-기존 `exam-drill`에서 사용자가 추가한 은행은 기존 앱의 설정에서 JSON으로 내보낸 뒤 새 앱의 설정에서 가져오면 DB에 저장됩니다. 서로 다른 출처의 브라우저 저장소는 자동으로 공유되지 않으므로 기존 개인 학습 진도는 새 앱으로 자동 이전되지 않습니다.
-
+### 2) 클라우드 탈출 전체 스택 실행 (Docker Compose)
+타 클라우드, 온프레미스, 또는 로컬 환경에서 4대 마이크로서비스와 API Gateway 전체를 단일 네트워크로 구동합니다:
 ```sh
-pnpm build
-pnpm typecheck
-pnpm test
-pnpm lint
+# .env 파일에 DB Connection string 및 JWT_SECRET 등을 설정한 후
+pnpm docker:up
+# 또는: docker compose up -d
+
+# API Gateway 진입점: http://localhost:8080/health
+# 종료: pnpm docker:down
 ```
 
-`pnpm test`는 Contracts 빌드 후 API와 Web 테스트를 모두 실행합니다. API 테스트는 주입한 저장소, Web 테스트는 QueryClient·MSW·서버 렌더링을 사용하며 실제 DB나 브라우저를 필요로 하지 않습니다.
+### 3) 개별 마이크로서비스 단독 개발
+독립 서비스 단위로 개발 서버를 기동합니다:
+```sh
+pnpm dev:auth      # 포트 8080 (또는 PORT 설정값)
+pnpm dev:learning  # 포트 8080
+pnpm dev:finance   # 포트 8080
+pnpm dev:ai        # 포트 8080
+```
 
-`pnpm lint`는 Contracts·API·Web을 모두 검사합니다. API의 `src`·`test`·`drizzle.config.ts`와 Contracts의 `src`는 루트 Oxlint 설정으로 기본 오류를 검사하고, Web은 기존 React·TanStack Query·FSD 설정을 사용합니다. API·Contracts의 generated/migration/build 산출물은 검사 대상에 포함하지 않습니다. 패키지별로는 `pnpm --filter @innova/api lint`, `pnpm --filter @innova/contracts lint`, `pnpm --filter @innova/web lint`를 실행할 수 있습니다.
+---
 
-`apps/web`과 `apps/api`는 `packages/contracts`의 `@innova/contracts`를 공유합니다. Exam Drill 은행의 JSON 검증도 이 패키지의 Zod 스키마를 사용합니다.
+## 공통 검증 파이프라인
+
+```sh
+pnpm build        # 공유 계약/킷 빌드 후 전체 패키지 빌드
+pnpm typecheck    # 전체 패키지 TypeScript 타입 검사
+pnpm test         # 전체 단위 및 통합 테스트 실행
+pnpm lint         # Oxlint 기반 정적 분석
+```
