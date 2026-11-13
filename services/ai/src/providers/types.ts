@@ -10,10 +10,18 @@ export interface AiChatStreamRequestParams {
   signal?: AbortSignal;
 }
 
+export interface RateGateLease {
+  release(): Promise<boolean> | boolean;
+}
+
+export type RateGateAcquireResult =
+  | { allowed: true; lease?: RateGateLease }
+  | { allowed: false; retryAfterMs: number };
+
 export interface RateGate {
-  tryAcquire(): { allowed: true } | { allowed: false; retryAfterMs: number };
-  release(): void;
-  reset?(): void;
+  tryAcquire(): Promise<RateGateAcquireResult> | RateGateAcquireResult;
+  release?(lease?: RateGateLease): Promise<void> | void;
+  reset?(): Promise<void> | void;
 }
 
 export interface AiChatProvider {

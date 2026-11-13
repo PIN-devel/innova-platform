@@ -32,6 +32,10 @@ Cloud Run(`innova-auth-api`)으로 배포되며, API Gateway(APISIX)를 통해 `
 - `JWT_SECRET`: JWT 서명/검증 비밀키 (32자 이상)
 - `PORT`: 서비스 포트 (기본값: 8080)
 - `AUTH_COOKIE_NAME`: 세션 쿠키 이름 (기본값: `innova_auth`)
+- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`: (선택) 서버리스 Redis 캐시·분산 락 연동 (미설정 시 인메모리 폴백)
+- `PUBSUB_PROJECT_ID`, `PUBSUB_USER_EVENTS_TOPIC`: (선택) Cloud Run 운영 환경에서 `auth.user.status-changed` 이벤트 발행용 Pub/Sub 토픽
+- `EVENT_SUBSCRIBER_URLS`: (선택) 로컬 환경 HTTP Fan-out 대상 URL 목록 (쉼표 구분)
+- `INTERNAL_EVENT_TOKEN`: (선택) 내부 Push 이벤트 웹훅(`x-internal-event-token`) 인증 토큰
 
 ## 스크립트
 - `pnpm dev`: 개발 서버 기동 (`tsx watch`)

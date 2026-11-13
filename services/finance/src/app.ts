@@ -2,7 +2,18 @@ import Fastify, { LogController, type FastifyBaseLogger, type FastifyReply, type
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import { randomUUID } from "node:crypto";
-import { AUTH_COOKIE_NAME, AppError, apiErrorBody, createApprovedAuthGuard, createApplicationLogger, invalidInput } from "@innova/auth-kit";
+import {
+  AUTH_COOKIE_NAME,
+  AppError,
+  apiErrorBody,
+  createApprovedAuthGuard,
+  createApplicationLogger,
+  createCachedUserLookup,
+  createRuntimeCacheStore,
+  invalidInput,
+  type CacheStore,
+  type DeadLetterSink,
+} from "@innova/auth-kit";
 import { createDatabase } from "./db/client.js";
 import { createUserLookup, type UserLookup } from "./db/users.js";
 import { createFinanceRawRepository, type FinanceRawRepository } from "./db/finance-raw.js";
@@ -21,6 +32,7 @@ import { financeRawRoutes } from "./routes/finance-raw.js";
 import { financeBusinessRoutes } from "./routes/finance-business.js";
 import { financeTransactionRoutes } from "./routes/finance-transactions.js";
 import { financePdfPasswordRoutes } from "./routes/finance-pdf-password.js";
+import { internalEventRoutes } from "./routes/internal-events.js";
 
 const fastifyBadRequestCodes = new Set([
   "FST_ERR_VALIDATION",
@@ -37,6 +49,9 @@ const fastifyBadRequestCodes = new Set([
 export function buildApp({
   logger = createApplicationLogger(),
   userLookup,
+  cacheStore,
+  internalEventToken = process.env.INTERNAL_EVENT_TOKEN,
+  deadLetterSink,
   readinessCheck,
   readinessTimeoutMs = READINESS_TIMEOUT_MS,
   financeRawRepository,
@@ -52,6 +67,9 @@ export function buildApp({
 }: {
   logger?: false | FastifyBaseLogger;
   userLookup?: UserLookup;
+  cacheStore?: CacheStore;
+  internalEventToken?: string;
+  deadLetterSink?: DeadLetterSink;
   readinessCheck?: (signal: AbortSignal) => Promise<unknown>;
   readinessTimeoutMs?: number;
   financeRawRepository?: FinanceRawRepository;
@@ -78,10 +96,18 @@ export function buildApp({
   app.decorateRequest("authUser", null);
 
   // Tests inject every dependency and need no database or auth-service connection.
+  const activeCacheStore = cacheStore ?? createRuntimeCacheStore();
   const db = userLookup ? undefined : createDatabase();
-  const users = userLookup ?? createUserLookup({
+  const rawUsers = userLookup ?? createUserLookup({
     signSessionToken: (userId) => app.jwt.sign({ sub: userId }),
   });
+  const users = userLookup && !cacheStore
+    ? rawUsers
+    : createCachedUserLookup({
+        delegate: rawUsers,
+        cacheStore: activeCacheStore,
+        logger: logger || undefined,
+      });
   const rawCipher = db ? createRawCipher() : (process.env.FINANCE_RAW_ENCRYPTION_KEY ? createRawCipher() : undefined);
   const fingerprint = db ? createBusinessFingerprint() : (process.env.FINANCE_RAW_ENCRYPTION_KEY ? createBusinessFingerprint() : undefined);
   const finance = financeRawRepository ?? (db && rawCipher ? createFinanceRawRepository(db, rawCipher) : undefined);
@@ -152,6 +178,13 @@ export function buildApp({
   if (business) app.register(financeBusinessRoutes, { prefix: "/api/finance/business", repository: business, classification, review, schedule, requireAuth, allowedOrigins: financeAllowedOrigins });
   if (manual && transactions && exporter) app.register(financeTransactionRoutes, { prefix: "/api/finance/transactions", manual, transactions, exporter, requireAuth, allowedOrigins: financeAllowedOrigins });
   if (pdfPassword) app.register(financePdfPasswordRoutes, { prefix: "/api/finance/pdf-password", repository: pdfPassword, users, allowedOrigins: financeAllowedOrigins });
+  app.register(internalEventRoutes, {
+    prefix: "/internal/events",
+    cacheStore: activeCacheStore,
+    pdfPasswordRepository: pdfPassword,
+    internalToken: internalEventToken,
+    deadLetterSink,
+  });
 
   return app;
 }

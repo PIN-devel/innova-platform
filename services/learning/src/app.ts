@@ -2,15 +2,27 @@ import Fastify, { LogController, type FastifyBaseLogger, type FastifyReply, type
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import { randomUUID } from "node:crypto";
-import { AUTH_COOKIE_NAME, AppError, apiErrorBody, createApprovedAuthGuard, createApplicationLogger, invalidInput } from "@innova/auth-kit";
+import {
+  AUTH_COOKIE_NAME,
+  AppError,
+  apiErrorBody,
+  createApprovedAuthGuard,
+  createApplicationLogger,
+  createCachedUserLookup,
+  createRuntimeCacheStore,
+  invalidInput,
+  type CacheStore,
+  type DeadLetterSink,
+} from "@innova/auth-kit";
 import { createDatabase } from "./db/client.js";
 import { createUserLookup, type UserLookup } from "./db/users.js";
-import { createExamRepository, type ExamRepository } from "./db/exam.js";
+import { createCachedExamRepository, createExamRepository, type ExamRepository } from "./db/exam.js";
 import { createCurriculumReadRepository, type CurriculumReadRepository } from "./db/curriculum-read.js";
 import { createRuntimeCurriculumAssetReader, type CurriculumAssetReader } from "./curriculum-assets.js";
 import { READINESS_TIMEOUT_MS, runReadinessCheck } from "./readiness.js";
 import { examRoutes } from "./routes/exam.js";
 import { curriculumRoutes } from "./routes/curriculum.js";
+import { internalEventRoutes } from "./routes/internal-events.js";
 
 const fastifyBadRequestCodes = new Set([
   "FST_ERR_VALIDATION",
@@ -27,6 +39,9 @@ const fastifyBadRequestCodes = new Set([
 export function buildApp({
   logger = createApplicationLogger(),
   userLookup,
+  cacheStore,
+  internalEventToken = process.env.INTERNAL_EVENT_TOKEN,
+  deadLetterSink,
   readinessCheck,
   readinessTimeoutMs = READINESS_TIMEOUT_MS,
   examRepository,
@@ -36,6 +51,9 @@ export function buildApp({
 }: {
   logger?: false | FastifyBaseLogger;
   userLookup?: UserLookup;
+  cacheStore?: CacheStore;
+  internalEventToken?: string;
+  deadLetterSink?: DeadLetterSink;
   readinessCheck?: (signal: AbortSignal) => Promise<unknown>;
   readinessTimeoutMs?: number;
   examRepository?: ExamRepository;
@@ -58,11 +76,22 @@ export function buildApp({
   app.decorateRequest("authUser", null);
 
   // Tests inject every dependency and need no database or auth-service connection.
+  const activeCacheStore = cacheStore ?? createRuntimeCacheStore();
   const db = userLookup && examRepository && curriculumRepository ? undefined : createDatabase();
-  const users = userLookup ?? createUserLookup({
+  const rawUsers = userLookup ?? createUserLookup({
     signSessionToken: (userId) => app.jwt.sign({ sub: userId }),
   });
-  const exams = examRepository ?? createExamRepository(db!);
+  const users = userLookup && !cacheStore
+    ? rawUsers
+    : createCachedUserLookup({
+        delegate: rawUsers,
+        cacheStore: activeCacheStore,
+        logger: logger || undefined,
+      });
+  const rawExams = examRepository ?? createExamRepository(db!);
+  const exams = examRepository && !cacheStore
+    ? rawExams
+    : createCachedExamRepository(rawExams, activeCacheStore);
   const curriculum = curriculumRepository ?? createCurriculumReadRepository(db!);
 
   const checkReadiness = readinessCheck ?? (db
@@ -121,6 +150,12 @@ export function buildApp({
   const requireAuth = createApprovedAuthGuard(users);
   app.register(examRoutes, { prefix: "/api/exam", repository: exams, requireAuth });
   app.register(curriculumRoutes, { prefix: "/api/curriculum", repository: curriculum, assets: curriculumAssets, requireAuth });
+  app.register(internalEventRoutes, {
+    prefix: "/internal/events",
+    cacheStore: activeCacheStore,
+    internalToken: internalEventToken,
+    deadLetterSink,
+  });
 
   return app;
 }

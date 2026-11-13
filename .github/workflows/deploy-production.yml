@@ -118,6 +118,11 @@ jobs:
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
       AUTH_DATABASE_URL: ${{ secrets.AUTH_DATABASE_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      PUBSUB_PROJECT_ID: ${{ vars.PUBSUB_PROJECT_ID || vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
+      PUBSUB_USER_EVENTS_TOPIC: ${{ vars.PUBSUB_USER_EVENTS_TOPIC }}
+      INTERNAL_EVENT_TOKEN: ${{ secrets.INTERNAL_EVENT_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -195,6 +200,17 @@ jobs:
         id: deploy
         if: steps.check_config.outputs.configured == 'true'
         run: |
+          ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${AUTH_DATABASE_URL}||JWT_SECRET=${JWT_SECRET}"
+          if [ -n "${UPSTASH_REDIS_REST_URL}" ] && [ -n "${UPSTASH_REDIS_REST_TOKEN}" ]; then
+            ENV_VARS="${ENV_VARS}||UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}||UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}"
+          fi
+          if [ -n "${PUBSUB_PROJECT_ID}" ] && [ -n "${PUBSUB_USER_EVENTS_TOPIC}" ]; then
+            ENV_VARS="${ENV_VARS}||PUBSUB_PROJECT_ID=${PUBSUB_PROJECT_ID}||PUBSUB_USER_EVENTS_TOPIC=${PUBSUB_USER_EVENTS_TOPIC}"
+          fi
+          if [ -n "${INTERNAL_EVENT_TOKEN}" ]; then
+            ENV_VARS="${ENV_VARS}||INTERNAL_EVENT_TOKEN=${INTERNAL_EVENT_TOKEN}"
+          fi
+
           gcloud run deploy innova-auth-api \
             --project="${GCP_PROJECT_ID}" \
             --region="${GCP_REGION}" \
@@ -206,7 +222,7 @@ jobs:
             --max-instances=1 \
             --memory=256Mi \
             --cpu=1 \
-            --set-env-vars="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${AUTH_DATABASE_URL}||JWT_SECRET=${JWT_SECRET}"
+            --set-env-vars="${ENV_VARS}"
 
           AUTH_URL=$(gcloud run services describe innova-auth-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "auth_url=${AUTH_URL}" >> "$GITHUB_OUTPUT"
@@ -241,6 +257,9 @@ jobs:
       UPSTREAM_AUTH_URL: ${{ vars.UPSTREAM_AUTH_URL || secrets.UPSTREAM_AUTH_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       CURRICULUM_ASSET_BUCKET: ${{ vars.CURRICULUM_ASSET_BUCKET || secrets.CURRICULUM_ASSET_BUCKET || 'innova-assets' }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      INTERNAL_EVENT_TOKEN: ${{ secrets.INTERNAL_EVENT_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -335,6 +354,12 @@ jobs:
         run: |
           AUTH_URL="${{ steps.resolve_auth.outputs.auth_url }}"
           ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${LEARNING_DATABASE_URL}||AUTH_SERVICE_URL=${AUTH_URL}||JWT_SECRET=${JWT_SECRET}||CURRICULUM_ASSET_BUCKET=${CURRICULUM_ASSET_BUCKET}"
+          if [ -n "${UPSTASH_REDIS_REST_URL}" ] && [ -n "${UPSTASH_REDIS_REST_TOKEN}" ]; then
+            ENV_VARS="${ENV_VARS}||UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}||UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}"
+          fi
+          if [ -n "${INTERNAL_EVENT_TOKEN}" ]; then
+            ENV_VARS="${ENV_VARS}||INTERNAL_EVENT_TOKEN=${INTERNAL_EVENT_TOKEN}"
+          fi
 
           gcloud run deploy innova-learning-api \
             --project="${GCP_PROJECT_ID}" \
@@ -385,6 +410,9 @@ jobs:
       FINANCE_PDF_PASSWORD_KEYRING: ${{ secrets.FINANCE_PDF_PASSWORD_KEYRING }}
       FINANCE_PDF_PASSWORD_ACTIVE_KEY_VERSION: ${{ vars.FINANCE_PDF_PASSWORD_ACTIVE_KEY_VERSION || secrets.FINANCE_PDF_PASSWORD_ACTIVE_KEY_VERSION || 'v1' }}
       FINANCE_ALLOWED_ORIGINS: ${{ vars.FINANCE_ALLOWED_ORIGINS || secrets.FINANCE_ALLOWED_ORIGINS }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      INTERNAL_EVENT_TOKEN: ${{ secrets.INTERNAL_EVENT_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -486,6 +514,12 @@ jobs:
           if [ -n "${FINANCE_PDF_PASSWORD_KEYRING}" ]; then
             ENV_VARS="${ENV_VARS}||FINANCE_PDF_PASSWORD_KEYRING=${FINANCE_PDF_PASSWORD_KEYRING}||FINANCE_PDF_PASSWORD_ACTIVE_KEY_VERSION=${FINANCE_PDF_PASSWORD_ACTIVE_KEY_VERSION}"
           fi
+          if [ -n "${UPSTASH_REDIS_REST_URL}" ] && [ -n "${UPSTASH_REDIS_REST_TOKEN}" ]; then
+            ENV_VARS="${ENV_VARS}||UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}||UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}"
+          fi
+          if [ -n "${INTERNAL_EVENT_TOKEN}" ]; then
+            ENV_VARS="${ENV_VARS}||INTERNAL_EVENT_TOKEN=${INTERNAL_EVENT_TOKEN}"
+          fi
 
           gcloud run deploy innova-finance-api \
             --project="${GCP_PROJECT_ID}" \
@@ -532,6 +566,9 @@ jobs:
       UPSTREAM_AUTH_URL: ${{ vars.UPSTREAM_AUTH_URL || secrets.UPSTREAM_AUTH_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       EXAONE_API_KEY: ${{ secrets.EXAONE_API_KEY }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      INTERNAL_EVENT_TOKEN: ${{ secrets.INTERNAL_EVENT_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -618,6 +655,12 @@ jobs:
         run: |
           AUTH_URL="${{ steps.resolve_auth.outputs.auth_url }}"
           ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||AUTH_SERVICE_URL=${AUTH_URL}||JWT_SECRET=${JWT_SECRET}||EXAONE_API_KEY=${EXAONE_API_KEY}"
+          if [ -n "${UPSTASH_REDIS_REST_URL}" ] && [ -n "${UPSTASH_REDIS_REST_TOKEN}" ]; then
+            ENV_VARS="${ENV_VARS}||UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}||UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}"
+          fi
+          if [ -n "${INTERNAL_EVENT_TOKEN}" ]; then
+            ENV_VARS="${ENV_VARS}||INTERNAL_EVENT_TOKEN=${INTERNAL_EVENT_TOKEN}"
+          fi
 
           gcloud run deploy innova-ai-api \
             --project="${GCP_PROJECT_ID}" \

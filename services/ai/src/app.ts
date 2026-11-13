@@ -12,15 +12,23 @@ import {
   AppError,
   apiErrorBody,
   createApplicationLogger,
+  createCachedUserLookup,
+  createRuntimeCacheStore,
+  createRuntimeDistributedLock,
   invalidInput,
+  type CacheStore,
+  type DeadLetterSink,
+  type DistributedLock,
 } from "@innova/auth-kit";
 import { createUserLookup, type UserLookup } from "./users.js";
 import { READINESS_TIMEOUT_MS, runReadinessCheck } from "./readiness.js";
 import { aiChatRoutes } from "./routes/ai-chat.js";
+import { internalEventRoutes } from "./routes/internal-events.js";
 import {
+  DistributedExaoneRateGate,
   ExaoneChatProvider,
   type AiChatProvider,
-  type ExaoneRateGate,
+  type RateGate,
 } from "./providers/index.js";
 
 const fastifyBadRequestCodes = new Set([
@@ -34,6 +42,10 @@ const fastifyBadRequestCodes = new Set([
 export function buildApp({
   logger = createApplicationLogger(),
   userLookup,
+  cacheStore,
+  distributedLock,
+  internalEventToken = process.env.INTERNAL_EVENT_TOKEN,
+  deadLetterSink,
   readinessCheck,
   readinessTimeoutMs = READINESS_TIMEOUT_MS,
   jwtSecret = process.env.JWT_SECRET,
@@ -45,11 +57,15 @@ export function buildApp({
 }: {
   logger?: false | FastifyBaseLogger;
   userLookup?: UserLookup;
+  cacheStore?: CacheStore;
+  distributedLock?: DistributedLock;
+  internalEventToken?: string;
+  deadLetterSink?: DeadLetterSink;
   readinessCheck?: (signal: AbortSignal) => Promise<unknown>;
   readinessTimeoutMs?: number;
   jwtSecret?: string;
   chatProvider?: AiChatProvider;
-  rateGate?: ExaoneRateGate;
+  rateGate?: RateGate;
   apiKey?: string;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
@@ -74,11 +90,20 @@ export function buildApp({
   });
   app.decorateRequest("authUser", null);
 
-  const users =
+  const activeCacheStore = cacheStore ?? createRuntimeCacheStore();
+  const rawUsers =
     userLookup ??
     createUserLookup({
       signSessionToken: (userId) => app.jwt.sign({ sub: userId }),
     });
+  const users =
+    userLookup && !cacheStore
+      ? rawUsers
+      : createCachedUserLookup({
+          delegate: rawUsers,
+          cacheStore: activeCacheStore,
+          logger: logger || undefined,
+        });
 
   const checkReadiness =
     readinessCheck ??
@@ -163,19 +188,29 @@ export function buildApp({
   app.get("/ready", handleReady);
   app.get("/api/ready", handleReady);
 
+  const activeLock = distributedLock ?? createRuntimeDistributedLock();
+  const effectiveRateGate =
+    rateGate ?? new DistributedExaoneRateGate(activeLock, activeCacheStore);
+
   const provider =
     chatProvider ??
     new ExaoneChatProvider({
       apiKey,
       baseUrl,
       fetchImpl,
-      rateGate,
+      rateGate: effectiveRateGate,
     });
 
   app.register(aiChatRoutes, {
     prefix: "/api/ai/chat",
     users,
     provider,
+  });
+  app.register(internalEventRoutes, {
+    prefix: "/internal/events",
+    cacheStore: activeCacheStore,
+    internalToken: internalEventToken,
+    deadLetterSink,
   });
 
   return app;

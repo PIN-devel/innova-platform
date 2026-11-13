@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createInMemoryCacheStore, createInMemoryDistributedLock } from "@innova/auth-kit";
 import type { AuthUser } from "@innova/contracts";
 import { buildApp } from "../src/app.js";
 import {
+  DistributedExaoneRateGate,
   ExaoneRateGate,
   OpenAiCompatibleProvider,
 } from "../src/providers/index.js";
@@ -375,4 +377,95 @@ test("upstream errors map to appropriate responses", async (t) => {
   assert.equal(linesInternal[0].type, "error");
   assert.equal(linesInternal[0].code, "INTERNAL_ERROR");
   assert.equal(linesInternal[0].message, "AI 서비스 내부 오류가 발생했습니다.");
+});
+
+test("distributed rate gate enforces single-flight and 1-RPS across two app instances", async (t) => {
+  let now = 1_000_000;
+  const sharedLock = createInMemoryDistributedLock(() => now);
+  const sharedCache = createInMemoryCacheStore(() => now);
+
+  let releaseFirstStream: (() => void) | undefined;
+  let firstStreamStarted!: () => void;
+  const firstStreamGate = new Promise<void>((resolve) => {
+    firstStreamStarted = resolve;
+  });
+
+  const sseBody = [
+    `data: ${JSON.stringify({ choices: [{ delta: { content: "첫 번째 응답" } }] })}\n\n`,
+    "data: [DONE]\n\n",
+  ].join("");
+
+  const appA = buildApp({
+    logger: false,
+    userLookup,
+    jwtSecret,
+    apiKey: "test-key",
+    cacheStore: sharedCache,
+    distributedLock: sharedLock,
+    rateGate: new DistributedExaoneRateGate(sharedLock, sharedCache, 1_000, 65_000),
+    fetchImpl: async () => {
+      firstStreamStarted();
+      await new Promise<void>((resolve) => {
+        releaseFirstStream = resolve;
+      });
+      return new Response(createMockSseStream([sseBody]), { status: 200 });
+    },
+  });
+  const appB = buildApp({
+    logger: false,
+    userLookup,
+    jwtSecret,
+    apiKey: "test-key",
+    cacheStore: sharedCache,
+    distributedLock: sharedLock,
+    rateGate: new DistributedExaoneRateGate(sharedLock, sharedCache, 1_000, 65_000),
+    fetchImpl: async () => new Response(createMockSseStream([sseBody]), { status: 200 }),
+  });
+
+  t.after(() => Promise.all([appA.close(), appB.close()]));
+  await Promise.all([appA.ready(), appB.ready()]);
+
+  const adminToken = appA.jwt.sign({ sub: adminUser.id });
+
+  const firstPromise = appA.inject({
+    method: "POST",
+    url: "/api/ai/chat/stream",
+    headers: { cookie: `innova_auth=${adminToken}` },
+    payload: { messages: [{ role: "user", content: "인스턴스 A 스트림" }] },
+  });
+
+  await firstStreamGate;
+
+  // Concurrent request arriving at instance B while A holds the distributed lock -> 429
+  const blockedRes = await appB.inject({
+    method: "POST",
+    url: "/api/ai/chat/stream",
+    headers: { cookie: `innova_auth=${adminToken}` },
+    payload: { messages: [{ role: "user", content: "인스턴스 B 동시 요청" }] },
+  });
+  assert.equal(blockedRes.statusCode, 429);
+  assert.equal(blockedRes.json().error.code, "RATE_LIMITED");
+  assert.ok(blockedRes.headers["retry-after-ms"]);
+
+  // Finish instance A stream -> lock is released, cooldown still blocks immediate retry, then after 1s succeeds
+  releaseFirstStream?.();
+  const firstRes = await firstPromise;
+  assert.equal(firstRes.statusCode, 200);
+
+  const cooldownBlockedRes = await appB.inject({
+    method: "POST",
+    url: "/api/ai/chat/stream",
+    headers: { cookie: `innova_auth=${adminToken}` },
+    payload: { messages: [{ role: "user", content: "쿨다운 중 요청" }] },
+  });
+  assert.equal(cooldownBlockedRes.statusCode, 429);
+
+  now += 1_500;
+  const afterCooldownRes = await appB.inject({
+    method: "POST",
+    url: "/api/ai/chat/stream",
+    headers: { cookie: `innova_auth=${adminToken}` },
+    payload: { messages: [{ role: "user", content: "쿨다운 이후 요청" }] },
+  });
+  assert.equal(afterCooldownRes.statusCode, 200);
 });

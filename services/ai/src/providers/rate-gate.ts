@@ -1,5 +1,5 @@
-import { AppError } from "@innova/auth-kit";
-import type { RateGate } from "./types.js";
+import { AppError, type CacheStore, type DistributedLock } from "@innova/auth-kit";
+import type { RateGate, RateGateAcquireResult, RateGateLease } from "./types.js";
 
 export class RateLimitError extends AppError {
   constructor(
@@ -42,5 +42,67 @@ export class ExaoneRateGate implements RateGate {
   reset() {
     this.inFlight = false;
     this.lastRequestTime = 0;
+  }
+}
+
+const STREAM_LOCK_KEY = "lock:ai:exaone-stream";
+const STREAM_COOLDOWN_KEY = "cooldown:ai:exaone-stream";
+
+/**
+ * Distributed 1-RPS and single-flight stream gate backed by `DistributedLock`
+ * and `CacheStore.setIfAbsent` so concurrent Cloud Run instances share the same limit.
+ */
+export class DistributedExaoneRateGate implements RateGate {
+  private readonly fallback = new ExaoneRateGate();
+
+  constructor(
+    private readonly lock: DistributedLock,
+    private readonly cache: CacheStore,
+    private readonly minIntervalMs = 1_000,
+    private readonly streamLockTtlMs = 65_000,
+  ) {}
+
+  async tryAcquire(): Promise<RateGateAcquireResult> {
+    let lease: RateGateLease | null = null;
+    try {
+      lease = await this.lock.tryAcquire(STREAM_LOCK_KEY, this.streamLockTtlMs);
+    } catch {
+      return this.fallback.tryAcquire();
+    }
+
+    if (!lease) {
+      return { allowed: false, retryAfterMs: Math.max(this.minIntervalMs, 1_000) };
+    }
+
+    try {
+      const cooldownAcquired = await this.cache.setIfAbsent(
+        STREAM_COOLDOWN_KEY,
+        String(Date.now()),
+        this.minIntervalMs,
+      );
+      if (!cooldownAcquired) {
+        try {
+          await lease.release();
+        } catch {
+          // Best-effort lease release after cooldown rejection.
+        }
+        return { allowed: false, retryAfterMs: Math.max(this.minIntervalMs, 100) };
+      }
+      return { allowed: true, lease };
+    } catch {
+      return { allowed: true, lease };
+    }
+  }
+
+  async release(lease?: RateGateLease): Promise<void> {
+    if (lease) {
+      try {
+        await lease.release();
+      } catch {
+        // Best-effort lease release on stream completion.
+      }
+      return;
+    }
+    this.fallback.release();
   }
 }

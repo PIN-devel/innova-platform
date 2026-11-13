@@ -1,5 +1,5 @@
 import {randomUUID} from 'node:crypto';
-import {and,desc,eq,gte,lt,sql} from 'drizzle-orm';
+import {and,desc,eq,gte,isNull,lt,sql} from 'drizzle-orm';
 import type {PdfPasswordStatus,PdfAttemptStart,PdfAttempt,PdfAttemptUse} from '@innova/contracts';
 import type {createDatabase} from './client.js';
 import type {PdfPasswordCipher} from '../finance-pdf-crypto.js';
@@ -13,6 +13,7 @@ export interface PdfPasswordRepository {
  reveal(context:PdfSecretContext,input:PdfAttemptUse):Promise<{secret:string;revision:number}>;
  remove(context:PdfSecretContext,input:PdfAttemptUse):Promise<PdfPasswordStatus>;
  rotate(context:PdfSecretContext,input:PdfAttemptUse):Promise<PdfPasswordStatus>;
+ revokePendingAttempts?(ownerId:string):Promise<number>;
 }
 export function createPdfPasswordRepository(db:ReturnType<typeof createDatabase>,cipher:PdfPasswordCipher|undefined,clock=()=>new Date()):PdfPasswordRepository {
  const conflict=()=>new AppError(409,'CONFLICT','Stored PDF password changed or attempt is unavailable');
@@ -91,5 +92,6 @@ export function createPdfPasswordRepository(db:ReturnType<typeof createDatabase>
    ) select revision from changed`);if(!result.rows.length)throw conflict();return repository.status(c);
   },
   async rotate(c,input){const a=await attempt(c,input.attemptId),row=await head(c.owner);if(!row||!validAttempt(c,a,input,'rotate',true))throw conflict();if(a?.resultRevision===row.revision&&a.consumedAt)return repository.status(c);if(a?.consumedAt||row.revision!==input.expectedRevision)throw conflict();let secret=open(c,row);try{return await write(c,input,secret,'rotate');}finally{secret='';}},
+  async revokePendingAttempts(ownerId){const deleted=await db.delete(attempts).where(and(eq(attempts.ownerId,ownerId),isNull(attempts.consumedAt))).returning({id:attempts.id});return deleted.length;},
  };return repository;
 }

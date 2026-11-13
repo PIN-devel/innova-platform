@@ -1,10 +1,16 @@
 import { randomUUID } from "node:crypto";
+import type { CacheStore } from "@innova/auth-kit";
 import type { ExamBank, ExamBankRecord } from "@innova/contracts";
 import { eq } from "drizzle-orm";
 import type { createDatabase } from "./client.js";
 import { examBanks, examConcepts, examScenarios } from "./schema.js";
 
 export const DEFAULT_EXAM_BANK_ID = "aws-sap";
+const DEFAULT_EXAM_BANK_CACHE_TTL_MS = 300_000;
+
+export function examBankCacheKey(id: string): string {
+  return `learning:exam-bank:${id}`;
+}
 
 export interface ExamRepository {
   find(id: string): Promise<ExamBankRecord | undefined>;
@@ -71,6 +77,36 @@ export function createExamRepository(db: ReturnType<typeof createDatabase>): Exa
         throw error;
       }
       return { id, bank };
+    },
+  };
+}
+
+/**
+ * Wraps an `ExamRepository` with Cache-Aside reads and invalidation on create.
+ * Cache failures fall open to the underlying repository.
+ */
+export function createCachedExamRepository(
+  delegate: ExamRepository,
+  cacheStore: CacheStore,
+  ttlMs = DEFAULT_EXAM_BANK_CACHE_TTL_MS,
+): ExamRepository {
+  return {
+    async find(id) {
+      const key = examBankCacheKey(id);
+      const cached = await cacheStore.get<ExamBankRecord>(key).catch(() => undefined);
+      if (cached) return cached;
+
+      const record = await delegate.find(id);
+      if (record) {
+        await cacheStore.set(key, record, ttlMs).catch(() => undefined);
+      }
+      return record;
+    },
+
+    async create(bank) {
+      const created = await delegate.create(bank);
+      await cacheStore.set(examBankCacheKey(created.id), created, ttlMs).catch(() => undefined);
+      return created;
     },
   };
 }
