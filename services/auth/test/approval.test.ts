@@ -40,18 +40,14 @@ function fixture() {
       records.set(id, rejected);
       return rejected;
     },
-    async syncLegacyApproval(id) {
-      syncedIds.push(id);
-    },
   };
-  const syncedIds: string[] = [];
   const app = buildApp({ logger: false, userRepository: users, jwtSecret });
   const cookieFor = (id: string) => `innova_auth=${app.jwt.sign({ sub: id }, { expiresIn: "15m" })}`;
-  return { app, records, syncedIds, cookieFor };
+  return { app, records, cookieFor };
 }
 
 test("admin approval is role-protected and activates an existing pending session", async (t) => {
-  const { app, records, syncedIds, cookieFor } = fixture();
+  const { app, records, cookieFor } = fixture();
   t.after(() => app.close());
   await app.ready();
 
@@ -88,12 +84,10 @@ test("admin approval is role-protected and activates an existing pending session
     role: "member",
   });
   assert.equal(records.get(pendingId)?.role, "member");
-  assert.deepEqual(syncedIds, []);
 
   const repeatedApproval = await app.inject({ method: "POST", url: approvalUrl, headers: { cookie: adminCookie } });
   assert.equal(repeatedApproval.statusCode, 200);
   assert.deepEqual(repeatedApproval.json(), approved.json());
-  assert.deepEqual(syncedIds, [pendingId]);
 
   const rejectionUrl = `/api/admin/users/${rejectionTargetId}/reject`;
   const rejection = await app.inject({ method: "POST", url: rejectionUrl, headers: { cookie: adminCookie } });

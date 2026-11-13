@@ -7,7 +7,6 @@
 !**/.env.example
 apps/web/
 apps/api-gateway/
-apps/api/
 docs/
 .firebase/
 *.log

@@ -6,7 +6,7 @@ import { CurriculumReadingOrderError, type CurriculumReadRepository } from "../s
 import type { UserLookup } from "../src/db/users.js";
 import { createSyntheticCurriculum } from "./fixtures/curriculum-bundle.js";
 import { createGcsCurriculumAssetReader } from "../src/curriculum-assets.js";
-import { createApplicationLogger } from "../src/logger.js";
+import { createApplicationLogger } from "@innova/auth-kit";
 
 const b = createSyntheticCurriculum();
 const chapter = { ...b.chapters.find((c) => c.id === "chapter-1")!, readingOrder: b.sourceBlocks.map((s) => s.id) };

@@ -14,7 +14,7 @@
 | `docs/adr/*.md` | 아키텍처 의사결정 기록(ADR)과 변경 이력 (시계열 보존) |
 | `apps/<app>/docs/*.md` | 해당 앱의 상세 설계·운영 절차·디자인·측정 기록 |
 
-앱 문서를 루트로 모으거나 같은 규칙을 여러 문서에 복사하지 않는다. 내용이 없는 디렉터리와 목록만 중복하는 README는 만들지 않는다. API의 DB 변경·복구 상세 절차는 `apps/api/docs/`가 소유하고 README/AGENTS는 진입점을 제공한다.
+앱 문서를 루트로 모으거나 같은 규칙을 여러 문서에 복사하지 않는다. 내용이 없는 디렉터리와 목록만 중복하는 README는 만들지 않는다. DB 변경·복구 상세 절차는 `docs/database-migrations.md`가 소유하고 README/AGENTS는 진입점을 제공한다.
 
 ## 파일명과 상태
 
@@ -28,14 +28,14 @@
 
 | 문서 | 역할·처리 |
 | --- | --- |
-| 루트·API·Web README | 현재 위치 유지; 실행·문서 탐색 |
-| 루트·API·Web·Gateway AGENTS | 현재 위치 유지; 공통/앱 지침의 적용 경계 |
+| 루트·Web·서비스 README | 현재 위치 유지; 실행·문서 탐색 |
+| 루트·Web·Gateway·서비스 AGENTS | 현재 위치 유지; 공통/앱 지침의 적용 경계 |
 | `docs/documentation-policy.md` | 이 문서; 위치·명명·참조의 기준 |
 | `docs/ai-workflow.md` | 조사·구현·검증·전달과 읽기 범위 |
 | `docs/git-workflow.md` | Git 병합·릴리스·정리 기준 |
 | `docs/linear-workflow.md` | 이슈 관리와 자동화 경계 |
 | `docs/adr/*.md` | 중대 아키텍처 결정의 배경·대안·영향 기록; 불변성 유지 ([ADR-0001](./adr/0001-record-architecture-decisions.md) 체계 준수) |
-| `apps/api/docs/database-migrations.md` | API DB 스키마 변경·dev 검증·복구 준비와 변경별 기록 양식 |
+| `docs/database-migrations.md` | 서비스 DB 스키마 변경·dev 검증·복구 준비와 변경별 기록 양식 |
 | `apps/web/docs/architecture.md` | 현행 Web 구조; 앱이 소유 |
 | `apps/web/docs/design.md` | 현행 Web UI 기준; 앱이 소유 |
 | `apps/web/docs/architecture-baseline.md` | PIN-21 기준선/PIN-20 검증의 과거 기록; 일반 작업에서 읽지 않음 |

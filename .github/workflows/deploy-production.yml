@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
@@ -37,29 +40,65 @@ jobs:
               - 'services/auth/**'
               - 'packages/auth-kit/**'
               - 'packages/contracts/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
               - '.github/workflows/deploy-production.yml'
+              - '!services/auth/**/*.md'
+              - '!**/*.md'
+              - '!docs/**'
             learning:
               - 'services/learning/**'
               - 'packages/auth-kit/**'
               - 'packages/contracts/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
               - '.github/workflows/deploy-production.yml'
+              - '!services/learning/**/*.md'
+              - '!**/*.md'
+              - '!docs/**'
             finance:
               - 'services/finance/**'
               - 'packages/auth-kit/**'
               - 'packages/contracts/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
               - '.github/workflows/deploy-production.yml'
+              - '!services/finance/**/*.md'
+              - '!**/*.md'
+              - '!docs/**'
             ai:
               - 'services/ai/**'
               - 'packages/auth-kit/**'
               - 'packages/contracts/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
               - '.github/workflows/deploy-production.yml'
+              - '!services/ai/**/*.md'
+              - '!**/*.md'
+              - '!docs/**'
             gateway:
               - 'apps/api-gateway/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
               - '.github/workflows/deploy-production.yml'
+              - '!apps/api-gateway/**/*.md'
+              - '!**/*.md'
+              - '!docs/**'
             frontend:
               - 'apps/web/**'
               - 'packages/contracts/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
               - '.github/workflows/deploy-production.yml'
+              - '!apps/web/**/*.md'
+              - '!**/*.md'
+              - '!docs/**'
 
   deploy-auth:
     name: Deploy Auth Service to Cloud Run
@@ -78,7 +117,6 @@ jobs:
       WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
       AUTH_DATABASE_URL: ${{ secrets.AUTH_DATABASE_URL }}
-      LEGACY_DATABASE_URL: ${{ secrets.LEGACY_DATABASE_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
     steps:
       - name: Checkout repository
@@ -157,11 +195,6 @@ jobs:
         id: deploy
         if: steps.check_config.outputs.configured == 'true'
         run: |
-          ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${AUTH_DATABASE_URL}||JWT_SECRET=${JWT_SECRET}"
-          if [ -n "${LEGACY_DATABASE_URL}" ]; then
-            ENV_VARS="${ENV_VARS}||LEGACY_DATABASE_URL=${LEGACY_DATABASE_URL}"
-          fi
-
           gcloud run deploy innova-auth-api \
             --project="${GCP_PROJECT_ID}" \
             --region="${GCP_REGION}" \
@@ -173,7 +206,7 @@ jobs:
             --max-instances=1 \
             --memory=256Mi \
             --cpu=1 \
-            --set-env-vars="${ENV_VARS}"
+            --set-env-vars="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${AUTH_DATABASE_URL}||JWT_SECRET=${JWT_SECRET}"
 
           AUTH_URL=$(gcloud run services describe innova-auth-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "auth_url=${AUTH_URL}" >> "$GITHUB_OUTPUT"
@@ -206,7 +239,6 @@ jobs:
       LEARNING_DATABASE_URL: ${{ secrets.LEARNING_DATABASE_URL }}
       AUTH_SERVICE_URL_FROM_JOB: ${{ needs.deploy-auth.outputs.auth_url }}
       UPSTREAM_AUTH_URL: ${{ vars.UPSTREAM_AUTH_URL || secrets.UPSTREAM_AUTH_URL }}
-      UPSTREAM_RENDER_URL: ${{ vars.UPSTREAM_RENDER_URL || secrets.UPSTREAM_RENDER_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       CURRICULUM_ASSET_BUCKET: ${{ vars.CURRICULUM_ASSET_BUCKET || secrets.CURRICULUM_ASSET_BUCKET || 'innova-assets' }}
     steps:
@@ -254,9 +286,6 @@ jobs:
           AUTH_URL="${AUTH_SERVICE_URL_FROM_JOB:-${UPSTREAM_AUTH_URL}}"
           if [ -z "$AUTH_URL" ]; then
             AUTH_URL=$(gcloud run services describe innova-auth-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)' 2>/dev/null || true)
-          fi
-          if [ -z "$AUTH_URL" ]; then
-            AUTH_URL="${UPSTREAM_RENDER_URL}"
           fi
           if [ -z "$AUTH_URL" ]; then
             echo "::error::Unable to resolve AUTH_SERVICE_URL (innova-auth-api Cloud Run URL or UPSTREAM_AUTH_URL)."
@@ -351,7 +380,6 @@ jobs:
       FINANCE_DATABASE_URL: ${{ secrets.FINANCE_DATABASE_URL }}
       AUTH_SERVICE_URL_FROM_JOB: ${{ needs.deploy-auth.outputs.auth_url }}
       UPSTREAM_AUTH_URL: ${{ vars.UPSTREAM_AUTH_URL || secrets.UPSTREAM_AUTH_URL }}
-      UPSTREAM_RENDER_URL: ${{ vars.UPSTREAM_RENDER_URL || secrets.UPSTREAM_RENDER_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       FINANCE_RAW_ENCRYPTION_KEY: ${{ secrets.FINANCE_RAW_ENCRYPTION_KEY }}
       FINANCE_PDF_PASSWORD_KEYRING: ${{ secrets.FINANCE_PDF_PASSWORD_KEYRING }}
@@ -405,9 +433,6 @@ jobs:
           AUTH_URL="${AUTH_SERVICE_URL_FROM_JOB:-${UPSTREAM_AUTH_URL}}"
           if [ -z "$AUTH_URL" ]; then
             AUTH_URL=$(gcloud run services describe innova-auth-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)' 2>/dev/null || true)
-          fi
-          if [ -z "$AUTH_URL" ]; then
-            AUTH_URL="${UPSTREAM_RENDER_URL}"
           fi
           if [ -z "$AUTH_URL" ]; then
             echo "::error::Unable to resolve AUTH_SERVICE_URL (innova-auth-api Cloud Run URL or UPSTREAM_AUTH_URL)."
@@ -505,7 +530,6 @@ jobs:
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
       AUTH_SERVICE_URL_FROM_JOB: ${{ needs.deploy-auth.outputs.auth_url }}
       UPSTREAM_AUTH_URL: ${{ vars.UPSTREAM_AUTH_URL || secrets.UPSTREAM_AUTH_URL }}
-      UPSTREAM_RENDER_URL: ${{ vars.UPSTREAM_RENDER_URL || secrets.UPSTREAM_RENDER_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       EXAONE_API_KEY: ${{ secrets.EXAONE_API_KEY }}
     steps:
@@ -553,9 +577,6 @@ jobs:
           AUTH_URL="${AUTH_SERVICE_URL_FROM_JOB:-${UPSTREAM_AUTH_URL}}"
           if [ -z "$AUTH_URL" ]; then
             AUTH_URL=$(gcloud run services describe innova-auth-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)' 2>/dev/null || true)
-          fi
-          if [ -z "$AUTH_URL" ]; then
-            AUTH_URL="${UPSTREAM_RENDER_URL}"
           fi
           if [ -z "$AUTH_URL" ]; then
             echo "::error::Unable to resolve AUTH_SERVICE_URL (innova-auth-api Cloud Run URL or UPSTREAM_AUTH_URL)."
@@ -639,7 +660,6 @@ jobs:
       GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || secrets.GAR_REPOSITORY }}
       WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
-      UPSTREAM_RENDER_URL: ${{ vars.UPSTREAM_RENDER_URL || secrets.UPSTREAM_RENDER_URL }}
       UPSTREAM_AUTH_URL: ${{ needs.deploy-auth.outputs.auth_url || vars.UPSTREAM_AUTH_URL || secrets.UPSTREAM_AUTH_URL }}
       UPSTREAM_LEARNING_URL: ${{ needs.deploy-learning.outputs.learning_url || vars.UPSTREAM_LEARNING_URL || secrets.UPSTREAM_LEARNING_URL }}
       UPSTREAM_FINANCE_URL: ${{ needs.deploy-finance.outputs.finance_url || vars.UPSTREAM_FINANCE_URL || secrets.UPSTREAM_FINANCE_URL }}
@@ -660,9 +680,6 @@ jobs:
           elif [ -z "$GAR_REPOSITORY" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Skipping deployment: GAR_REPOSITORY is not configured in Variables or Secrets."
-          elif [ -z "$UPSTREAM_RENDER_URL" ]; then
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping deployment: UPSTREAM_RENDER_URL is not configured in Variables or Secrets."
           elif [ -z "$WIF_PROVIDER" ] || [ -z "$WIF_SERVICE_ACCOUNT" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Skipping deployment: WIF_PROVIDER or WIF_SERVICE_ACCOUNT is not configured in Secrets."
@@ -694,10 +711,6 @@ jobs:
           if [ -z "$RESOLVED" ]; then
             RESOLVED=$(gcloud run services describe innova-auth-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)' 2>/dev/null || true)
           fi
-          if [ -z "$RESOLVED" ]; then
-            RESOLVED="${UPSTREAM_RENDER_URL}"
-            echo "Notice: innova-auth-api not found; falling back to UPSTREAM_RENDER_URL for auth routing."
-          fi
           echo "resolved_url=${RESOLVED}" >> "$GITHUB_OUTPUT"
           echo "Resolved UPSTREAM_AUTH_URL: ${RESOLVED}"
 
@@ -708,10 +721,6 @@ jobs:
           RESOLVED="${UPSTREAM_FINANCE_URL}"
           if [ -z "$RESOLVED" ]; then
             RESOLVED=$(gcloud run services describe innova-finance-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)' 2>/dev/null || true)
-          fi
-          if [ -z "$RESOLVED" ]; then
-            RESOLVED="${UPSTREAM_RENDER_URL}"
-            echo "Notice: innova-finance-api not found; falling back to UPSTREAM_RENDER_URL for finance routing."
           fi
           echo "resolved_url=${RESOLVED}" >> "$GITHUB_OUTPUT"
           echo "Resolved UPSTREAM_FINANCE_URL: ${RESOLVED}"
@@ -724,10 +733,6 @@ jobs:
           if [ -z "$RESOLVED" ]; then
             RESOLVED=$(gcloud run services describe innova-ai-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)' 2>/dev/null || true)
           fi
-          if [ -z "$RESOLVED" ]; then
-            RESOLVED="${UPSTREAM_RENDER_URL}"
-            echo "Notice: innova-ai-api not found; falling back to UPSTREAM_RENDER_URL for AI routing."
-          fi
           echo "resolved_url=${RESOLVED}" >> "$GITHUB_OUTPUT"
           echo "Resolved UPSTREAM_AI_URL: ${RESOLVED}"
 
@@ -738,10 +743,6 @@ jobs:
           RESOLVED="${UPSTREAM_LEARNING_URL}"
           if [ -z "$RESOLVED" ]; then
             RESOLVED=$(gcloud run services describe innova-learning-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)' 2>/dev/null || true)
-          fi
-          if [ -z "$RESOLVED" ]; then
-            RESOLVED="${UPSTREAM_RENDER_URL}"
-            echo "Notice: innova-learning-api not found; falling back to UPSTREAM_RENDER_URL for learning routing."
           fi
           echo "resolved_url=${RESOLVED}" >> "$GITHUB_OUTPUT"
           echo "Resolved UPSTREAM_LEARNING_URL: ${RESOLVED}"
@@ -772,7 +773,7 @@ jobs:
             --max-instances=1 \
             --memory=256Mi \
             --cpu=1 \
-            --set-env-vars="^||^UPSTREAM_RENDER_URL=${UPSTREAM_RENDER_URL}||UPSTREAM_AUTH_URL=${AUTH_URL}||UPSTREAM_LEARNING_URL=${LEARNING_URL}||UPSTREAM_FINANCE_URL=${FINANCE_URL}||UPSTREAM_AI_URL=${AI_URL}"
+            --set-env-vars="^||^UPSTREAM_AUTH_URL=${AUTH_URL}||UPSTREAM_LEARNING_URL=${LEARNING_URL}||UPSTREAM_FINANCE_URL=${FINANCE_URL}||UPSTREAM_AI_URL=${AI_URL}"
 
           GATEWAY_URL=$(gcloud run services describe innova-api-gateway --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "Production Cloud Run Gateway URL: ${GATEWAY_URL}"

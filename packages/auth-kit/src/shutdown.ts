@@ -3,9 +3,16 @@ import type { Logger } from "pino";
 
 export const SHUTDOWN_TIMEOUT_MS = 10_000;
 
+/**
+ * Registers graceful shutdown handlers for Fastify servers.
+ * - Adds Connection: close header for in-flight HTTP/1.1 requests during shutdown.
+ * - Handles SIGTERM and SIGINT signals with a timeout.
+ * - Flushes logger before exit.
+ */
 export function registerShutdown(app: FastifyInstance, logger: Logger, timeoutMs = SHUTDOWN_TIMEOUT_MS) {
   let closing = false;
   app.addHook("onSend", async (request, reply, payload) => {
+    // Requests already running at shutdown must not leave a keep-alive socket behind.
     if (closing && request.raw.httpVersionMajor === 1) reply.header("Connection", "close");
     return payload;
   });
@@ -25,6 +32,7 @@ export function registerShutdown(app: FastifyInstance, logger: Logger, timeoutMs
         process.exit(error ? 1 : code);
       });
     };
+
     void app.close().then(() => {
       logger.info({ event: "server.shutdown.completed", signal, durationMs: Date.now() - startedAt }, "server shutdown completed");
       finish(0);
@@ -33,6 +41,7 @@ export function registerShutdown(app: FastifyInstance, logger: Logger, timeoutMs
       finish(1);
     });
   };
+
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);
 }
