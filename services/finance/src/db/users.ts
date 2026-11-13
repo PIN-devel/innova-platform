@@ -1,4 +1,5 @@
 import type { AuthUser } from "@innova/contracts";
+import { createRemoteUserLookup } from "@innova/auth-kit";
 import { AUTH_COOKIE_NAME } from "../auth.js";
 import { AppError } from "../errors.js";
 
@@ -26,35 +27,24 @@ export function createUserLookup({
   signSessionToken: (userId: string) => string;
   fetchImpl?: typeof fetch;
 }): UserLookup {
-  if (!authServiceUrl) throw new Error("AUTH_SERVICE_URL is required");
+  const remoteLookup = createRemoteUserLookup({
+    authServiceUrl,
+    cookieName,
+    signSessionToken,
+    fetchImpl,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+  });
 
   return {
-    async findById(id) {
-      const token = signSessionToken(id);
-      const response = await fetchImpl(new URL("/api/auth/me", authServiceUrl), {
-        method: "GET",
-        headers: {
-          cookie: `${cookieName}=${token}`,
-          accept: "application/json",
-        },
-        signal: AbortSignal.timeout(AUTH_REQUEST_TIMEOUT_MS),
-      });
-      if (response.status === 401 || response.status === 404) {
-        return undefined;
-      }
-      if (!response.ok) {
-        throw new Error(`Auth service /api/auth/me failed with status ${response.status}`);
-      }
-      const body = (await response.json()) as { user?: AuthUser };
-      return body.user;
-    },
+    findById: remoteLookup.findById,
 
     async verifyPassword(id, password) {
-      const user = await this.findById(id);
+      // Step-up password verification always reads authoritative auth state.
+      const user = await remoteLookup.findById(id);
       if (!user || user.approvalStatus !== "approved") {
         throw new AppError(403, "FORBIDDEN", "Approval changed");
       }
-      const response = await fetchImpl(new URL("/api/auth/login", authServiceUrl), {
+      const response = await fetchImpl(new URL("/api/auth/login", authServiceUrl!), {
         method: "POST",
         headers: {
           "content-type": "application/json",

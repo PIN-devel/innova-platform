@@ -5,8 +5,9 @@ K-EXAONE 2.5 API 기반 어드민 전용 실시간 스트리밍 채팅 PoC 마�
 ## 기능
 
 - `POST /api/ai/chat/stream`: SSE 기반 K-EXAONE 2.5 실시간 스트리밍 채팅 프록시
+- `POST /internal/events/user-status`, `POST /internal/events/dlq`: (내부 전용, APISIX 비공개) 사용자 상태 변경 Push 수신 및 캐시 무효화
 - HttpOnly 쿠키(`innova_auth`) 기반 어드민 인가(`role === 'admin'`)
-- 1 RPS 동시성 제어 및 즉시 429 차단
+- 분산 락 기반 1 RPS 동시성 제어 (`DistributedExaoneRateGate`, Upstash Redis REST 또는 인메모리 폴백) 및 즉시 429 차단
 - 추론(`reasoning_content`) 및 답변(`content`) 분리 및 첫 단어 앞단 공백 제거
 - 클라이언트 연결 중단 시 업스트림 스트림 즉시 취소
 

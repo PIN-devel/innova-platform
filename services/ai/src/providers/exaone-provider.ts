@@ -3,7 +3,7 @@ import {
   OpenAiCompatibleProvider,
   type OpenAiCompatibleProviderConfig,
 } from "./openai-compatible-provider.js";
-import type { AiChatStreamRequestParams } from "./types.js";
+import type { AiChatStreamRequestParams, RateGate } from "./types.js";
 import { ExaoneRateGate } from "./rate-gate.js";
 
 export interface ExaoneProviderConfig
@@ -11,7 +11,7 @@ export interface ExaoneProviderConfig
   apiKey?: string;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
-  rateGate?: ExaoneRateGate;
+  rateGate?: RateGate;
 }
 
 export class ExaoneChatProvider extends OpenAiCompatibleProvider {

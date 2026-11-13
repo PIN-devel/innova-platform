@@ -14,7 +14,7 @@
     "docker:down": "docker compose down",
     "build": "pnpm -r build",
     "typecheck": "pnpm build:shared && pnpm -r --filter './apps/**' --filter './services/**' --filter @innova/auth-kit --filter @innova/contracts typecheck",
-    "test": "pnpm build:shared && pnpm -r --filter './apps/**' --filter './services/**' test",
+    "test": "pnpm build:shared && pnpm -r --filter './apps/**' --filter './services/**' --filter @innova/auth-kit test",
     "lint": "pnpm -r lint"
   },
   "devDependencies": {

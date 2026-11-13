@@ -41,6 +41,13 @@ for VAR in UPSTREAM_AUTH_SCHEME UPSTREAM_AUTH_HOST UPSTREAM_AUTH_PORT UPSTREAM_F
   fi
 done
 
+# 4. Ensure internal event routes are never exposed through the public API gateway
+if grep -qE '/internal(/|\*|$|[[:space:]]|")' "$TEMPLATE_YAML"; then
+  echo "Error: $TEMPLATE_YAML must not expose /internal/* endpoints publicly."
+  exit 1
+fi
+echo "==> [validate-config] Internal event boundary check passed."
+
 TEMPLATE_BYTES=$(wc -c < "$TEMPLATE_YAML" | tr -d ' ')
 echo "==> [validate-config] Template size: ${TEMPLATE_BYTES} bytes"
 echo "==> [validate-config] All configuration checks passed successfully."

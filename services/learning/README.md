@@ -11,6 +11,7 @@ Innova 플랫폼의 학습(Exam Drill 및 Curriculum) 마이크로서비스입�
 ## 엔드포인트
 - `/api/exam/**`: 시험 문제 은행 조회 (`GET /banks/default`, `GET /banks/:id`), 커스텀 문제 은행 등록 (`POST /banks`)
 - `/api/curriculum/**`: 커리큘럼 과목·단원·문제 조회, 정답 채점 (`POST /subjects/:subjectId/chapters/:chapterId/questions/:questionId/grade`), 비공개 에셋 이미지 서빙 (`GET /subjects/:subjectId/chapters/:chapterId/blocks/:blockId/assets/:index`)
+- `POST /internal/events/user-status`, `POST /internal/events/dlq`: (내부 전용, APISIX 비공개) 사용자 상태 변경 Push 수신 및 `auth:user:{userId}` 캐시 무효화
 - `GET /health`, `GET /api/health`, `GET /ready`, `GET /api/ready`
 
 그 외 `/api/*` 경로는 `404 NOT_FOUND`를 반환합니다.
@@ -31,6 +32,9 @@ Curriculum 삽화/다이어그램 에셋은 비공개 GCS 버킷(`gs://innova-as
 - `GCP_STORAGE_TOKEN`: (선택) 메타데이터 서버가 없는 환경을 위한 정적 Bearer 토큰
 - `EXAM_BANK_SEED_PATH`: (선택) 시험 문제 은행 비공개 시드 파일 경로
 - `AUTH_COOKIE_NAME`: 세션 쿠키명 (기본: `innova_auth`)
+- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`: (선택) 서버리스 Redis 캐시 (미설정 시 인메모리 폴백)
+- `AUTH_USER_CACHE_TTL_MS`, `EXAM_BANK_CACHE_TTL_MS`: (선택) 사용자 및 시험 문제 은행 캐시 TTL (ms)
+- `INTERNAL_EVENT_TOKEN`: (선택) `/internal/events/*` 웹훅 인증 토큰
 - `PORT`: 서비스 포트 (기본: 8080)
 
 ## 스크립트

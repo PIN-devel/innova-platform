@@ -48,18 +48,18 @@ export const aiChatRoutes: FastifyPluginAsync<AiChatRoutesOptions> = async (
       }
 
       // Check rate gate if provider defines one (e.g. EXAONE 1 RPS)
-      if (provider.rateGate) {
-        const gateResult = provider.rateGate.tryAcquire();
-        if (!gateResult.allowed) {
-          return reply
-            .header("retry-after-ms", String(gateResult.retryAfterMs))
-            .header(
-              "Retry-After",
-              String(Math.ceil(gateResult.retryAfterMs / 1_000)),
-            )
-            .code(429)
-            .send(apiErrorBody(new RateLimitError(gateResult.retryAfterMs)));
-        }
+      const gateResult = provider.rateGate
+        ? await provider.rateGate.tryAcquire()
+        : undefined;
+      if (gateResult && !gateResult.allowed) {
+        return reply
+          .header("retry-after-ms", String(gateResult.retryAfterMs))
+          .header(
+            "Retry-After",
+            String(Math.ceil(gateResult.retryAfterMs / 1_000)),
+          )
+          .code(429)
+          .send(apiErrorBody(new RateLimitError(gateResult.retryAfterMs)));
       }
 
       const controller = new AbortController();
@@ -124,7 +124,9 @@ export const aiChatRoutes: FastifyPluginAsync<AiChatRoutesOptions> = async (
         }
       } finally {
         if (provider.rateGate) {
-          provider.rateGate.release();
+          await provider.rateGate.release?.(
+            gateResult?.allowed ? gateResult.lease : undefined,
+          );
         }
         request.raw.off("close", onClose);
         if (!reply.raw.writableEnded) {
