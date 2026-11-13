@@ -49,7 +49,7 @@
 - **`apps/`**: 사용자 접점 애플리케이션 및 엣지 컴포넌트
   - `apps/web`: React + Vite 프런트엔드 (Firebase Hosting)
   - `apps/api-gateway`: Apache APISIX Stand-alone 게이트웨이 (Cloud Run, 현 위치 유지)
-  - `apps/api`: 기존 Render Fastify 모놀리스 (전환 완료 및 검증 시까지 롤백 대비용으로 보존)
+  - `apps/api`: 기존 Render Fastify 모놀리스 (PIN-78에서 전환 완료 검증 후 완전 삭제됨)
 - **`services/`**: 도메인별 백엔드 마이크로서비스 독립 패키지
   - `services/auth` (`@innova/auth`): 인증 및 회원 관리 전용 서비스 (Cloud Run `innova-auth-api`)
   - `services/learning` (`@innova/learning`): 학습(Exam Drill & Curriculum) 전용 서비스 (Cloud Run `innova-learning-api`, [PIN-76](https://linear.app/pin-dev/issue/PIN-76))
@@ -69,7 +69,7 @@
   - **서비스 간 통신 및 정합성 보호**:
     - 타 도메인의 상태 조회·검증이 필요한 경우 반드시 해당 도메인 서비스가 노출하는 **HTTP API**를 호출한다.
     - 여러 마이크로서비스에 걸친 상태 변경이 필요한 경우 소유 서비스의 API를 호출하고 **보상 트랜잭션(Saga / 망취소)** 패턴으로 원자성과 최종 정합성을 보호한다. 단, 서비스 경계를 지키면서 API 조회만으로 단순하게 해결 가능한 경우에는 불필요한 분산 트랜잭션 복잡성을 도입하지 않는다.
-- **전환기 이중 쓰기 안전장치**: 기존 Render 모놀리스(`apps/api`)의 모듈이 `neondb.users`를 참조하므로, PIN-78(최종 레거시 정리) 전까지 `services/auth`는 `LEGACY_DATABASE_URL`이 설정되어 있을 때 회원가입/승인/거절 이벤트를 레거시 `neondb.users`에 한시적으로 미러링하여 Strangler Fig 전환기 데이터 정합성을 보장한다.
+- **전환기 이중 쓰기 안전장치**: 기존 Render 모놀리스(`apps/api`)의 모듈이 `neondb.users`를 참조하므로, PIN-78(최종 레거시 정리) 전까지 `services/auth`는 `LEGACY_DATABASE_URL`이 설정되어 있을 때 회원가입/승인/거절 이벤트를 레거시 `neondb.users`에 한시적으로 미러링하여 Strangler Fig 전환기 데이터 정합성을 보장했다. PIN-78 완료와 함께 이중 쓰기 로직과 `LEGACY_DATABASE_URL` 설정은 완전히 제거되었다.
 
 ### 3) 공통 세션 쿠키 명칭 통일 및 양방향 브릿지
 - 기존 레거시 명칭인 `exam_drill_auth`를 폐기하고, 플랫폼 공통 쿠키 명칭 **`innova_auth`**로 통일한다.

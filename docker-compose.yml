@@ -1,0 +1,122 @@
+# ==============================================================================
+# Innova Platform - Cloud Exit Package (docker-compose.yml)
+# Reference: ADR-0004 (Database-per-Service & Multi-container Orchestration)
+#
+# Usage:
+#   1. Prepare environment variables in .env (or export them):
+#      - AUTH_DATABASE_URL (Neon dev branch connection string for innova_auth)
+#      - LEARNING_DATABASE_URL (Neon dev branch connection string for innova_learning)
+#      - FINANCE_DATABASE_URL (Neon dev branch connection string for innova_finance)
+#      - JWT_SECRET (32+ character random secret)
+#      - FINANCE_RAW_ENCRYPTION_KEY (64-char hex key for raw data encryption)
+#      - EXAONE_API_KEY (optional, for AI service)
+#   2. Run:
+#      docker compose up --build -d
+#   3. Access API Gateway at:
+#      http://localhost:8080/health
+#      http://localhost:8080/api/auth/...
+#      http://localhost:8080/api/exam/...
+#      http://localhost:8080/api/finance/...
+#      http://localhost:8080/api/ai/...
+# ==============================================================================
+
+services:
+  api-gateway:
+    build:
+      context: ./apps/api-gateway
+      dockerfile: Dockerfile
+    container_name: innova-api-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - UPSTREAM_AUTH_URL=http://auth-service:8080
+      - UPSTREAM_LEARNING_URL=http://learning-service:8080
+      - UPSTREAM_FINANCE_URL=http://finance-service:8080
+      - UPSTREAM_AI_URL=http://ai-service:8080
+    depends_on:
+      - auth-service
+      - learning-service
+      - finance-service
+      - ai-service
+    networks:
+      - innova-network
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    container_name: innova-auth-api
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - AUTH_COOKIE_NAME=innova_auth
+      - DATABASE_URL=${AUTH_DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - innova-network
+
+  learning-service:
+    build:
+      context: .
+      dockerfile: services/learning/Dockerfile
+    container_name: innova-learning-api
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - AUTH_COOKIE_NAME=innova_auth
+      - DATABASE_URL=${LEARNING_DATABASE_URL}
+      - AUTH_SERVICE_URL=http://auth-service:8080
+      - JWT_SECRET=${JWT_SECRET}
+      - CURRICULUM_ASSET_BUCKET=${CURRICULUM_ASSET_BUCKET:-innova-assets}
+      - CURRICULUM_ASSET_ROOT=${CURRICULUM_ASSET_ROOT:-}
+    networks:
+      - innova-network
+
+  finance-service:
+    build:
+      context: .
+      dockerfile: services/finance/Dockerfile
+    container_name: innova-finance-api
+    restart: unless-stopped
+    ports:
+      - "8083:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - AUTH_COOKIE_NAME=innova_auth
+      - DATABASE_URL=${FINANCE_DATABASE_URL}
+      - AUTH_SERVICE_URL=http://auth-service:8080
+      - JWT_SECRET=${JWT_SECRET}
+      - FINANCE_RAW_ENCRYPTION_KEY=${FINANCE_RAW_ENCRYPTION_KEY}
+      - FINANCE_ALLOWED_ORIGINS=${FINANCE_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:8080}
+    networks:
+      - innova-network
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: services/ai/Dockerfile
+    container_name: innova-ai-api
+    restart: unless-stopped
+    ports:
+      - "8084:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - AUTH_COOKIE_NAME=innova_auth
+      - AUTH_SERVICE_URL=http://auth-service:8080
+      - JWT_SECRET=${JWT_SECRET}
+      - EXAONE_API_KEY=${EXAONE_API_KEY:-}
+    networks:
+      - innova-network
+
+networks:
+  innova-network:
+    driver: bridge

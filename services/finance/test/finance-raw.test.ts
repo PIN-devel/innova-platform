@@ -10,7 +10,7 @@ import {createFinanceRawRepository} from '../src/db/finance-raw.js';
 import {createRawCipher} from '../src/finance-raw-crypto.js';
 import {buildApp} from '../src/app.js';
 import type {UserLookup} from '../src/db/users.js';
-import {createApplicationLogger} from '../src/logger.js';
+import {createApplicationLogger} from '@innova/auth-kit';
 const owner=randomUUID(),other=randomUUID(),admin=randomUUID(),pending=randomUUID();
 const input=():FinanceRawImport=>({batchId:randomUUID(),document:financeRawDocumentSchema.parse({kind:'kb-bank-pdf',fileHash:'a'.repeat(64),parserVersion:'kb-raw-v1',metadata:[{key:'synthetic',value:'SYNTHETIC_PRIVATE_MARKER',page:1}],rows:[{sequence:1,page:1,sourceRow:1,kind:'transaction',cells:bankRawColumns.map((column,i)=>({column,value:i===6?null:i===3?'0':i===4?'100':i===5?'100':'synthetic',type:i===6?'blank':'text'}))}]})});
 async function fixture(){

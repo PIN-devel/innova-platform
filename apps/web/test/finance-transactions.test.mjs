@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import {setupServer} from 'msw/node';
 import {createServer} from 'vite';
 import {createFinanceRawHandlers} from '../src/mocks/finance-raw-handlers.ts';
-import {cardSource} from '../../api/test/fixtures/finance-raw.ts';
+import {cardSource} from '../../../services/finance/test/fixtures/finance-raw.ts';
 test('transaction mock manual projection/delete/reimport follows owner and privacy lifecycle',async t=>{
  let user={id:crypto.randomUUID(),email:'synthetic@example.invalid',role:'member',approvalStatus:'approved'};const server=setupServer(...createFinanceRawHandlers(()=>user));server.listen({onUnhandledRequest:'error'});t.after(()=>server.close());
  const headers=()=>({'x-expected-user':user.id,'x-finance-request':'1',origin:'http://localhost','content-type':'application/json'}),call=(path,body)=>fetch('http://localhost/api/finance/'+path,{headers:headers(),method:body?'POST':'GET',...(body?{body:JSON.stringify(body)}:{})});

@@ -1,7 +1,6 @@
 import "dotenv/config";
+import { createApplicationLogger, registerShutdown } from "@innova/auth-kit";
 import { buildApp } from "./app.js";
-import { createApplicationLogger } from "./logger.js";
-import { registerShutdown } from "./shutdown.js";
 
 const port = Number(process.env.PORT ?? 8080);
 const environment = process.env.NODE_ENV ?? "development";
