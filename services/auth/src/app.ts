@@ -2,7 +2,20 @@ import Fastify, { LogController, type FastifyBaseLogger, type FastifyReply, type
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import { randomUUID } from "node:crypto";
-import { AUTH_COOKIE_NAME, AppError, apiErrorBody, createAdminAuthGuard, createApplicationLogger, invalidInput } from "@innova/auth-kit";
+import {
+  AUTH_COOKIE_NAME,
+  AppError,
+  apiErrorBody,
+  createAdminAuthGuard,
+  createApplicationLogger,
+  createRuntimeCacheStore,
+  createRuntimeDistributedLock,
+  createRuntimeEventPublisher,
+  invalidInput,
+  type CacheStore,
+  type DistributedLock,
+  type EventPublisher,
+} from "@innova/auth-kit";
 import { createDatabase } from "./db/client.js";
 import { createUserRepository, type UserRepository } from "./db/users.js";
 import { READINESS_TIMEOUT_MS, runReadinessCheck } from "./readiness.js";
@@ -23,12 +36,18 @@ const fastifyBadRequestCodes = new Set([
 export function buildApp({
   logger = createApplicationLogger(),
   userRepository,
+  cacheStore,
+  distributedLock,
+  eventPublisher,
   readinessCheck,
   readinessTimeoutMs = READINESS_TIMEOUT_MS,
   jwtSecret = process.env.JWT_SECRET,
 }: {
   logger?: false | FastifyBaseLogger;
   userRepository?: UserRepository;
+  cacheStore?: CacheStore;
+  distributedLock?: DistributedLock;
+  eventPublisher?: EventPublisher;
   readinessCheck?: (signal: AbortSignal) => Promise<unknown>;
   readinessTimeoutMs?: number;
   jwtSecret?: string;
@@ -99,8 +118,20 @@ export function buildApp({
   app.get("/ready", handleReady);
   app.get("/api/ready", handleReady);
 
+  const activeCacheStore = cacheStore ?? createRuntimeCacheStore();
+  const activeDistributedLock = distributedLock ?? createRuntimeDistributedLock();
+  const activeEventPublisher = eventPublisher ?? createRuntimeEventPublisher({
+    logger: logger || undefined,
+  });
   app.register(authRoutes, { prefix: "/api/auth", users });
-  app.register(adminUserRoutes, { prefix: "/api/admin", users, requireAdmin: createAdminAuthGuard(users) });
+  app.register(adminUserRoutes, {
+    prefix: "/api/admin",
+    users,
+    requireAdmin: createAdminAuthGuard(users),
+    cacheStore: activeCacheStore,
+    distributedLock: activeDistributedLock,
+    eventPublisher: activeEventPublisher,
+  });
 
   return app;
 }
