@@ -26,6 +26,10 @@ export class ExaoneChatProvider extends OpenAiCompatibleProvider {
       apiKey: config.apiKey ?? process.env.EXAONE_API_KEY,
       fetchImpl: config.fetchImpl,
       rateGate: config.rateGate ?? new ExaoneRateGate(1_000),
+      maxRetries: config.maxRetries,
+      initialRetryDelayMs: config.initialRetryDelayMs,
+      maxRetryDelayMs: config.maxRetryDelayMs,
+      sleepImpl: config.sleepImpl,
     });
   }
 
