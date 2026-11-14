@@ -122,6 +122,9 @@ export const aiChatRoutes: FastifyPluginAsync<AiChatRoutesOptions> = async (
                 event: "ai.stream.upstream_error",
                 errorCode: error.code,
                 statusCode: error.statusCode,
+                ...(error instanceof RateLimitError && error.diagnosticContext
+                  ? { upstream: error.diagnosticContext }
+                  : {}),
               },
               error.message,
             );
