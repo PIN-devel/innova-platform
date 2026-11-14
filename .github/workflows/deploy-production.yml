@@ -672,7 +672,7 @@ jobs:
             --min-instances=0 \
             --max-instances=1 \
             --concurrency=80 \
-            --timeout=60s \
+            --timeout=120s \
             --memory=256Mi \
             --cpu=1 \
             --set-env-vars="${ENV_VARS}"
@@ -814,6 +814,7 @@ jobs:
             --port=8080 \
             --min-instances=0 \
             --max-instances=1 \
+            --timeout=120s \
             --memory=256Mi \
             --cpu=1 \
             --set-env-vars="^||^UPSTREAM_AUTH_URL=${AUTH_URL}||UPSTREAM_LEARNING_URL=${LEARNING_URL}||UPSTREAM_FINANCE_URL=${FINANCE_URL}||UPSTREAM_AI_URL=${AI_URL}"

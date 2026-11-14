@@ -39,7 +39,7 @@ export class ExaoneChatProvider extends OpenAiCompatibleProvider {
       temperature: 1.0,
       top_p: 0.95,
       chat_template_kwargs: { preserve_thinking: false },
-      reasoning_effort: params.reasoningEffort ?? "max",
+      reasoning_effort: params.reasoningEffort ?? "low",
     };
   }
 

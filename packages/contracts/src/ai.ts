@@ -12,7 +12,7 @@ export const aiChatMessageSchema = z.object({
 
 export const aiChatStreamRequestSchema = z.object({
   messages: z.array(aiChatMessageSchema).min(1).max(100),
-  reasoningEffort: aiReasoningEffortSchema.optional().default("max"),
+  reasoningEffort: aiReasoningEffortSchema.optional().default("low"),
 });
 
 export const aiChatStreamEventSchema = z.discriminatedUnion("type", [

@@ -193,6 +193,38 @@ test("ExaoneChatProvider streams reasoning and content with stripped leading whi
   ]);
 });
 
+test("ExaoneChatProvider defaults reasoning_effort to low when omitted", async (t) => {
+  let capturedBody: any = null;
+  const app = buildApp({
+    logger: false,
+    userLookup,
+    jwtSecret,
+    apiKey: "test-api-key",
+    fetchImpl: async (_url, init) => {
+      capturedBody = JSON.parse(init?.body as string);
+      return new Response(createMockSseStream(["data: [DONE]\n\n"]), {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    },
+  });
+  t.after(() => app.close());
+  await app.ready();
+
+  const adminToken = app.jwt.sign({ sub: adminUser.id });
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/ai/chat/stream",
+    headers: { cookie: `innova_auth=${adminToken}` },
+    payload: {
+      messages: [{ role: "user", content: "기본 추론 강도 확인" }],
+    },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(capturedBody.reasoning_effort, "low");
+});
+
 test("swapping provider with generic OpenAiCompatibleProvider works seamlessly", async (t) => {
   let capturedBody: any = null;
   const mockChunks = [
@@ -402,7 +434,7 @@ test("distributed rate gate enforces single-flight and 1-RPS across two app inst
     apiKey: "test-key",
     cacheStore: sharedCache,
     distributedLock: sharedLock,
-    rateGate: new DistributedExaoneRateGate(sharedLock, sharedCache, 1_000, 65_000),
+    rateGate: new DistributedExaoneRateGate(sharedLock, sharedCache, 1_000, 65_000, () => now),
     fetchImpl: async () => {
       firstStreamStarted();
       await new Promise<void>((resolve) => {
@@ -418,7 +450,7 @@ test("distributed rate gate enforces single-flight and 1-RPS across two app inst
     apiKey: "test-key",
     cacheStore: sharedCache,
     distributedLock: sharedLock,
-    rateGate: new DistributedExaoneRateGate(sharedLock, sharedCache, 1_000, 65_000),
+    rateGate: new DistributedExaoneRateGate(sharedLock, sharedCache, 1_000, 65_000, () => now),
     fetchImpl: async () => new Response(createMockSseStream([sseBody]), { status: 200 }),
   });
 
@@ -447,7 +479,8 @@ test("distributed rate gate enforces single-flight and 1-RPS across two app inst
   assert.equal(blockedRes.json().error.code, "RATE_LIMITED");
   assert.ok(blockedRes.headers["retry-after-ms"]);
 
-  // Finish instance A stream -> lock is released, cooldown still blocks immediate retry, then after 1s succeeds
+  // Advance clock beyond initial 1s interval while stream A is active; release still enforces post-stream 1s cooldown
+  now += 5_000;
   releaseFirstStream?.();
   const firstRes = await firstPromise;
   assert.equal(firstRes.statusCode, 200);
@@ -468,4 +501,73 @@ test("distributed rate gate enforces single-flight and 1-RPS across two app inst
     payload: { messages: [{ role: "user", content: "쿨다운 이후 요청" }] },
   });
   assert.equal(afterCooldownRes.statusCode, 200);
+});
+
+test("streamTimeoutMs aborts slow upstream stream, emits timeout SSE error, and releases rate gate lock", async (t) => {
+  let now = 2_000_000;
+  let upstreamAborted = false;
+  let callCount = 0;
+  const rateGate = new ExaoneRateGate(1_000, () => now);
+
+  const app = buildApp({
+    logger: false,
+    userLookup,
+    jwtSecret,
+    apiKey: "test-key",
+    rateGate,
+    streamTimeoutMs: 40,
+    fetchImpl: async (_url, init) => {
+      callCount += 1;
+      if (callCount === 1) {
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => {
+              upstreamAborted = true;
+              reject(new DOMException("Aborted", "AbortError"));
+            },
+            { once: true },
+          );
+        });
+      }
+      return new Response(createMockSseStream(["data: [DONE]\n\n"]), {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    },
+  });
+  t.after(() => app.close());
+  await app.ready();
+
+  const adminToken = app.jwt.sign({ sub: adminUser.id });
+  const timeoutRes = await app.inject({
+    method: "POST",
+    url: "/api/ai/chat/stream",
+    headers: { cookie: `innova_auth=${adminToken}` },
+    payload: { messages: [{ role: "user", content: "느린 요청" }] },
+  });
+
+  assert.equal(timeoutRes.statusCode, 200);
+  assert.equal(upstreamAborted, true);
+  assert.match(timeoutRes.body, /^: stream-open/m);
+
+  const lines = timeoutRes.body
+    .split("\n")
+    .filter((l) => l.startsWith("data: "))
+    .map((l) => JSON.parse(l.slice(6)));
+
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0].type, "error");
+  assert.equal(lines[0].code, "INTERNAL_ERROR");
+  assert.match(lines[0].message, /55초/);
+
+  // Lock was released on timeout; once cooldown passes, next request succeeds
+  now += 1_500;
+  const followUpRes = await app.inject({
+    method: "POST",
+    url: "/api/ai/chat/stream",
+    headers: { cookie: `innova_auth=${adminToken}` },
+    payload: { messages: [{ role: "user", content: "후속 요청" }] },
+  });
+  assert.equal(followUpRes.statusCode, 200);
 });

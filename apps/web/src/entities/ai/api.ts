@@ -35,7 +35,7 @@ export interface StreamAiChatOptions {
 
 export async function streamAiChat({
   messages,
-  reasoningEffort = "max",
+  reasoningEffort = "low",
   signal,
   onEvent,
 }: StreamAiChatOptions): Promise<void> {
@@ -85,6 +85,8 @@ export async function streamAiChat({
         message = "로그인이 필요합니다.";
       } else if (response.status === 403) {
         message = "AI Lab(K-EXAONE 2.5 PoC)은 관리자 전용 서비스입니다.";
+      } else if (response.status === 502 || response.status === 504) {
+        message = `서버 응답 시간이 초과되었거나 게이트웨이 오류가 발생했습니다 (${response.status}). 추론 강도를 '낮음(low)' 또는 '보통(medium)'으로 낮추어 다시 시도해 주세요.`;
       } else {
         message = `서버 응답 오류가 발생했습니다 (${response.status}).`;
       }
