@@ -10,6 +10,44 @@ export interface OpenAiCompatibleProviderConfig {
   apiKey?: string;
   fetchImpl?: typeof fetch;
   rateGate?: RateGate;
+  maxRetries?: number;
+  initialRetryDelayMs?: number;
+  maxRetryDelayMs?: number;
+  sleepImpl?: (ms: number, signal?: AbortSignal) => Promise<void>;
+}
+
+const DEFAULT_MAX_RETRIES = 3;
+const DEFAULT_INITIAL_RETRY_DELAY_MS = 1_200;
+const DEFAULT_MAX_RETRY_DELAY_MS = 5_000;
+
+const RATE_LIMIT_DIAGNOSTIC_HEADERS = [
+  "x-second-rate-limit",
+  "x-second-rate-limit-remaining",
+  "x-minute-rate-limit",
+  "x-minute-rate-limit-remaining",
+  "x-day-rate-limit",
+  "x-day-rate-limit-remaining",
+  "retry-after",
+  "retry-after-ms",
+  "x-request-id",
+] as const;
+
+function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+  }
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal?.reason ?? new DOMException("Aborted", "AbortError"));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    timer.unref?.();
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 export class OpenAiCompatibleProvider implements AiChatProvider {
@@ -19,6 +57,10 @@ export class OpenAiCompatibleProvider implements AiChatProvider {
   protected readonly baseUrl: string;
   protected readonly apiKey?: string;
   protected readonly fetchImpl: typeof fetch;
+  protected readonly maxRetries: number;
+  protected readonly initialRetryDelayMs: number;
+  protected readonly maxRetryDelayMs: number;
+  protected readonly sleepImpl: (ms: number, signal?: AbortSignal) => Promise<void>;
 
   constructor(config: OpenAiCompatibleProviderConfig) {
     this.providerName = config.providerName ?? "openai-compatible";
@@ -27,6 +69,10 @@ export class OpenAiCompatibleProvider implements AiChatProvider {
     this.apiKey = config.apiKey;
     this.fetchImpl = config.fetchImpl ?? fetch;
     this.rateGate = config.rateGate;
+    this.maxRetries = config.maxRetries ?? DEFAULT_MAX_RETRIES;
+    this.initialRetryDelayMs = config.initialRetryDelayMs ?? DEFAULT_INITIAL_RETRY_DELAY_MS;
+    this.maxRetryDelayMs = config.maxRetryDelayMs ?? DEFAULT_MAX_RETRY_DELAY_MS;
+    this.sleepImpl = config.sleepImpl ?? abortableSleep;
   }
 
   protected buildHeaders(): HeadersInit {
@@ -57,6 +103,63 @@ export class OpenAiCompatibleProvider implements AiChatProvider {
     return new URL(`${trimmed}${suffix}`);
   }
 
+  protected extractRetryAfterMs(response: Response, errorBodyText?: string): number | undefined {
+    const retryAfterMsHeader = response.headers.get("retry-after-ms");
+    const retryAfterSecHeader = response.headers.get("retry-after");
+    if (retryAfterMsHeader && !Number.isNaN(Number(retryAfterMsHeader))) {
+      return Math.max(0, Math.round(Number(retryAfterMsHeader)));
+    }
+    if (retryAfterSecHeader && !Number.isNaN(Number(retryAfterSecHeader))) {
+      return Math.max(0, Math.round(Number(retryAfterSecHeader) * 1_000));
+    }
+    if (errorBodyText) {
+      try {
+        const parsedBody = JSON.parse(errorBodyText) as {
+          retryAfterMs?: unknown;
+          retry_after?: unknown;
+          error?: { retryAfterMs?: unknown; retry_after?: unknown };
+        };
+        const bodyRetryAfterMs = parsedBody.retryAfterMs ?? parsedBody.error?.retryAfterMs;
+        const bodyRetryAfterSec = parsedBody.retry_after ?? parsedBody.error?.retry_after;
+        if (
+          typeof bodyRetryAfterMs === "number" &&
+          Number.isFinite(bodyRetryAfterMs) &&
+          bodyRetryAfterMs > 0
+        ) {
+          return Math.max(0, Math.round(bodyRetryAfterMs));
+        }
+        if (
+          typeof bodyRetryAfterSec === "number" &&
+          Number.isFinite(bodyRetryAfterSec) &&
+          bodyRetryAfterSec > 0
+        ) {
+          return Math.max(0, Math.round(bodyRetryAfterSec * 1_000));
+        }
+      } catch {
+        // Ignore non-JSON error bodies.
+      }
+    }
+    return undefined;
+  }
+
+  protected collectRateLimitDiagnostics(
+    response: Response,
+    errorBodyText?: string,
+  ): Record<string, unknown> {
+    const headers: Record<string, string> = {};
+    for (const key of RATE_LIMIT_DIAGNOSTIC_HEADERS) {
+      const value = response.headers.get(key);
+      if (value !== null) {
+        headers[key] = value;
+      }
+    }
+    return {
+      upstreamStatus: response.status,
+      headers,
+      ...(errorBodyText ? { body: errorBodyText.slice(0, 300) } : {}),
+    };
+  }
+
   protected handleErrorStatus(response: Response, errorBodyText?: string): never {
     if (response.status === 400) {
       throw new AppError(
@@ -66,45 +169,15 @@ export class OpenAiCompatibleProvider implements AiChatProvider {
       );
     }
     if (response.status === 429) {
-      const retryAfterMsHeader = response.headers.get("retry-after-ms");
-      const retryAfterSecHeader = response.headers.get("retry-after");
-      let retryAfterMs = 1_000;
-      if (retryAfterMsHeader && !Number.isNaN(Number(retryAfterMsHeader))) {
-        retryAfterMs = Number(retryAfterMsHeader);
-      } else if (retryAfterSecHeader && !Number.isNaN(Number(retryAfterSecHeader))) {
-        retryAfterMs = Number(retryAfterSecHeader) * 1_000;
-      } else if (errorBodyText) {
-        try {
-          const parsedBody = JSON.parse(errorBodyText) as {
-            retryAfterMs?: unknown;
-            retry_after?: unknown;
-            error?: { retryAfterMs?: unknown; retry_after?: unknown };
-          };
-          const bodyRetryAfterMs = parsedBody.retryAfterMs ?? parsedBody.error?.retryAfterMs;
-          const bodyRetryAfterSec = parsedBody.retry_after ?? parsedBody.error?.retry_after;
-          if (
-            typeof bodyRetryAfterMs === "number" &&
-            Number.isFinite(bodyRetryAfterMs) &&
-            bodyRetryAfterMs > 0
-          ) {
-            retryAfterMs = bodyRetryAfterMs;
-          } else if (
-            typeof bodyRetryAfterSec === "number" &&
-            Number.isFinite(bodyRetryAfterSec) &&
-            bodyRetryAfterSec > 0
-          ) {
-            retryAfterMs = bodyRetryAfterSec * 1_000;
-          }
-        } catch {
-          // Ignore non-JSON error bodies.
-        }
-      }
-      const normalizedRetryAfterMs = Math.max(0, Math.round(retryAfterMs));
-      const message =
-        normalizedRetryAfterMs > 1_000
-          ? `요청 한도(1 RPS)를 초과했습니다. 약 ${Math.ceil(normalizedRetryAfterMs / 1_000)}초 후 다시 시도해 주세요.`
-          : undefined;
-      throw new RateLimitError(normalizedRetryAfterMs, message);
+      const normalizedRetryAfterMs = this.extractRetryAfterMs(response, errorBodyText) ?? 1_000;
+      const diagnostics = this.collectRateLimitDiagnostics(response, errorBodyText);
+      const isDailyQuotaExhausted = response.headers.get("x-day-rate-limit-remaining") === "0";
+      const message = isDailyQuotaExhausted
+        ? "EXAONE API 일일 요청 한도를 초과했습니다. 내일 다시 시도해 주세요."
+        : normalizedRetryAfterMs > 1_000
+          ? `EXAONE API 요청 한도 또는 일시적 트래픽 제한(429)에 도달했습니다. 약 ${Math.ceil(normalizedRetryAfterMs / 1_000)}초 후 다시 시도해 주세요.`
+          : "EXAONE API 요청 한도 또는 일시적 트래픽 제한(429)에 도달했습니다. 잠시 후 다시 시도해 주세요.";
+      throw new RateLimitError(normalizedRetryAfterMs, message, diagnostics);
     }
     throw new AppError(502, "INTERNAL_ERROR", `${this.providerName} API 연동 중 오류가 발생했습니다.`);
   }
@@ -114,15 +187,40 @@ export class OpenAiCompatibleProvider implements AiChatProvider {
     const headers = this.buildHeaders();
     const body = JSON.stringify(this.buildRequestBody(params));
 
-    const response = await this.fetchImpl(endpoint, {
-      method: "POST",
-      headers,
-      body,
-      signal: params.signal,
-    });
+    let response: Response;
+    let errorBodyText = "";
+    let attempt = 0;
+
+    while (true) {
+      response = await this.fetchImpl(endpoint, {
+        method: "POST",
+        headers,
+        body,
+        signal: params.signal,
+      });
+
+      const isDailyQuotaExhausted = response.headers.get("x-day-rate-limit-remaining") === "0";
+      if (response.status !== 429 || isDailyQuotaExhausted || attempt >= this.maxRetries) {
+        break;
+      }
+
+      try {
+        errorBodyText = await response.text();
+      } catch {
+        errorBodyText = "";
+      }
+
+      const headerOrBodyDelay = this.extractRetryAfterMs(response, errorBodyText);
+      const exponentialBackoffMs = this.initialRetryDelayMs * 2 ** attempt;
+      const delayMs = Math.min(
+        Math.max(headerOrBodyDelay ?? 0, exponentialBackoffMs),
+        this.maxRetryDelayMs,
+      );
+      attempt += 1;
+      await this.sleepImpl(delayMs, params.signal);
+    }
 
     if (!response.ok) {
-      let errorBodyText = "";
       try {
         errorBodyText = await response.text();
       } catch {

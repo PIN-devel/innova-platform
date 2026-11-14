@@ -5,6 +5,7 @@ import type { AuthUser } from "@innova/contracts";
 import { buildApp } from "../src/app.js";
 import {
   DistributedExaoneRateGate,
+  ExaoneChatProvider,
   ExaoneRateGate,
   OpenAiCompatibleProvider,
 } from "../src/providers/index.js";
@@ -357,12 +358,15 @@ test("upstream errors map to appropriate responses", async (t) => {
     logger: false,
     userLookup,
     jwtSecret,
-    apiKey: "test-key",
-    fetchImpl: async () =>
-      new Response(JSON.stringify({ error: "Rate limit" }), {
-        status: 429,
-        headers: { "retry-after-ms": "3500" },
-      }),
+    chatProvider: new ExaoneChatProvider({
+      apiKey: "test-key",
+      maxRetries: 0,
+      fetchImpl: async () =>
+        new Response(JSON.stringify({ error: "Rate limit" }), {
+          status: 429,
+          headers: { "retry-after-ms": "3500" },
+        }),
+    }),
   });
   t.after(() => app429.close());
   await app429.ready();
@@ -570,4 +574,131 @@ test("streamTimeoutMs aborts slow upstream stream, emits timeout SSE error, and 
     payload: { messages: [{ role: "user", content: "후속 요청" }] },
   });
   assert.equal(followUpRes.statusCode, 200);
+});
+
+test("ExaoneChatProvider retries transient upstream 429 and succeeds", async (t) => {
+  let callCount = 0;
+  const sleepDelays: number[] = [];
+
+  const chatProvider = new ExaoneChatProvider({
+    apiKey: "test-key",
+    maxRetries: 3,
+    sleepImpl: async (delayMs) => {
+      sleepDelays.push(delayMs);
+    },
+    fetchImpl: async () => {
+      callCount += 1;
+      if (callCount === 1) {
+        return new Response(JSON.stringify({ error: "Too Many Requests" }), {
+          status: 429,
+          headers: { "retry-after-ms": "1500" },
+        });
+      }
+      if (callCount === 2) {
+        return new Response(JSON.stringify({ error: "Too Many Requests" }), {
+          status: 429,
+        });
+      }
+      return new Response(
+        createMockSseStream([
+          'data: {"choices":[{"delta":{"content":"안녕하세요"}}]}\n\n',
+          "data: [DONE]\n\n",
+        ]),
+        {
+          status: 200,
+          headers: { "content-type": "text/event-stream; charset=utf-8" },
+        },
+      );
+    },
+  });
+
+  const app = buildApp({
+    logger: false,
+    userLookup,
+    jwtSecret,
+    chatProvider,
+  });
+  t.after(() => app.close());
+  await app.ready();
+
+  const adminToken = app.jwt.sign({ sub: adminUser.id });
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/ai/chat/stream",
+    headers: { cookie: `innova_auth=${adminToken}` },
+    payload: { messages: [{ role: "user", content: "재시도 테스트" }] },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(callCount, 3);
+  assert.deepEqual(sleepDelays, [1500, 2400]);
+
+  const events = res.body
+    .split("\n")
+    .filter((l) => l.startsWith("data: "))
+    .map((l) => JSON.parse(l.slice(6)) as { type: string; delta?: string });
+  assert.equal(
+    events.some((e) => e.type === "error"),
+    false,
+  );
+  assert.equal(
+    events.some((e) => e.type === "content" && e.delta === "안녕하세요"),
+    true,
+  );
+  assert.equal(
+    events.some((e) => e.type === "done"),
+    true,
+  );
+});
+
+test("ExaoneChatProvider stops retrying when daily quota is exhausted and returns upstream 429 message", async (t) => {
+  let callCount = 0;
+  const sleepDelays: number[] = [];
+
+  const chatProvider = new ExaoneChatProvider({
+    apiKey: "test-key",
+    maxRetries: 3,
+    sleepImpl: async (delayMs) => {
+      sleepDelays.push(delayMs);
+    },
+    fetchImpl: async () => {
+      callCount += 1;
+      return new Response(JSON.stringify({ error: "Daily quota exceeded" }), {
+        status: 429,
+        headers: {
+          "x-day-rate-limit-remaining": "0",
+          "retry-after": "60",
+        },
+      });
+    },
+  });
+
+  const app = buildApp({
+    logger: false,
+    userLookup,
+    jwtSecret,
+    chatProvider,
+  });
+  t.after(() => app.close());
+  await app.ready();
+
+  const adminToken = app.jwt.sign({ sub: adminUser.id });
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/ai/chat/stream",
+    headers: { cookie: `innova_auth=${adminToken}` },
+    payload: { messages: [{ role: "user", content: "일일 한도 테스트" }] },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(callCount, 1);
+  assert.deepEqual(sleepDelays, []);
+
+  const events = res.body
+    .split("\n")
+    .filter((l) => l.startsWith("data: "))
+    .map((l) => JSON.parse(l.slice(6)) as { type: string; code?: string; message?: string });
+  assert.equal(events[0]?.type, "error");
+  assert.equal(events[0]?.code, "RATE_LIMITED");
+  assert.match(events[0]?.message ?? "", /일일 요청 한도/);
 });

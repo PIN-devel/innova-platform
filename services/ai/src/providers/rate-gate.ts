@@ -5,6 +5,7 @@ export class RateLimitError extends AppError {
   constructor(
     readonly retryAfterMs: number,
     message = "요청 한도(1 RPS)를 초과했습니다. 잠시 후 다시 시도해 주세요.",
+    readonly diagnosticContext?: Record<string, unknown>,
   ) {
     super(429, "RATE_LIMITED", message);
   }
