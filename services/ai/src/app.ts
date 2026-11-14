@@ -31,6 +31,13 @@ import {
   type RateGate,
 } from "./providers/index.js";
 
+const DEFAULT_STREAM_TIMEOUT_MS = 55_000;
+
+function resolveDefaultStreamTimeoutMs(): number {
+  const parsed = Number(process.env.AI_STREAM_TIMEOUT_MS);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_STREAM_TIMEOUT_MS;
+}
+
 const fastifyBadRequestCodes = new Set([
   "FST_ERR_VALIDATION",
   "FST_ERR_CTP_INVALID_JSON",
@@ -51,6 +58,7 @@ export function buildApp({
   jwtSecret = process.env.JWT_SECRET,
   chatProvider,
   rateGate,
+  streamTimeoutMs = resolveDefaultStreamTimeoutMs(),
   apiKey,
   baseUrl,
   fetchImpl,
@@ -66,6 +74,7 @@ export function buildApp({
   jwtSecret?: string;
   chatProvider?: AiChatProvider;
   rateGate?: RateGate;
+  streamTimeoutMs?: number;
   apiKey?: string;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
@@ -205,6 +214,7 @@ export function buildApp({
     prefix: "/api/ai/chat",
     users,
     provider,
+    streamTimeoutMs,
   });
   app.register(internalEventRoutes, {
     prefix: "/internal/events",

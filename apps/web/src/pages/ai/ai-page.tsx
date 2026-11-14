@@ -15,6 +15,7 @@ export default function AiPage() {
   const {
     messages,
     isStreaming,
+    isCoolingDown,
     reasoningEffort,
     setReasoningEffort,
     sendMessage,
@@ -33,7 +34,7 @@ export default function AiPage() {
 
   const handleSubmit = (e?: FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isStreaming) return;
+    if (!input.trim() || isStreaming || isCoolingDown) return;
     const text = input;
     setInput("");
     if (textareaRef.current) {
@@ -203,7 +204,7 @@ export default function AiPage() {
                   <Button
                     type="submit"
                     size="sm"
-                    disabled={!input.trim()}
+                    disabled={!input.trim() || isCoolingDown}
                   >
                     전송
                   </Button>

@@ -57,7 +57,7 @@ export class OpenAiCompatibleProvider implements AiChatProvider {
     return new URL(`${trimmed}${suffix}`);
   }
 
-  protected handleErrorStatus(response: Response, _errorBodyText?: string): never {
+  protected handleErrorStatus(response: Response, errorBodyText?: string): never {
     if (response.status === 400) {
       throw new AppError(
         400,
@@ -73,8 +73,38 @@ export class OpenAiCompatibleProvider implements AiChatProvider {
         retryAfterMs = Number(retryAfterMsHeader);
       } else if (retryAfterSecHeader && !Number.isNaN(Number(retryAfterSecHeader))) {
         retryAfterMs = Number(retryAfterSecHeader) * 1_000;
+      } else if (errorBodyText) {
+        try {
+          const parsedBody = JSON.parse(errorBodyText) as {
+            retryAfterMs?: unknown;
+            retry_after?: unknown;
+            error?: { retryAfterMs?: unknown; retry_after?: unknown };
+          };
+          const bodyRetryAfterMs = parsedBody.retryAfterMs ?? parsedBody.error?.retryAfterMs;
+          const bodyRetryAfterSec = parsedBody.retry_after ?? parsedBody.error?.retry_after;
+          if (
+            typeof bodyRetryAfterMs === "number" &&
+            Number.isFinite(bodyRetryAfterMs) &&
+            bodyRetryAfterMs > 0
+          ) {
+            retryAfterMs = bodyRetryAfterMs;
+          } else if (
+            typeof bodyRetryAfterSec === "number" &&
+            Number.isFinite(bodyRetryAfterSec) &&
+            bodyRetryAfterSec > 0
+          ) {
+            retryAfterMs = bodyRetryAfterSec * 1_000;
+          }
+        } catch {
+          // Ignore non-JSON error bodies.
+        }
       }
-      throw new RateLimitError(retryAfterMs);
+      const normalizedRetryAfterMs = Math.max(0, Math.round(retryAfterMs));
+      const message =
+        normalizedRetryAfterMs > 1_000
+          ? `요청 한도(1 RPS)를 초과했습니다. 약 ${Math.ceil(normalizedRetryAfterMs / 1_000)}초 후 다시 시도해 주세요.`
+          : undefined;
+      throw new RateLimitError(normalizedRetryAfterMs, message);
     }
     throw new AppError(502, "INTERNAL_ERROR", `${this.providerName} API 연동 중 오류가 발생했습니다.`);
   }

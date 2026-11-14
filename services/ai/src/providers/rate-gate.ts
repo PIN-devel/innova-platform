@@ -14,10 +14,13 @@ export class ExaoneRateGate implements RateGate {
   private inFlight = false;
   private lastRequestTime = 0;
 
-  constructor(private readonly minIntervalMs = 1_000) {}
+  constructor(
+    private readonly minIntervalMs = 1_000,
+    private readonly now: () => number = () => Date.now(),
+  ) {}
 
   tryAcquire(): { allowed: true } | { allowed: false; retryAfterMs: number } {
-    const now = Date.now();
+    const now = this.now();
     const elapsed = now - this.lastRequestTime;
 
     if (this.inFlight) {
@@ -36,7 +39,10 @@ export class ExaoneRateGate implements RateGate {
   }
 
   release() {
-    this.inFlight = false;
+    if (this.inFlight) {
+      this.inFlight = false;
+      this.lastRequestTime = this.now();
+    }
   }
 
   reset() {
@@ -53,14 +59,17 @@ const STREAM_COOLDOWN_KEY = "cooldown:ai:exaone-stream";
  * and `CacheStore.setIfAbsent` so concurrent Cloud Run instances share the same limit.
  */
 export class DistributedExaoneRateGate implements RateGate {
-  private readonly fallback = new ExaoneRateGate();
+  private readonly fallback: ExaoneRateGate;
 
   constructor(
     private readonly lock: DistributedLock,
     private readonly cache: CacheStore,
     private readonly minIntervalMs = 1_000,
     private readonly streamLockTtlMs = 65_000,
-  ) {}
+    private readonly now: () => number = () => Date.now(),
+  ) {
+    this.fallback = new ExaoneRateGate(minIntervalMs, now);
+  }
 
   async tryAcquire(): Promise<RateGateAcquireResult> {
     let lease: RateGateLease | null = null;
@@ -77,7 +86,7 @@ export class DistributedExaoneRateGate implements RateGate {
     try {
       const cooldownAcquired = await this.cache.setIfAbsent(
         STREAM_COOLDOWN_KEY,
-        String(Date.now()),
+        String(this.now()),
         this.minIntervalMs,
       );
       if (!cooldownAcquired) {
@@ -96,6 +105,11 @@ export class DistributedExaoneRateGate implements RateGate {
 
   async release(lease?: RateGateLease): Promise<void> {
     if (lease) {
+      try {
+        await this.cache.set(STREAM_COOLDOWN_KEY, String(this.now()), this.minIntervalMs);
+      } catch {
+        // Best-effort cooldown refresh on stream completion.
+      }
       try {
         await lease.release();
       } catch {
