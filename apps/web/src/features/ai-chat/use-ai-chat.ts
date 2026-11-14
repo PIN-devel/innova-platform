@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AiChatMessage, AiReasoningEffort } from "@innova/contracts";
-import { streamAiChat } from "@/entities/ai/api";
+import { AiStreamError, streamAiChat } from "@/entities/ai/api";
 
 export interface ChatMessage {
   id: string;
@@ -13,16 +13,25 @@ export interface ChatMessage {
 export function useAiChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [reasoningEffort, setReasoningEffort] = useState<AiReasoningEffort>("max");
+  const [isCoolingDown, setIsCoolingDown] = useState(false);
+  const [reasoningEffort, setReasoningEffort] = useState<AiReasoningEffort>("low");
   const abortControllerRef = useRef<AbortController | null>(null);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
   const nextIdRef = useRef(1);
 
   // Clean up on component unmount
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
+      }
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
       }
     };
   }, []);
@@ -30,7 +39,7 @@ export function useAiChat() {
   const sendMessage = useCallback(
     async (rawText: string) => {
       const text = rawText.trim();
-      if (!text || isStreaming) return;
+      if (!text || isStreaming || isCoolingDown) return;
 
       const seq = nextIdRef.current++;
       const userMessageId = `user-${Date.now()}-${seq}`;
@@ -53,7 +62,7 @@ export function useAiChat() {
         (m) => m.status !== "error" && m.content.trim().length > 0,
       );
       const updatedHistory: ChatMessage[] = [...validHistory, userMessage];
-      setMessages([... messages, userMessage, assistantMessage]);
+      setMessages([...messages, userMessage, assistantMessage]);
       setIsStreaming(true);
 
       const controller = new AbortController();
@@ -65,6 +74,7 @@ export function useAiChat() {
         content: m.content,
       }));
 
+      let cooldownMs = 1_000;
       try {
         await streamAiChat({
           messages: apiMessages,
@@ -91,6 +101,9 @@ export function useAiChat() {
           },
         });
       } catch (error) {
+        if (error instanceof AiStreamError && error.retryAfterMs) {
+          cooldownMs = Math.min(Math.max(error.retryAfterMs, 1_000), 10_000);
+        }
         if (controller.signal.aborted) {
           setMessages((prev) =>
             prev.map((msg) =>
@@ -120,10 +133,22 @@ export function useAiChat() {
         if (abortControllerRef.current === controller) {
           abortControllerRef.current = null;
         }
-        setIsStreaming(false);
+        if (isMountedRef.current) {
+          setIsStreaming(false);
+          if (cooldownTimerRef.current) {
+            clearTimeout(cooldownTimerRef.current);
+          }
+          setIsCoolingDown(true);
+          cooldownTimerRef.current = setTimeout(() => {
+            cooldownTimerRef.current = null;
+            if (isMountedRef.current) {
+              setIsCoolingDown(false);
+            }
+          }, cooldownMs);
+        }
       }
     },
-    [isStreaming, messages, reasoningEffort],
+    [isCoolingDown, isStreaming, messages, reasoningEffort],
   );
 
   const stopStreaming = useCallback(() => {
@@ -141,6 +166,7 @@ export function useAiChat() {
   return {
     messages,
     isStreaming,
+    isCoolingDown,
     reasoningEffort,
     setReasoningEffort,
     sendMessage,

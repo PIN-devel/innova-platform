@@ -99,6 +99,7 @@ test("admin user sees AI Lab in primary nav and can view /ai page", async () => 
   assert.match(aiHtml, /K-EXAONE 2\.5 실시간 스트리밍 채팅 PoC/);
   assert.match(aiHtml, /k-exaone_v2\.5/);
   assert.match(aiHtml, /추론 강도:/);
+  assert.match(aiHtml, /<option[^>]*value="low"[^>]*selected|<option[^>]*selected[^>]*value="low"/);
   assert.match(aiHtml, /대화 초기화/);
   assert.match(aiHtml, /메시지를 입력하세요/);
   assert.doesNotMatch(aiHtml, /403 Forbidden/);
