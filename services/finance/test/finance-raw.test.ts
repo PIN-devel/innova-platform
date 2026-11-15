@@ -56,6 +56,8 @@ test('Raw route requires approved owner and expected actor/Origin; errors never 
  assert.equal((await app.inject({url:'/api/finance/raw/files',headers:headers(pending)})).statusCode,403);
  assert.equal((await app.inject({url:'/api/finance/raw/files',headers:{...headers(),'x-expected-user':other}})).statusCode,403);
  for(const h of [{...headers(),origin:'https://evil.invalid'},{...headers(),origin:''},{...headers(),'x-finance-request':''}])assert.equal((await app.inject({method:'POST',url:'/api/finance/raw/imports',headers:h,payload:data})).statusCode,403);
+ assert.equal((await app.inject({url:'/api/finance/raw/files',headers:{...headers(),'sec-fetch-site':'cross-site'}})).statusCode,200);
+ for(const h of [{...headers(),origin:'https://evil.invalid','sec-fetch-site':'cross-site'},{...headers(),origin:'','sec-fetch-site':'cross-site'}])assert.equal((await app.inject({url:'/api/finance/raw/files',headers:h})).statusCode,403);
  const invalid=await app.inject({method:'POST',url:'/api/finance/raw/imports',headers:headers(),payload:{...data,privateMarker:'SYNTHETIC_PRIVATE_MARKER'}});assert.equal(invalid.statusCode,400);assert.equal(invalid.body.includes('SYNTHETIC_PRIVATE_MARKER'),false);
  const readback=await app.inject({url:`/api/finance/raw/files/${id}`,headers:headers()});assert.equal(readback.statusCode,200);assert.equal(readback.headers['cache-control'],'no-store');assert.equal(readback.body.includes(data.document.fileHash),false);
 });

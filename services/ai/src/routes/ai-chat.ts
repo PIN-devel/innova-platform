@@ -14,13 +14,14 @@ import {
 import type { AiChatProvider } from "../providers/types.js";
 import { RateLimitError } from "../providers/rate-gate.js";
 
-const DEFAULT_STREAM_TIMEOUT_MS = 55_000;
+const DEFAULT_STREAM_TIMEOUT_MS = 580_000;
 const KEEP_ALIVE_INTERVAL_MS = 15_000;
 
 export interface AiChatRoutesOptions {
   users: AuthUserLookup;
   provider: AiChatProvider;
   streamTimeoutMs?: number;
+  allowedOrigins?: string[];
 }
 
 export const aiChatRoutes: FastifyPluginAsync<AiChatRoutesOptions> = async (
@@ -30,10 +31,17 @@ export const aiChatRoutes: FastifyPluginAsync<AiChatRoutesOptions> = async (
   const requireAdmin = createAdminAuthGuard(options.users);
   const provider = options.provider;
   const streamTimeoutMs = options.streamTimeoutMs ?? DEFAULT_STREAM_TIMEOUT_MS;
+  const allowedOrigins = options.allowedOrigins ?? [
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+  ];
 
   app.addHook("onRequest", async (request, reply) => {
     reply.header("Cache-Control", "no-store").header("Vary", "Cookie");
-    if (request.headers["sec-fetch-site"] === "cross-site") {
+    if (
+      request.headers["sec-fetch-site"] === "cross-site" &&
+      !allowedOrigins.includes(String(request.headers.origin))
+    ) {
       throw new AppError(403, "FORBIDDEN", "Cross-site requests are not allowed");
     }
   });
@@ -165,11 +173,11 @@ export const aiChatRoutes: FastifyPluginAsync<AiChatRoutesOptions> = async (
             { event: "ai.stream.timeout", streamTimeoutMs },
             "AI stream timed out before proxy cutoff",
           );
+          const timeoutSeconds = Math.max(1, Math.round(streamTimeoutMs / 1_000));
           const timeoutEvent: AiChatStreamEvent = {
             type: "error",
             code: "INTERNAL_ERROR",
-            message:
-              "AI 추론 시간이 응답 제한 시간(55초)을 초과하여 중단되었습니다. 추론 강도를 '낮음(low)' 또는 '보통(medium)'으로 낮추어 다시 시도해 주세요.",
+            message: `AI 추론 시간이 응답 제한 시간(${timeoutSeconds}초)을 초과하여 중단되었습니다. 추론 강도를 '낮음(low)' 또는 '보통(medium)'으로 낮추어 다시 시도해 주세요.`,
           };
           reply.raw.write(`data: ${JSON.stringify(timeoutEvent)}\n\n`);
         }

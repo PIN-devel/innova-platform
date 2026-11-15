@@ -1,5 +1,5 @@
 import { CurriculumSubjectsResponseSchema, CurriculumChaptersResponseSchema, CurriculumChapterResponseSchema, CurriculumQuizResponseSchema, CurriculumGradeResponseSchema, type CurriculumAnswerSubmission } from "@innova/contracts";
-import { apiClient } from "@/shared/api/client";
+import { apiClient, resolveApiUrl } from "@/shared/api/client";
 
 const init = { cache: "no-store" } as const;
 export const curriculumSubjectPath = (subjectId: string) => `/curriculum/subjects/${encodeURIComponent(subjectId)}`;
@@ -20,6 +20,5 @@ export async function submitCurriculumAnswer(subjectId: string, chapterId: strin
   return CurriculumGradeResponseSchema.parse(await apiClient.post(`${curriculumChapterPath(subjectId, chapterId)}/questions/${encodeURIComponent(questionId)}/grade`, input, init));
 }
 export function curriculumAssetUrl(subjectId: string, chapterId: string, blockId: string, index: number) {
-  const base = (import.meta.env?.VITE_API_BASE_URL ?? "/api").replace(/\/$/, "");
-  return `${base}${curriculumChapterPath(subjectId, chapterId)}/blocks/${encodeURIComponent(blockId)}/assets/${index}`;
+  return resolveApiUrl(`${curriculumChapterPath(subjectId, chapterId)}/blocks/${encodeURIComponent(blockId)}/assets/${index}`);
 }

@@ -6,6 +6,7 @@ import {
   type AiReasoningEffort,
   type ApiErrorCode,
 } from "@innova/contracts";
+import { resolveApiUrl } from "@/shared/api/client";
 
 export class AiStreamError extends Error {
   readonly status: number;
@@ -39,7 +40,7 @@ export async function streamAiChat({
   signal,
   onEvent,
 }: StreamAiChatOptions): Promise<void> {
-  const response = await fetch("/api/ai/chat/stream", {
+  const response = await fetch(resolveApiUrl("/ai/chat/stream"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

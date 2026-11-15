@@ -92,6 +92,7 @@ jobs:
             frontend:
               - 'apps/web/**'
               - 'packages/contracts/**'
+              - 'firebase.json'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
@@ -566,6 +567,7 @@ jobs:
       UPSTREAM_AUTH_URL: ${{ vars.UPSTREAM_AUTH_URL || secrets.UPSTREAM_AUTH_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       EXAONE_API_KEY: ${{ secrets.EXAONE_API_KEY }}
+      AI_ALLOWED_ORIGINS: ${{ vars.AI_ALLOWED_ORIGINS || secrets.AI_ALLOWED_ORIGINS || vars.ALLOWED_ORIGINS || secrets.ALLOWED_ORIGINS }}
       UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
       UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
       INTERNAL_EVENT_TOKEN: ${{ secrets.INTERNAL_EVENT_TOKEN }}
@@ -654,7 +656,8 @@ jobs:
         if: steps.check_config.outputs.configured == 'true'
         run: |
           AUTH_URL="${{ steps.resolve_auth.outputs.auth_url }}"
-          ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||AUTH_SERVICE_URL=${AUTH_URL}||JWT_SECRET=${JWT_SECRET}||EXAONE_API_KEY=${EXAONE_API_KEY}"
+          ORIGINS="${AI_ALLOWED_ORIGINS:-https://${GCP_PROJECT_ID}.web.app,https://${GCP_PROJECT_ID}.firebaseapp.com}"
+          ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||AUTH_SERVICE_URL=${AUTH_URL}||JWT_SECRET=${JWT_SECRET}||EXAONE_API_KEY=${EXAONE_API_KEY}||AI_ALLOWED_ORIGINS=${ORIGINS}"
           if [ -n "${UPSTASH_REDIS_REST_URL}" ] && [ -n "${UPSTASH_REDIS_REST_TOKEN}" ]; then
             ENV_VARS="${ENV_VARS}||UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}||UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}"
           fi
@@ -672,7 +675,7 @@ jobs:
             --min-instances=0 \
             --max-instances=1 \
             --concurrency=80 \
-            --timeout=120s \
+            --timeout=600s \
             --memory=256Mi \
             --cpu=1 \
             --set-env-vars="${ENV_VARS}"
@@ -697,6 +700,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    outputs:
+      gateway_url: ${{ steps.deploy.outputs.gateway_url }}
     env:
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
       GCP_REGION: asia-northeast3
@@ -707,6 +712,7 @@ jobs:
       UPSTREAM_LEARNING_URL: ${{ needs.deploy-learning.outputs.learning_url || vars.UPSTREAM_LEARNING_URL || secrets.UPSTREAM_LEARNING_URL }}
       UPSTREAM_FINANCE_URL: ${{ needs.deploy-finance.outputs.finance_url || vars.UPSTREAM_FINANCE_URL || secrets.UPSTREAM_FINANCE_URL }}
       UPSTREAM_AI_URL: ${{ needs.deploy-ai.outputs.ai_url || vars.UPSTREAM_AI_URL || secrets.UPSTREAM_AI_URL }}
+      ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS || secrets.ALLOWED_ORIGINS }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -799,12 +805,14 @@ jobs:
           echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
 
       - name: Deploy innova-api-gateway to Cloud Run
+        id: deploy
         if: steps.check_config.outputs.configured == 'true'
         run: |
           AUTH_URL="${{ steps.resolve_auth_url.outputs.resolved_url }}"
           LEARNING_URL="${{ steps.resolve_learning_url.outputs.resolved_url }}"
           FINANCE_URL="${{ steps.resolve_finance_url.outputs.resolved_url }}"
           AI_URL="${{ steps.resolve_ai_url.outputs.resolved_url }}"
+          ORIGINS="${ALLOWED_ORIGINS:-https://${GCP_PROJECT_ID}.web.app,https://${GCP_PROJECT_ID}.firebaseapp.com}"
           gcloud run deploy innova-api-gateway \
             --project="${GCP_PROJECT_ID}" \
             --region="${GCP_REGION}" \
@@ -814,12 +822,13 @@ jobs:
             --port=8080 \
             --min-instances=0 \
             --max-instances=1 \
-            --timeout=120s \
+            --timeout=600s \
             --memory=256Mi \
             --cpu=1 \
-            --set-env-vars="^||^UPSTREAM_AUTH_URL=${AUTH_URL}||UPSTREAM_LEARNING_URL=${LEARNING_URL}||UPSTREAM_FINANCE_URL=${FINANCE_URL}||UPSTREAM_AI_URL=${AI_URL}"
+            --set-env-vars="^||^UPSTREAM_AUTH_URL=${AUTH_URL}||UPSTREAM_LEARNING_URL=${LEARNING_URL}||UPSTREAM_FINANCE_URL=${FINANCE_URL}||UPSTREAM_AI_URL=${AI_URL}||ALLOWED_ORIGINS=${ORIGINS}"
 
           GATEWAY_URL=$(gcloud run services describe innova-api-gateway --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
+          echo "gateway_url=${GATEWAY_URL}" >> "$GITHUB_OUTPUT"
           echo "Production Cloud Run Gateway URL: ${GATEWAY_URL}"
           echo "### 🚀 Production Gateway Deployed!" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Cloud Run URL:** ${GATEWAY_URL}" >> "$GITHUB_STEP_SUMMARY"
@@ -840,6 +849,8 @@ jobs:
       id-token: write
     env:
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
+      GCP_REGION: asia-northeast3
+      GATEWAY_URL: ${{ needs.deploy-gateway.outputs.gateway_url }}
       WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
     steps:
@@ -860,6 +871,34 @@ jobs:
             echo "All required deployment configuration present. Proceeding with Firebase Hosting deployment."
           fi
 
+      - name: Authenticate to Google Cloud via WIF
+        if: steps.check_config.outputs.configured == 'true'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+
+      - name: Set up Cloud SDK
+        if: steps.check_config.outputs.configured == 'true'
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Resolve API Gateway URL
+        id: resolve_gateway_url
+        if: steps.check_config.outputs.configured == 'true'
+        run: |
+          RESOLVED="${GATEWAY_URL}"
+          if [ -z "$RESOLVED" ]; then
+            RESOLVED=$(gcloud run services describe innova-api-gateway --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)' 2>/dev/null || true)
+          fi
+          if [ -z "$RESOLVED" ]; then
+            echo "::error::Unable to resolve innova-api-gateway URL for VITE_API_BASE_URL."
+            exit 1
+          fi
+          RESOLVED="${RESOLVED%/}"
+          echo "api_base_url=${RESOLVED}/api" >> "$GITHUB_OUTPUT"
+          echo "Resolved VITE_API_BASE_URL: ${RESOLVED}/api"
+
       - name: Install pnpm
         if: steps.check_config.outputs.configured == 'true'
         uses: pnpm/action-setup@v6
@@ -877,17 +916,11 @@ jobs:
 
       - name: Build Contracts and Web Frontend
         if: steps.check_config.outputs.configured == 'true'
+        env:
+          VITE_API_BASE_URL: ${{ steps.resolve_gateway_url.outputs.api_base_url }}
         run: |
           pnpm --filter @innova/contracts build
           pnpm --filter @innova/web build
-
-      - name: Authenticate to Google Cloud via WIF
-        if: steps.check_config.outputs.configured == 'true'
-        uses: google-github-actions/auth@v3
-        with:
-          workload_identity_provider: ${{ env.WIF_PROVIDER }}
-          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
-          create_credentials_file: true
 
       - name: Deploy to Firebase Hosting (Production)
         if: steps.check_config.outputs.configured == 'true'
