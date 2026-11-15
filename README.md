@@ -43,6 +43,7 @@ Google Cloud Run 및 Firebase Hosting 기반으로 운영되며, 벤더 락인�
 | 브랜치·PR·릴리스 | [Git 운영](./docs/git-workflow.md) |
 | Label·Milestone·Issue 역할, 개선 Inbox, 상태 자동화 | [Linear 운영](./docs/linear-workflow.md) |
 | 신규 테이블의 식별·감사·소유권·계보 설계 | [테이블 메타데이터 기준](./docs/database-table-metadata.md) |
+| 백업·복원, RPO/RTO, 도메인별 격리 복구 기준 | [백업·복원 및 도메인별 복구 기준](./docs/backup-and-recovery.md) |
 | 아키텍처 결정 기록(ADR)과 변경 맥락 | `docs/adr/` ([ADR-0001](./docs/adr/0001-record-architecture-decisions.md) 체계 준수) |
 | 앱/서비스 실행과 현행 기준 | [Web](./apps/web/README.md), [Auth](./services/auth/README.md), [Learning](./services/learning/README.md), [Finance](./services/finance/README.md), [AI](./services/ai/README.md) |
 
