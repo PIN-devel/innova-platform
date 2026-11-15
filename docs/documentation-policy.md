@@ -36,6 +36,7 @@
 | `docs/linear-workflow.md` | 이슈 관리와 자동화 경계 |
 | `docs/adr/*.md` | 중대 아키텍처 결정의 배경·대안·영향 기록; 불변성 유지 ([ADR-0001](./adr/0001-record-architecture-decisions.md) 체계 준수) |
 | `docs/database-migrations.md` | 서비스 DB 스키마 변경·dev 검증·복구 준비와 변경별 기록 양식 |
+| `docs/backup-and-recovery.md` | 백업·복원, RPO/RTO, 도메인별 격리 복구 절차, 유일 원본 도메인 게이트 |
 | `apps/web/docs/architecture.md` | 현행 Web 구조; 앱이 소유 |
 | `apps/web/docs/design.md` | 현행 Web UI 기준; 앱이 소유 |
 | `apps/web/docs/architecture-baseline.md` | PIN-21 기준선/PIN-20 검증의 과거 기록; 일반 작업에서 읽지 않음 |

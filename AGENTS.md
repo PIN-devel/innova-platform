@@ -40,6 +40,7 @@
 | 브랜치·PR·릴리스·정리 | [Git 운영](docs/git-workflow.md) |
 | Linear 조회·생성·분류·갱신·종료, 공통 개선 후보 기록 | [Linear 운영](docs/linear-workflow.md) |
 | DB 스키마·migration 변경과 복구 준비 | [DB 스키마 변경과 복구 지침](docs/database-migrations.md) |
+| 백업·복원, RPO/RTO, 도메인별 격리 복구, 신규 유일 원본 게이트 | [백업·복원 및 도메인별 복구 기준](docs/backup-and-recovery.md) |
 | 신규 테이블의 식별·감사·소유권·추적 메타 설계 | [테이블 메타데이터 기준](docs/database-table-metadata.md) |
 | 중대 아키텍처 결정 확인·작성, 설계 변경 맥락 | `docs/adr/` 내 관련 결정 ([ADR-0001](docs/adr/0001-record-architecture-decisions.md) 체계 준수) |
 
@@ -62,7 +63,7 @@
 
 ## 기본 검증
 
-- 앱별 명령을 직접 실행할 때 `@innova/contracts`의 빌드 결과가 없거나 계약이 바뀌었다면 먼저 `pnpm --filter @innova/contracts build`를 실행한다.
+- 앱별 명령을 직접 실행할 때 `@innova/contracts`나 `@innova/auth-kit`의 빌드 결과가 없거나 공유 패키지가 바뀌었다면 먼저 `pnpm build:shared`(또는 해당 패키지 `build`, 예: `pnpm --filter @innova/contracts build`)를 실행한다.
 - 변경 범위에 맞는 검증을 먼저 실행한다. 전체 통합 확인이 필요한 경우 루트에서 `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm lint`를 실행한다.
 - 문서만 변경한 경우 링크·앵커·경로·diff와 빌드 입력 여부를 검사한다. Tailwind 스캔처럼 문서가 입력이면 관련 생성물/빌드를 검증하고, 아니면 앱 빌드·테스트·브라우저 QA를 반복하지 않는다.
 - 루트 `pnpm test`는 Contracts를 빌드한 뒤 API와 Web 테스트를 모두 실행한다. 새 앱의 테스트를 추가할 때 공용 검증에서 누락되지 않도록 한다.
