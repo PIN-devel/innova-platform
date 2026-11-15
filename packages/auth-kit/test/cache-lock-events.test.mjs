@@ -5,14 +5,17 @@ import Fastify from "fastify";
 import {
   AppError,
   apiErrorBody,
+  createGcpIdentityTokenProvider,
   createGcpPubSubPublisher,
   createHttpFanoutPublisher,
   createInMemoryCacheStore,
   createInMemoryDeadLetterSink,
   createInMemoryDistributedLock,
+  createRemoteUserLookup,
   createUpstashRestCacheStore,
   createUpstashRestDistributedLock,
   pubSubPushRoutes,
+  resolveRuntimeIdTokenProvider,
 } from "../dist/index.js";
 
 function sampleEvent(overrides = {}) {
@@ -298,5 +301,128 @@ describe("EventPublisher, Fan-out Push, Idempotency & DLQ", () => {
     assert.equal(unauthorized.statusCode, 401);
 
     await Promise.all([learningApp.close(), financeApp.close(), aiApp.close()]);
+  });
+});
+
+function createFakeJwtWithExp(expSeconds) {
+  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ exp: expSeconds, aud: "https://auth.example.run.app" })).toString("base64url");
+  return `${header}.${payload}.sig`;
+}
+
+describe("GCP OIDC Identity Token Provider & RemoteUserLookup", () => {
+  it("normalizes audience origin, caches OIDC ID tokens until exp safety margin, and supports reset", async () => {
+    let now = 1_000_000; // 1000s
+    let fetchCount = 0;
+    const requestedUrls = [];
+    const requestedHeaders = [];
+    const jwt1 = createFakeJwtWithExp(1_300); // exp at 1300s -> cached until 1240s
+    const jwt2 = createFakeJwtWithExp(2_000);
+
+    const provider = createGcpIdentityTokenProvider({
+      now: () => now,
+      fetchImpl: async (url, init) => {
+        fetchCount += 1;
+        requestedUrls.push(String(url));
+        requestedHeaders.push(init.headers);
+        if (fetchCount === 1) {
+          return new Response(`${jwt1}\n`, { status: 200 });
+        }
+        return new Response(jwt2, { status: 200 });
+      },
+    });
+
+    const t1 = await provider("https://auth.example.run.app/api/auth/me");
+    assert.equal(t1, jwt1);
+    assert.equal(
+      requestedUrls[0],
+      "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=https%3A%2F%2Fauth.example.run.app",
+    );
+    assert.equal(requestedHeaders[0]["Metadata-Flavor"], "Google");
+
+    // Same origin with different path hits cache
+    now = 1_100_000;
+    const t2 = await provider("https://auth.example.run.app/api/auth/login");
+    assert.equal(t2, jwt1);
+    assert.equal(fetchCount, 1);
+
+    // Within safety margin (1240s), triggers refresh
+    now = 1_240_000;
+    const t3 = await provider("https://auth.example.run.app");
+    assert.equal(t3, jwt2);
+    assert.equal(fetchCount, 2);
+
+    // Reset clears cached token
+    provider.reset("https://auth.example.run.app/other");
+    const t4 = await provider("https://auth.example.run.app");
+    assert.equal(t4, jwt2);
+    assert.equal(fetchCount, 3);
+  });
+
+  it("throws when metadata server returns error status or empty token", async () => {
+    const errorProvider = createGcpIdentityTokenProvider({
+      fetchImpl: async () => new Response("forbidden", { status: 403 }),
+    });
+    await assert.rejects(() => errorProvider("https://auth.example.run.app"), /status 403/);
+
+    const emptyProvider = createGcpIdentityTokenProvider({
+      fetchImpl: async () => new Response("   ", { status: 200 }),
+    });
+    await assert.rejects(() => emptyProvider("https://auth.example.run.app"), /empty identity token/);
+  });
+
+  it("injects X-Serverless-Authorization and Authorization headers when IAM auth is enabled and skips metadata when disabled", async () => {
+    const calls = [];
+    const lookupEnabled = createRemoteUserLookup({
+      authServiceUrl: "https://auth.example.run.app",
+      signSessionToken: (id) => `session-${id}`,
+      enableIamAuth: true,
+      fetchImpl: async (url, init) => {
+        const strUrl = String(url);
+        calls.push({ url: strUrl, headers: init?.headers ?? {} });
+        if (strUrl.startsWith("http://metadata.google.internal/")) {
+          return new Response(createFakeJwtWithExp(Math.floor(Date.now() / 1000) + 600), { status: 200 });
+        }
+        return new Response(
+          JSON.stringify({
+            user: { id: "u1", email: "u1@example.com", approvalStatus: "approved", role: "member" },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      },
+    });
+
+    const user = await lookupEnabled.findById("u1");
+    assert.equal(user?.id, "u1");
+    assert.equal(calls.length, 2);
+    assert.ok(calls[0].url.includes("metadata.google.internal"));
+    assert.equal(calls[1].url, "https://auth.example.run.app/api/auth/me");
+    assert.match(calls[1].headers["x-serverless-authorization"], /^Bearer /);
+    assert.equal(calls[1].headers["authorization"], calls[1].headers["x-serverless-authorization"]);
+    assert.equal(calls[1].headers.cookie, "innova_auth=session-u1");
+
+    // Second call reuses cached ID token without hitting metadata server again
+    await lookupEnabled.findById("u1");
+    assert.equal(calls.length, 3);
+
+    // Local/disabled mode makes zero metadata calls
+    const localCalls = [];
+    const lookupDisabled = createRemoteUserLookup({
+      authServiceUrl: "http://127.0.0.1:3001",
+      signSessionToken: (id) => `session-${id}`,
+      enableIamAuth: false,
+      fetchImpl: async (url, init) => {
+        localCalls.push({ url: String(url), headers: init?.headers ?? {} });
+        return new Response(JSON.stringify({ user: { id: "u2", email: "u2@example.com", approvalStatus: "approved", role: "member" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    });
+    const localUser = await lookupDisabled.findById("u2");
+    assert.equal(localUser?.id, "u2");
+    assert.equal(localCalls.length, 1);
+    assert.equal(localCalls[0].headers["x-serverless-authorization"], undefined);
+    assert.equal(resolveRuntimeIdTokenProvider({ enableIamAuth: false, targetUrl: "https://auth.example.run.app" }), undefined);
   });
 });

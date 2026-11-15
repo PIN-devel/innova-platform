@@ -7,6 +7,7 @@ import {
   type PubSubPushEnvelope,
 } from "@innova/contracts";
 import type { FastifyBaseLogger, FastifyPluginAsync } from "fastify";
+import { resolveRuntimeIdTokenProvider, type GcpIdTokenProvider } from "./auth.js";
 import type { CacheStore } from "./cache.js";
 import { AppError, invalidInput } from "./errors.js";
 
@@ -156,6 +157,8 @@ export interface HttpFanoutSubscriber {
 export function createHttpFanoutPublisher({
   subscribers,
   internalToken,
+  idTokenProvider,
+  enableIamAuth,
   fetchImpl = fetch,
   maxAttempts = DEFAULT_MAX_DELIVERY_ATTEMPTS,
   baseDelayMs = 25,
@@ -165,6 +168,8 @@ export function createHttpFanoutPublisher({
 }: {
   subscribers: HttpFanoutSubscriber[];
   internalToken?: string;
+  idTokenProvider?: GcpIdTokenProvider;
+  enableIamAuth?: boolean;
   fetchImpl?: typeof fetch;
   maxAttempts?: number;
   baseDelayMs?: number;
@@ -172,6 +177,23 @@ export function createHttpFanoutPublisher({
   deadLetterSink?: DeadLetterSink;
   logger?: FastifyBaseLogger;
 }): EventPublisher {
+  const sharedIdTokenProvider = resolveRuntimeIdTokenProvider({
+    idTokenProvider,
+    enableIamAuth,
+    targetUrl: subscribers.some((sub) => sub.url.startsWith("https://"))
+      ? "https://cloud-run.internal"
+      : undefined,
+    fetchImpl,
+  });
+
+  function shouldAttachIamToken(url: string): boolean {
+    if (!sharedIdTokenProvider) return false;
+    if (idTokenProvider || enableIamAuth === true || process.env.GCP_IAM_AUTH_ENABLED === "true") {
+      return true;
+    }
+    return url.startsWith("https://");
+  }
+
   async function deliverToSubscriber(
     subscriber: HttpFanoutSubscriber,
     event: DomainEventEnvelope,
@@ -204,12 +226,23 @@ export function createHttpFanoutPublisher({
         if (internalToken) {
           headers[INTERNAL_EVENT_TOKEN_HEADER] = internalToken;
         }
+        if (sharedIdTokenProvider && shouldAttachIamToken(subscriber.url)) {
+          const idToken = await sharedIdTokenProvider(subscriber.url);
+          if (idToken) {
+            headers["x-serverless-authorization"] = `Bearer ${idToken}`;
+            headers["authorization"] = `Bearer ${idToken}`;
+          }
+        }
         const response = await fetchImpl(subscriber.url, {
           method: "POST",
           headers,
           body: JSON.stringify(envelope),
           signal: AbortSignal.timeout(5_000),
         });
+
+        if (response.status === 403 && sharedIdTokenProvider?.reset) {
+          sharedIdTokenProvider.reset(subscriber.url);
+        }
 
         if (response.ok) {
           return;
@@ -282,6 +315,8 @@ export function createRuntimeEventPublisher({
   topicId = process.env.PUBSUB_USER_EVENTS_TOPIC,
   subscriberUrlsRaw = process.env.EVENT_SUBSCRIBER_URLS,
   internalToken = process.env.INTERNAL_EVENT_TOKEN,
+  idTokenProvider,
+  enableIamAuth,
   deadLetterSink,
   fetchImpl = fetch,
   logger,
@@ -290,6 +325,8 @@ export function createRuntimeEventPublisher({
   topicId?: string;
   subscriberUrlsRaw?: string;
   internalToken?: string;
+  idTokenProvider?: GcpIdTokenProvider;
+  enableIamAuth?: boolean;
   deadLetterSink?: DeadLetterSink;
   fetchImpl?: typeof fetch;
   logger?: FastifyBaseLogger;
@@ -310,6 +347,8 @@ export function createRuntimeEventPublisher({
         url,
       })),
       internalToken,
+      idTokenProvider,
+      enableIamAuth,
       deadLetterSink,
       fetchImpl,
       logger,
