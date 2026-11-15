@@ -31,7 +31,7 @@ import {
   type RateGate,
 } from "./providers/index.js";
 
-const DEFAULT_STREAM_TIMEOUT_MS = 55_000;
+const DEFAULT_STREAM_TIMEOUT_MS = 580_000;
 
 function resolveDefaultStreamTimeoutMs(): number {
   const parsed = Number(process.env.AI_STREAM_TIMEOUT_MS);
@@ -59,6 +59,14 @@ export function buildApp({
   chatProvider,
   rateGate,
   streamTimeoutMs = resolveDefaultStreamTimeoutMs(),
+  aiAllowedOrigins = (
+    process.env.AI_ALLOWED_ORIGINS ??
+    process.env.ALLOWED_ORIGINS ??
+    "http://localhost:5174,http://127.0.0.1:5174"
+  )
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
   apiKey,
   baseUrl,
   fetchImpl,
@@ -75,6 +83,7 @@ export function buildApp({
   chatProvider?: AiChatProvider;
   rateGate?: RateGate;
   streamTimeoutMs?: number;
+  aiAllowedOrigins?: string[];
   apiKey?: string;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
@@ -215,6 +224,7 @@ export function buildApp({
     users,
     provider,
     streamTimeoutMs,
+    allowedOrigins: aiAllowedOrigins,
   });
   app.register(internalEventRoutes, {
     prefix: "/internal/events",

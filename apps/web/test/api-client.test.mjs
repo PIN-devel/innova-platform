@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ApiError, apiClient } from "../src/shared/api/client.ts";
+import { ApiError, apiBaseUrl, apiClient, resolveApiUrl } from "../src/shared/api/client.ts";
+
+test("resolveApiUrl normalizes leading slashes against apiBaseUrl", () => {
+  assert.equal(apiBaseUrl, "/api");
+  assert.equal(resolveApiUrl("/ai/chat/stream"), "/api/ai/chat/stream");
+  assert.equal(resolveApiUrl("auth/me"), "/api/auth/me");
+});
 
 test("API errors retain the X-Request-Id response header", async (t) => {
   t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({

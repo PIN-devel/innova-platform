@@ -143,17 +143,26 @@ export function createCachedUserLookup<T extends AuthUserLookup>({
 }
 
 export function authCookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production";
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
+    secure: isProduction,
+    sameSite: isProduction ? ("none" as const) : ("lax" as const),
+    partitioned: isProduction,
     path: "/",
     maxAge: COOKIE_MAX_AGE_SECONDS,
   };
 }
 
 export function clearAuthCookieOptions() {
-  return { path: "/", httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production" };
+  const isProduction = process.env.NODE_ENV === "production";
+  return {
+    path: "/",
+    httpOnly: true,
+    sameSite: isProduction ? ("none" as const) : ("lax" as const),
+    secure: isProduction,
+    partitioned: isProduction,
+  };
 }
 
 export function createAuthGuard(users: AuthUserLookup) {

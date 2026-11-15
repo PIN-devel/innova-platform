@@ -12,7 +12,7 @@ export async function financeRawRoutes(app: FastifyInstance, { repository, requi
     reply.header("Cache-Control", "no-store");
     await requireAuth(request);
     if (request.headers["x-expected-user"] !== request.authUser!.id) throw new AppError(403, "FORBIDDEN", "Session changed");
-    if (request.headers["sec-fetch-site"] === "cross-site") throw new AppError(403, "FORBIDDEN", "Origin not allowed");
+    if (request.headers["sec-fetch-site"] === "cross-site" && !allowedOrigins.includes(String(request.headers.origin))) throw new AppError(403, "FORBIDDEN", "Origin not allowed");
     if (request.method !== "GET" && (!allowedOrigins.includes(String(request.headers.origin)) || request.headers["x-finance-request"] !== "1" || !request.headers["content-type"]?.startsWith("application/json"))) throw new AppError(403, "FORBIDDEN", "Origin not allowed");
   });
   // Never allow parser/DB/crypto exception objects to reach the global logger.
