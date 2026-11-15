@@ -212,18 +212,45 @@ jobs:
             ENV_VARS="${ENV_VARS}||INTERNAL_EVENT_TOKEN=${INTERNAL_EVENT_TOKEN}"
           fi
 
+          PROJECT_NUMBER=$(gcloud projects describe "${GCP_PROJECT_ID}" --format='value(projectNumber)')
+          DEFAULT_COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+          CALLER_SAS=""
+          for SVC in innova-api-gateway innova-learning-api innova-finance-api innova-ai-api; do
+            SVC_SA=$(gcloud run services describe "${SVC}" --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
+            CALLER_SAS="${CALLER_SAS} ${SVC_SA:-${DEFAULT_COMPUTE_SA}}"
+          done
+          UNIQUE_CALLER_SAS=$(printf '%s\n' ${CALLER_SAS} | grep -v '^$' | sort -u)
+
+          for SA in ${UNIQUE_CALLER_SAS}; do
+            gcloud run services add-iam-policy-binding innova-auth-api \
+              --project="${GCP_PROJECT_ID}" \
+              --region="${GCP_REGION}" \
+              --member="serviceAccount:${SA}" \
+              --role="roles/run.invoker" \
+              --quiet >/dev/null 2>&1 || true
+          done
+
           gcloud run deploy innova-auth-api \
             --project="${GCP_PROJECT_ID}" \
             --region="${GCP_REGION}" \
             --image="${IMAGE_URI}" \
             --platform=managed \
-            --allow-unauthenticated \
+            --no-allow-unauthenticated \
             --port=8080 \
             --min-instances=0 \
             --max-instances=1 \
             --memory=256Mi \
             --cpu=1 \
             --set-env-vars="${ENV_VARS}"
+
+          for SA in ${UNIQUE_CALLER_SAS}; do
+            gcloud run services add-iam-policy-binding innova-auth-api \
+              --project="${GCP_PROJECT_ID}" \
+              --region="${GCP_REGION}" \
+              --member="serviceAccount:${SA}" \
+              --role="roles/run.invoker" \
+              --quiet
+          done
 
           AUTH_URL=$(gcloud run services describe innova-auth-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "auth_url=${AUTH_URL}" >> "$GITHUB_OUTPUT"
@@ -354,7 +381,7 @@ jobs:
         if: steps.check_config.outputs.configured == 'true'
         run: |
           AUTH_URL="${{ steps.resolve_auth.outputs.auth_url }}"
-          ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${LEARNING_DATABASE_URL}||AUTH_SERVICE_URL=${AUTH_URL}||JWT_SECRET=${JWT_SECRET}||CURRICULUM_ASSET_BUCKET=${CURRICULUM_ASSET_BUCKET}"
+          ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${LEARNING_DATABASE_URL}||AUTH_SERVICE_URL=${AUTH_URL}||JWT_SECRET=${JWT_SECRET}||CURRICULUM_ASSET_BUCKET=${CURRICULUM_ASSET_BUCKET}||GCP_IAM_AUTH_ENABLED=true"
           if [ -n "${UPSTASH_REDIS_REST_URL}" ] && [ -n "${UPSTASH_REDIS_REST_TOKEN}" ]; then
             ENV_VARS="${ENV_VARS}||UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}||UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}"
           fi
@@ -367,13 +394,34 @@ jobs:
             --region="${GCP_REGION}" \
             --image="${IMAGE_URI}" \
             --platform=managed \
-            --allow-unauthenticated \
+            --no-allow-unauthenticated \
             --port=8080 \
             --min-instances=0 \
             --max-instances=1 \
             --memory=256Mi \
             --cpu=1 \
             --set-env-vars="${ENV_VARS}"
+
+          PROJECT_NUMBER=$(gcloud projects describe "${GCP_PROJECT_ID}" --format='value(projectNumber)')
+          DEFAULT_COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+          GW_SA=$(gcloud run services describe innova-api-gateway --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
+          GW_SA="${GW_SA:-${DEFAULT_COMPUTE_SA}}"
+          LEARNING_SA=$(gcloud run services describe innova-learning-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
+          LEARNING_SA="${LEARNING_SA:-${DEFAULT_COMPUTE_SA}}"
+
+          gcloud run services add-iam-policy-binding innova-learning-api \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --member="serviceAccount:${GW_SA}" \
+            --role="roles/run.invoker" \
+            --quiet
+
+          gcloud run services add-iam-policy-binding innova-auth-api \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --member="serviceAccount:${LEARNING_SA}" \
+            --role="roles/run.invoker" \
+            --quiet
 
           LEARNING_URL=$(gcloud run services describe innova-learning-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "learning_url=${LEARNING_URL}" >> "$GITHUB_OUTPUT"
@@ -511,7 +559,7 @@ jobs:
         run: |
           AUTH_URL="${{ steps.resolve_auth.outputs.auth_url }}"
           ORIGINS="${FINANCE_ALLOWED_ORIGINS:-https://${GCP_PROJECT_ID}.web.app,https://${GCP_PROJECT_ID}.firebaseapp.com}"
-          ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${FINANCE_DATABASE_URL}||AUTH_SERVICE_URL=${AUTH_URL}||JWT_SECRET=${JWT_SECRET}||FINANCE_RAW_ENCRYPTION_KEY=${FINANCE_RAW_ENCRYPTION_KEY}||FINANCE_ALLOWED_ORIGINS=${ORIGINS}"
+          ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||DATABASE_URL=${FINANCE_DATABASE_URL}||AUTH_SERVICE_URL=${AUTH_URL}||JWT_SECRET=${JWT_SECRET}||FINANCE_RAW_ENCRYPTION_KEY=${FINANCE_RAW_ENCRYPTION_KEY}||FINANCE_ALLOWED_ORIGINS=${ORIGINS}||GCP_IAM_AUTH_ENABLED=true"
           if [ -n "${FINANCE_PDF_PASSWORD_KEYRING}" ]; then
             ENV_VARS="${ENV_VARS}||FINANCE_PDF_PASSWORD_KEYRING=${FINANCE_PDF_PASSWORD_KEYRING}||FINANCE_PDF_PASSWORD_ACTIVE_KEY_VERSION=${FINANCE_PDF_PASSWORD_ACTIVE_KEY_VERSION}"
           fi
@@ -527,13 +575,34 @@ jobs:
             --region="${GCP_REGION}" \
             --image="${IMAGE_URI}" \
             --platform=managed \
-            --allow-unauthenticated \
+            --no-allow-unauthenticated \
             --port=8080 \
             --min-instances=0 \
             --max-instances=1 \
             --memory=512Mi \
             --cpu=1 \
             --set-env-vars="${ENV_VARS}"
+
+          PROJECT_NUMBER=$(gcloud projects describe "${GCP_PROJECT_ID}" --format='value(projectNumber)')
+          DEFAULT_COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+          GW_SA=$(gcloud run services describe innova-api-gateway --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
+          GW_SA="${GW_SA:-${DEFAULT_COMPUTE_SA}}"
+          FINANCE_SA=$(gcloud run services describe innova-finance-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
+          FINANCE_SA="${FINANCE_SA:-${DEFAULT_COMPUTE_SA}}"
+
+          gcloud run services add-iam-policy-binding innova-finance-api \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --member="serviceAccount:${GW_SA}" \
+            --role="roles/run.invoker" \
+            --quiet
+
+          gcloud run services add-iam-policy-binding innova-auth-api \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --member="serviceAccount:${FINANCE_SA}" \
+            --role="roles/run.invoker" \
+            --quiet
 
           FINANCE_URL=$(gcloud run services describe innova-finance-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "finance_url=${FINANCE_URL}" >> "$GITHUB_OUTPUT"
@@ -657,7 +726,7 @@ jobs:
         run: |
           AUTH_URL="${{ steps.resolve_auth.outputs.auth_url }}"
           ORIGINS="${AI_ALLOWED_ORIGINS:-https://${GCP_PROJECT_ID}.web.app,https://${GCP_PROJECT_ID}.firebaseapp.com}"
-          ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||AUTH_SERVICE_URL=${AUTH_URL}||JWT_SECRET=${JWT_SECRET}||EXAONE_API_KEY=${EXAONE_API_KEY}||AI_ALLOWED_ORIGINS=${ORIGINS}"
+          ENV_VARS="^||^NODE_ENV=production||AUTH_COOKIE_NAME=innova_auth||AUTH_SERVICE_URL=${AUTH_URL}||JWT_SECRET=${JWT_SECRET}||EXAONE_API_KEY=${EXAONE_API_KEY}||AI_ALLOWED_ORIGINS=${ORIGINS}||GCP_IAM_AUTH_ENABLED=true"
           if [ -n "${UPSTASH_REDIS_REST_URL}" ] && [ -n "${UPSTASH_REDIS_REST_TOKEN}" ]; then
             ENV_VARS="${ENV_VARS}||UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}||UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}"
           fi
@@ -670,7 +739,7 @@ jobs:
             --region="${GCP_REGION}" \
             --image="${IMAGE_URI}" \
             --platform=managed \
-            --allow-unauthenticated \
+            --no-allow-unauthenticated \
             --port=8080 \
             --min-instances=0 \
             --max-instances=1 \
@@ -679,6 +748,27 @@ jobs:
             --memory=256Mi \
             --cpu=1 \
             --set-env-vars="${ENV_VARS}"
+
+          PROJECT_NUMBER=$(gcloud projects describe "${GCP_PROJECT_ID}" --format='value(projectNumber)')
+          DEFAULT_COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+          GW_SA=$(gcloud run services describe innova-api-gateway --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
+          GW_SA="${GW_SA:-${DEFAULT_COMPUTE_SA}}"
+          AI_SA=$(gcloud run services describe innova-ai-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
+          AI_SA="${AI_SA:-${DEFAULT_COMPUTE_SA}}"
+
+          gcloud run services add-iam-policy-binding innova-ai-api \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --member="serviceAccount:${GW_SA}" \
+            --role="roles/run.invoker" \
+            --quiet
+
+          gcloud run services add-iam-policy-binding innova-auth-api \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --member="serviceAccount:${AI_SA}" \
+            --role="roles/run.invoker" \
+            --quiet
 
           AI_URL=$(gcloud run services describe innova-ai-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "ai_url=${AI_URL}" >> "$GITHUB_OUTPUT"
@@ -825,7 +915,21 @@ jobs:
             --timeout=600s \
             --memory=256Mi \
             --cpu=1 \
-            --set-env-vars="^||^UPSTREAM_AUTH_URL=${AUTH_URL}||UPSTREAM_LEARNING_URL=${LEARNING_URL}||UPSTREAM_FINANCE_URL=${FINANCE_URL}||UPSTREAM_AI_URL=${AI_URL}||ALLOWED_ORIGINS=${ORIGINS}"
+            --set-env-vars="^||^UPSTREAM_AUTH_URL=${AUTH_URL}||UPSTREAM_LEARNING_URL=${LEARNING_URL}||UPSTREAM_FINANCE_URL=${FINANCE_URL}||UPSTREAM_AI_URL=${AI_URL}||ALLOWED_ORIGINS=${ORIGINS}||UPSTREAM_IAM_AUTH=true"
+
+          PROJECT_NUMBER=$(gcloud projects describe "${GCP_PROJECT_ID}" --format='value(projectNumber)')
+          DEFAULT_COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+          GW_SA=$(gcloud run services describe innova-api-gateway --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
+          GW_SA="${GW_SA:-${DEFAULT_COMPUTE_SA}}"
+
+          for BACKEND_SVC in innova-auth-api innova-learning-api innova-finance-api innova-ai-api; do
+            gcloud run services add-iam-policy-binding "${BACKEND_SVC}" \
+              --project="${GCP_PROJECT_ID}" \
+              --region="${GCP_REGION}" \
+              --member="serviceAccount:${GW_SA}" \
+              --role="roles/run.invoker" \
+              --quiet
+          done
 
           GATEWAY_URL=$(gcloud run services describe innova-api-gateway --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "gateway_url=${GATEWAY_URL}" >> "$GITHUB_OUTPUT"

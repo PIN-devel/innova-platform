@@ -17,7 +17,7 @@ Innova 플랫폼의 학습(Exam Drill 및 Curriculum) 마이크로서비스입�
 그 외 `/api/*` 경로는 `404 NOT_FOUND`를 반환합니다.
 
 ## 사용자 상태 조회 (Database-per-Service)
-이 서비스는 `innova_auth` 데이터베이스에 직접 접속하지 않으며 `users` 테이블 또는 외래키를 갖지 않습니다. 매 요청의 사용자 존재 및 승인 상태(`approvalStatus === 'approved'`)는 `AUTH_SERVICE_URL`을 통해 Auth 마이크로서비스(`innova-auth-api`)의 HTTP API(`GET /api/auth/me`)를 호출하여 검증합니다.
+이 서비스는 `innova_auth` 데이터베이스에 직접 접속하지 않으며 `users` 테이블 또는 외래키를 갖지 않습니다. 매 요청의 사용자 존재 및 승인 상태(`approvalStatus === 'approved'`)는 `AUTH_SERVICE_URL`을 통해 Auth 마이크로서비스(`innova-auth-api`)의 HTTP API(`GET /api/auth/me`)를 호출하여 검증합니다. Cloud Run 운영 환경에서는 `--no-allow-unauthenticated`로 보호된 `innova-auth-api` 호출을 위해 GCP 메타데이터 OIDC ID 토큰(`X-Serverless-Authorization`)을 자동 첨부합니다.
 
 ## GCS 비공개 에셋 서빙 (Keyless ADC)
 Curriculum 삽화/다이어그램 에셋은 비공개 GCS 버킷(`gs://innova-assets`)에 보관되어 있으며, Cloud Run 실행 환경의 메타데이터 서버(`http://metadata.google.internal/...`)에서 단기 OAuth2 Bearer 토큰을 동적으로 조회·인메모리 캐싱하여 서빙합니다. 장애 또는 네트워크 단절 시 내부 세부 정보를 마스킹하고 `503 INTERNAL_ERROR` (`Private asset storage is unavailable`)를 반환합니다.
@@ -35,6 +35,7 @@ Curriculum 삽화/다이어그램 에셋은 비공개 GCS 버킷(`gs://innova-as
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`: (선택) 서버리스 Redis 캐시 (미설정 시 인메모리 폴백)
 - `AUTH_USER_CACHE_TTL_MS`, `EXAM_BANK_CACHE_TTL_MS`: (선택) 사용자 및 시험 문제 은행 캐시 TTL (ms)
 - `INTERNAL_EVENT_TOKEN`: (선택) `/internal/events/*` 웹훅 인증 토큰
+- `GCP_IAM_AUTH_ENABLED`: (선택) 비공개 Cloud Run `AUTH_SERVICE_URL` 호출 시 OIDC ID 토큰 첨부 여부 (`K_SERVICE` + HTTPS 환경에서는 기본 활성화, 로컬에서는 비활성화)
 - `PORT`: 서비스 포트 (기본: 8080)
 
 ## 스크립트

@@ -34,14 +34,22 @@ fi
 echo "==> [validate-config] Root-level dns_resolver check passed."
 
 # 3. Check required environment variable placeholders in apisix.yaml.template
-for VAR in UPSTREAM_AUTH_SCHEME UPSTREAM_AUTH_HOST UPSTREAM_AUTH_PORT UPSTREAM_FINANCE_SCHEME UPSTREAM_FINANCE_HOST UPSTREAM_FINANCE_PORT UPSTREAM_AI_SCHEME UPSTREAM_AI_HOST UPSTREAM_AI_PORT UPSTREAM_LEARNING_SCHEME UPSTREAM_LEARNING_HOST UPSTREAM_LEARNING_PORT ALLOWED_ORIGINS; do
+for VAR in UPSTREAM_AUTH_SCHEME UPSTREAM_AUTH_HOST UPSTREAM_AUTH_PORT UPSTREAM_FINANCE_SCHEME UPSTREAM_FINANCE_HOST UPSTREAM_FINANCE_PORT UPSTREAM_AI_SCHEME UPSTREAM_AI_HOST UPSTREAM_AI_PORT UPSTREAM_LEARNING_SCHEME UPSTREAM_LEARNING_HOST UPSTREAM_LEARNING_PORT ALLOWED_ORIGINS UPSTREAM_IAM_AUTH GCP_METADATA_IDENTITY_URL; do
   if ! grep -q "\${${VAR}}" "$TEMPLATE_YAML"; then
     echo "Error: $TEMPLATE_YAML is missing required placeholder \${${VAR}}."
     exit 1
   fi
 done
 
-# 4. Ensure internal event routes are never exposed through the public API gateway
+# 4. Check X-Serverless-Authorization injection is present in all 4 upstream proxy routes
+IAM_HEADER_COUNT=$(grep -c "ngx.req.set_header('X-Serverless-Authorization'" "$TEMPLATE_YAML" || true)
+if [ "$IAM_HEADER_COUNT" -lt 4 ]; then
+  echo "Error: $TEMPLATE_YAML must inject X-Serverless-Authorization in all 4 upstream proxy routes (found: $IAM_HEADER_COUNT)."
+  exit 1
+fi
+echo "==> [validate-config] Upstream OIDC IAM header injection check passed ($IAM_HEADER_COUNT routes)."
+
+# 5. Ensure internal event routes are never exposed through the public API gateway
 if grep -qE '/internal(/|\*|$|[[:space:]]|")' "$TEMPLATE_YAML"; then
   echo "Error: $TEMPLATE_YAML must not expose /internal/* endpoints publicly."
   exit 1

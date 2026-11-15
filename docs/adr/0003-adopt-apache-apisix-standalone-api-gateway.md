@@ -3,7 +3,7 @@
 - 상태: 승인됨(Accepted)
 - 결정일: 2026-11-08
 - 적용 범위: 인프라 / API Gateway (`apps/api-gateway`)
-- 관련 이슈: Linear [PIN-71](https://linear.app/pin-dev/issue/PIN-71), [PIN-74](https://linear.app/pin-dev/issue/PIN-74)
+- 관련 이슈: Linear [PIN-71](https://linear.app/pin-dev/issue/PIN-71), [PIN-74](https://linear.app/pin-dev/issue/PIN-74), [PIN-88](https://linear.app/pin-dev/issue/PIN-88)
 - 관련 결정: [ADR-0002](0002-google-cloud-run-msa-and-exit-strategy.md)
 
 ## 1. 맥락과 문제 정의 (Context)
@@ -133,3 +133,4 @@ flowchart TD
   - `UPSTREAM_RENDER_URL` 환경 변수 주입 검증.
 - `docs/documentation-policy.md` 및 `README.md`에 본 ADR(ADR-0003) 링크 반영.
 - Linear 이슈 [PIN-74](https://linear.app/pin-dev/issue/PIN-74) 실행 계획 최신화.
+- [PIN-88](https://linear.app/pin-dev/issue/PIN-88) 구현 반영: 백엔드 4개 Cloud Run 서비스를 `--no-allow-unauthenticated`로 배포하고(`roles/run.invoker` 최소 권한 바인딩), APISIX `serverless-pre-function` 및 `@innova/auth-kit` `UserLookup`에서 메타데이터 서버 OIDC ID 토큰을 조회·캐싱하여 `X-Serverless-Authorization`으로 전달하도록 Zero Trust IAM을 적용했다(로컬·`docker-compose.yml`은 `UPSTREAM_IAM_AUTH=false` / `GCP_IAM_AUTH_ENABLED` 미설정으로 비활성화 유지).

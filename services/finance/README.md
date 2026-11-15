@@ -19,7 +19,7 @@ Innova 플랫폼의 개인 금융(MOTIFIN) 마이크로서비스입니다. Cloud
 그 외 `/api/*` 경로는 `404 NOT_FOUND`를 반환합니다.
 
 ## 사용자 상태 조회 (Database-per-Service)
-이 서비스는 `innova_auth` 데이터베이스에 직접 접속하지 않으며 `users` 외래키를 갖지 않습니다. 매 요청의 사용자 승인 상태(`GET /api/auth/me`)와 PDF 암호 재인증(`POST /api/auth/login`)은 `AUTH_SERVICE_URL`을 통해 Auth 마이크로서비스(`innova-auth-api`)의 HTTP API를 호출하여 검증합니다.
+이 서비스는 `innova_auth` 데이터베이스에 직접 접속하지 않으며 `users` 외래키를 갖지 않습니다. 매 요청의 사용자 승인 상태(`GET /api/auth/me`)와 PDF 암호 재인증(`POST /api/auth/login`)은 `AUTH_SERVICE_URL`을 통해 Auth 마이크로서비스(`innova-auth-api`)의 HTTP API를 호출하여 검증합니다. Cloud Run 운영 환경에서는 `--no-allow-unauthenticated`로 보호된 `innova-auth-api` 호출을 위해 GCP 메타데이터 OIDC ID 토큰(`X-Serverless-Authorization`)을 자동 첨부합니다.
 
 ## 환경 변수
 `.env.example`을 복사하여 `.env`를 생성합니다.
@@ -31,6 +31,7 @@ Innova 플랫폼의 개인 금융(MOTIFIN) 마이크로서비스입니다. Cloud
 - `AUTH_COOKIE_NAME`, `LOG_LEVEL`, `PORT`(기본 8080)
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `AUTH_USER_CACHE_TTL_MS`: (선택) 서버리스 Redis 캐시 설정 (미설정 시 인메모리 폴백)
 - `INTERNAL_EVENT_TOKEN`: (선택) `/internal/events/*` 웹훅 인증 토큰
+- `GCP_IAM_AUTH_ENABLED`: (선택) 비공개 Cloud Run `AUTH_SERVICE_URL` 호출 시 OIDC ID 토큰 첨부 여부 (`K_SERVICE` + HTTPS 환경에서는 기본 활성화, 로컬에서는 비활성화)
 
 ## 스크립트
 - `pnpm dev` / `pnpm build` / `pnpm start`
