@@ -8,12 +8,12 @@ Google Cloud Run 및 Firebase Hosting 기반으로 운영되며, 벤더 락인�
 ```
 [Client (Browser)]
        │
-       ▼
-[Firebase Hosting] (apps/web)
-       │ /api/**
-       ▼
-[Cloud Run API Gateway] (apps/api-gateway - Apache APISIX Standalone)
+       ├── 정적 자산 ──► [Firebase Hosting] (apps/web)
        │
+       └── /api/** (VITE_API_BASE_URL)
+              ▼
+[Cloud Run API Gateway] (apps/api-gateway - Apache APISIX Standalone, OIDC ID Token 주입)
+       │ (Zero Trust IAM: --no-allow-unauthenticated, roles/run.invoker)
        ├── /api/auth/**, /api/admin/**  ──► [innova-auth-api]     (services/auth)     ──► DB: innova_auth
        ├── /api/exam/**, /api/curriculum/** ──► [innova-learning-api] (services/learning) ──► DB: innova_learning, GCS: innova-assets
        ├── /api/finance/**             ──► [innova-finance-api]  (services/finance)  ──► DB: innova_finance
@@ -23,7 +23,7 @@ Google Cloud Run 및 Firebase Hosting 기반으로 운영되며, 벤더 락인�
 | 구분 | 패키지/디렉터리 | 역할 및 배포 환경 |
 | --- | --- | --- |
 | **Frontend** | `apps/web` (`@innova/web`) | React 19, Vite, TanStack Query, FSD 아키텍처 (Firebase Hosting) |
-| **API Gateway** | `apps/api-gateway` | Apache APISIX 3.19 Standalone, 쿠키 브릿지 및 리버스 프록시 (Cloud Run) |
+| **API Gateway** | `apps/api-gateway` | Apache APISIX 3.19 Standalone, 쿠키 브릿지·CORS·업스트림 OIDC ID 토큰 주입 (Cloud Run) |
 | **Auth** | `services/auth` (`@innova/auth`) | 인증, 회원 관리, 인가/승인 단일 진실 공급원 (Cloud Run) |
 | **Learning** | `services/learning` (`@innova/learning`) | Exam Drill 문항 은행 및 Curriculum 에셋 무키 서빙 (Cloud Run) |
 | **Finance** | `services/finance` (`@innova/finance`) | 개인 금융(MOTIFIN) 원천 데이터 암호화 및 분석 (Cloud Run) |

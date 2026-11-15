@@ -35,6 +35,119 @@ export interface AuthUserLookup {
 
 const DEFAULT_AUTH_REQUEST_TIMEOUT_MS = 5_000;
 const DEFAULT_USER_CACHE_TTL_MS = 60_000;
+const METADATA_IDENTITY_URL =
+  "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity";
+const METADATA_IDENTITY_TIMEOUT_MS = 2_000;
+const ID_TOKEN_EXPIRY_SAFETY_MS = 60_000;
+const DEFAULT_ID_TOKEN_TTL_MS = 50 * 60 * 1000;
+
+export type GcpIdTokenProvider = ((audience: string) => Promise<string | undefined>) & {
+  reset?: (audience?: string) => void;
+};
+
+function parseJwtExpiryMs(token: string): number | undefined {
+  const parts = token.split(".");
+  if (parts.length !== 3 || !parts[1]) return undefined;
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as {
+      exp?: unknown;
+    };
+    return typeof payload.exp === "number" && Number.isFinite(payload.exp)
+      ? payload.exp * 1000
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeAudienceOrigin(audience: string): string {
+  return new URL(audience).origin;
+}
+
+/**
+ * Fetches and caches Google-signed OIDC ID tokens from the Cloud Run / GCE
+ * metadata server for service-to-service IAM authentication (`roles/run.invoker`).
+ */
+export function createGcpIdentityTokenProvider({
+  metadataIdentityUrl = METADATA_IDENTITY_URL,
+  fetchImpl = fetch,
+  now = () => Date.now(),
+  defaultTtlMs = DEFAULT_ID_TOKEN_TTL_MS,
+}: {
+  metadataIdentityUrl?: string;
+  fetchImpl?: typeof fetch;
+  now?: () => number;
+  defaultTtlMs?: number;
+} = {}): GcpIdTokenProvider {
+  const cache = new Map<string, { token: string; expiresAtMs: number }>();
+
+  const provider: GcpIdTokenProvider = async (audience: string) => {
+    const origin = normalizeAudienceOrigin(audience);
+    const cached = cache.get(origin);
+    if (cached && now() < cached.expiresAtMs) {
+      return cached.token;
+    }
+
+    const url = `${metadataIdentityUrl}?audience=${encodeURIComponent(origin)}`;
+    const response = await fetchImpl(url, {
+      headers: { "Metadata-Flavor": "Google" },
+      signal: AbortSignal.timeout(METADATA_IDENTITY_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      throw new Error(`Metadata server identity error: status ${response.status}`);
+    }
+    const token = (await response.text()).trim();
+    if (!token) {
+      throw new Error("Metadata server returned empty identity token");
+    }
+
+    const jwtExpMs = parseJwtExpiryMs(token);
+    const expiresAtMs =
+      jwtExpMs !== undefined
+        ? Math.max(now(), jwtExpMs - ID_TOKEN_EXPIRY_SAFETY_MS)
+        : now() + defaultTtlMs;
+    cache.set(origin, { token, expiresAtMs });
+    return token;
+  };
+
+  provider.reset = (audience?: string) => {
+    if (!audience) {
+      cache.clear();
+      return;
+    }
+    try {
+      cache.delete(normalizeAudienceOrigin(audience));
+    } catch {
+      cache.delete(audience);
+    }
+  };
+
+  return provider;
+}
+
+/**
+ * Resolves whether service-to-service OIDC ID token injection should be enabled
+ * for the current runtime (`GCP_IAM_AUTH_ENABLED`, or Cloud Run `K_SERVICE` + HTTPS).
+ */
+export function resolveRuntimeIdTokenProvider({
+  idTokenProvider,
+  enableIamAuth,
+  targetUrl,
+  fetchImpl = fetch,
+}: {
+  idTokenProvider?: GcpIdTokenProvider;
+  enableIamAuth?: boolean;
+  targetUrl?: string;
+  fetchImpl?: typeof fetch;
+} = {}): GcpIdTokenProvider | undefined {
+  if (idTokenProvider) return idTokenProvider;
+  const enabled =
+    enableIamAuth ??
+    (process.env.GCP_IAM_AUTH_ENABLED !== undefined
+      ? process.env.GCP_IAM_AUTH_ENABLED === "true"
+      : Boolean(process.env.K_SERVICE && targetUrl?.startsWith("https://")));
+  return enabled ? createGcpIdentityTokenProvider({ fetchImpl }) : undefined;
+}
 
 export function userCacheKey(userId: string): string {
   return `auth:user:${userId}`;
@@ -55,28 +168,49 @@ export function createRemoteUserLookup({
   authServiceUrl = process.env.AUTH_SERVICE_URL,
   cookieName = AUTH_COOKIE_NAME,
   signSessionToken,
+  idTokenProvider,
+  enableIamAuth,
   fetchImpl = fetch,
   timeoutMs = DEFAULT_AUTH_REQUEST_TIMEOUT_MS,
 }: {
   authServiceUrl?: string;
   cookieName?: string;
   signSessionToken: (userId: string) => string;
+  idTokenProvider?: GcpIdTokenProvider;
+  enableIamAuth?: boolean;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }): AuthUserLookup {
   if (!authServiceUrl) throw new Error("AUTH_SERVICE_URL is required");
+  const activeIdTokenProvider = resolveRuntimeIdTokenProvider({
+    idTokenProvider,
+    enableIamAuth,
+    targetUrl: authServiceUrl,
+    fetchImpl,
+  });
 
   return {
     async findById(id: string): Promise<AuthUser | undefined> {
       const token = signSessionToken(id);
+      const headers: Record<string, string> = {
+        cookie: `${cookieName}=${token}`,
+        accept: "application/json",
+      };
+      if (activeIdTokenProvider) {
+        const idToken = await activeIdTokenProvider(authServiceUrl);
+        if (idToken) {
+          headers["x-serverless-authorization"] = `Bearer ${idToken}`;
+          headers["authorization"] = `Bearer ${idToken}`;
+        }
+      }
       const response = await fetchImpl(new URL("/api/auth/me", authServiceUrl), {
         method: "GET",
-        headers: {
-          cookie: `${cookieName}=${token}`,
-          accept: "application/json",
-        },
+        headers,
         signal: AbortSignal.timeout(timeoutMs),
       });
+      if (response.status === 403 && activeIdTokenProvider?.reset) {
+        activeIdTokenProvider.reset(authServiceUrl);
+      }
       if (response.status === 401 || response.status === 404) {
         return undefined;
       }

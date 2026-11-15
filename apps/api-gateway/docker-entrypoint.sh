@@ -104,6 +104,20 @@ echo "==> [innova-api-gateway] Learning upstream configured: ${UPSTREAM_LEARNING
 ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-http://localhost:5174,http://127.0.0.1:5174}"
 export ALLOWED_ORIGINS
 
+if [ -z "${UPSTREAM_IAM_AUTH:-}" ]; then
+  if [ -n "${K_SERVICE:-}" ]; then
+    UPSTREAM_IAM_AUTH="true"
+  else
+    UPSTREAM_IAM_AUTH="false"
+  fi
+fi
+export UPSTREAM_IAM_AUTH
+
+GCP_METADATA_IDENTITY_URL="${GCP_METADATA_IDENTITY_URL:-http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/identity}"
+export GCP_METADATA_IDENTITY_URL
+
+echo "==> [innova-api-gateway] Upstream IAM auth enabled: ${UPSTREAM_IAM_AUTH}"
+
 # 5. Substitute environment variables in apisix.yaml.template
 CONF_DIR="/usr/local/apisix/conf"
 mkdir -p "$CONF_DIR"
@@ -113,7 +127,7 @@ if [ -f "/app/conf/config.yaml" ]; then
 fi
 
 if [ -f "/app/conf/apisix.yaml.template" ]; then
-  envsubst '${UPSTREAM_AUTH_SCHEME} ${UPSTREAM_AUTH_HOST} ${UPSTREAM_AUTH_PORT} ${UPSTREAM_FINANCE_SCHEME} ${UPSTREAM_FINANCE_HOST} ${UPSTREAM_FINANCE_PORT} ${UPSTREAM_AI_SCHEME} ${UPSTREAM_AI_HOST} ${UPSTREAM_AI_PORT} ${UPSTREAM_LEARNING_SCHEME} ${UPSTREAM_LEARNING_HOST} ${UPSTREAM_LEARNING_PORT} ${ALLOWED_ORIGINS}' \
+  envsubst '${UPSTREAM_AUTH_SCHEME} ${UPSTREAM_AUTH_HOST} ${UPSTREAM_AUTH_PORT} ${UPSTREAM_FINANCE_SCHEME} ${UPSTREAM_FINANCE_HOST} ${UPSTREAM_FINANCE_PORT} ${UPSTREAM_AI_SCHEME} ${UPSTREAM_AI_HOST} ${UPSTREAM_AI_PORT} ${UPSTREAM_LEARNING_SCHEME} ${UPSTREAM_LEARNING_HOST} ${UPSTREAM_LEARNING_PORT} ${ALLOWED_ORIGINS} ${UPSTREAM_IAM_AUTH} ${GCP_METADATA_IDENTITY_URL}' \
     < /app/conf/apisix.yaml.template > "$CONF_DIR/apisix.yaml"
   echo "==> [innova-api-gateway] Generated $CONF_DIR/apisix.yaml successfully."
 fi

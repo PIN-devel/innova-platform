@@ -99,3 +99,60 @@ test("createUserLookup resolves user status and step-up password verification vi
   assert.equal(await lookup.verifyPassword?.("user-1", "wrong-password"), false);
   assert.equal(calls.length, 6);
 });
+
+test("createUserLookup attaches cached GCP OIDC ID token to both /api/auth/me and /api/auth/login when enableIamAuth is true", async () => {
+  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(
+    JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 600, aud: "https://auth.example.run.app" }),
+  ).toString("base64url");
+  const oidcJwt = `${header}.${payload}.sig`;
+  const calls: Array<{ url: string; method: string; headers: Record<string, string> }> = [];
+
+  const lookup = createUserLookup({
+    authServiceUrl: "https://auth.example.run.app/",
+    cookieName: "innova_auth",
+    signSessionToken: (id) => `signed-${id}`,
+    enableIamAuth: true,
+    fetchImpl: (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      calls.push({ url, method, headers });
+
+      if (url.startsWith("http://metadata.google.internal/")) {
+        return new Response(oidcJwt, { status: 200 });
+      }
+      if (url === "https://auth.example.run.app/api/auth/me") {
+        return new Response(
+          JSON.stringify({
+            user: { id: "user-1", email: "user1@example.invalid", approvalStatus: "approved", role: "member" },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url === "https://auth.example.run.app/api/auth/login") {
+        return new Response(JSON.stringify({ user: { id: "user-1" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(null, { status: 404 });
+    }) as typeof fetch,
+  });
+
+  const user = await lookup.findById("user-1");
+  assert.equal(user?.id, "user-1");
+  assert.equal(await lookup.verifyPassword?.("user-1", "correct-password"), true);
+
+  // 1 metadata fetch (cached) + findById (/me) + verifyPassword (/me + /login) = 4 calls total
+  assert.equal(calls.length, 4);
+  assert.equal(
+    calls[0].url,
+    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=https%3A%2F%2Fauth.example.run.app",
+  );
+  assert.equal(calls[0].headers["Metadata-Flavor"], "Google");
+  for (const apiCall of calls.slice(1)) {
+    assert.equal(apiCall.headers["x-serverless-authorization"], `Bearer ${oidcJwt}`);
+    assert.equal(apiCall.headers["authorization"], `Bearer ${oidcJwt}`);
+  }
+});

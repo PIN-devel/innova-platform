@@ -84,6 +84,51 @@ routes:
                    end
                  end
                end
+
+               ngx.req.clear_header('X-Serverless-Authorization');
+               if '${UPSTREAM_IAM_AUTH}' == 'true' then
+                 local audience = '${UPSTREAM_AUTH_SCHEME}://${UPSTREAM_AUTH_HOST}';
+                 local cache = package.loaded._innova_oidc_cache;
+                 if not cache then
+                   cache = {};
+                   package.loaded._innova_oidc_cache = cache;
+                 end
+                 local now = ngx.now();
+                 local entry = cache[audience];
+                 local id_token = entry and now < entry.expires_at and entry.token or nil;
+                 if not id_token then
+                   local http = require('resty.http');
+                   local httpc = http.new();
+                   httpc:set_timeout(2000);
+                   local res, err = httpc:request_uri('${GCP_METADATA_IDENTITY_URL}?audience=' .. ngx.escape_uri(audience), {
+                     method = 'GET',
+                     headers = {
+                       ['Metadata-Flavor'] = 'Google',
+                       ['Host'] = 'metadata.google.internal'
+                     }
+                   });
+                   if not res or res.status ~= 200 or not res.body or res.body == '' then
+                     ngx.log(ngx.ERR, 'Failed to acquire GCP OIDC ID token for ', audience, ': ', err or (res and res.status) or 'empty');
+                     ngx.status = 502;
+                     ngx.header['Content-Type'] = 'application/json';
+                     ngx.say('{\"error\":{\"code\":\"UPSTREAM_AUTH_ERROR\",\"message\":\"Failed to acquire upstream identity token\"}}');
+                     ngx.exit(502);
+                   end
+                   id_token = string.gsub(res.body, '^%s*(.-)%s*$', '%1');
+                   if id_token == '' then
+                     ngx.log(ngx.ERR, 'Empty GCP OIDC ID token for ', audience);
+                     ngx.status = 502;
+                     ngx.header['Content-Type'] = 'application/json';
+                     ngx.say('{\"error\":{\"code\":\"UPSTREAM_AUTH_ERROR\",\"message\":\"Failed to acquire upstream identity token\"}}');
+                     ngx.exit(502);
+                   end
+                   cache[audience] = { token = id_token, expires_at = now + 3000 };
+                 end
+                 ngx.req.set_header('X-Serverless-Authorization', 'Bearer ' .. id_token);
+                 if not ngx.var.http_authorization or ngx.var.http_authorization == '' then
+                   ngx.req.set_header('Authorization', 'Bearer ' .. id_token);
+                 end
+               end
              end"
 
       serverless-post-function:
@@ -194,6 +239,51 @@ routes:
                    if new_cookie ~= cookie then
                      ngx.req.set_header('Cookie', new_cookie);
                    end
+                 end
+               end
+
+               ngx.req.clear_header('X-Serverless-Authorization');
+               if '${UPSTREAM_IAM_AUTH}' == 'true' then
+                 local audience = '${UPSTREAM_FINANCE_SCHEME}://${UPSTREAM_FINANCE_HOST}';
+                 local cache = package.loaded._innova_oidc_cache;
+                 if not cache then
+                   cache = {};
+                   package.loaded._innova_oidc_cache = cache;
+                 end
+                 local now = ngx.now();
+                 local entry = cache[audience];
+                 local id_token = entry and now < entry.expires_at and entry.token or nil;
+                 if not id_token then
+                   local http = require('resty.http');
+                   local httpc = http.new();
+                   httpc:set_timeout(2000);
+                   local res, err = httpc:request_uri('${GCP_METADATA_IDENTITY_URL}?audience=' .. ngx.escape_uri(audience), {
+                     method = 'GET',
+                     headers = {
+                       ['Metadata-Flavor'] = 'Google',
+                       ['Host'] = 'metadata.google.internal'
+                     }
+                   });
+                   if not res or res.status ~= 200 or not res.body or res.body == '' then
+                     ngx.log(ngx.ERR, 'Failed to acquire GCP OIDC ID token for ', audience, ': ', err or (res and res.status) or 'empty');
+                     ngx.status = 502;
+                     ngx.header['Content-Type'] = 'application/json';
+                     ngx.say('{\"error\":{\"code\":\"UPSTREAM_AUTH_ERROR\",\"message\":\"Failed to acquire upstream identity token\"}}');
+                     ngx.exit(502);
+                   end
+                   id_token = string.gsub(res.body, '^%s*(.-)%s*$', '%1');
+                   if id_token == '' then
+                     ngx.log(ngx.ERR, 'Empty GCP OIDC ID token for ', audience);
+                     ngx.status = 502;
+                     ngx.header['Content-Type'] = 'application/json';
+                     ngx.say('{\"error\":{\"code\":\"UPSTREAM_AUTH_ERROR\",\"message\":\"Failed to acquire upstream identity token\"}}');
+                     ngx.exit(502);
+                   end
+                   cache[audience] = { token = id_token, expires_at = now + 3000 };
+                 end
+                 ngx.req.set_header('X-Serverless-Authorization', 'Bearer ' .. id_token);
+                 if not ngx.var.http_authorization or ngx.var.http_authorization == '' then
+                   ngx.req.set_header('Authorization', 'Bearer ' .. id_token);
                  end
                end
              end"
@@ -308,6 +398,51 @@ routes:
                    end
                  end
                end
+
+               ngx.req.clear_header('X-Serverless-Authorization');
+               if '${UPSTREAM_IAM_AUTH}' == 'true' then
+                 local audience = '${UPSTREAM_AI_SCHEME}://${UPSTREAM_AI_HOST}';
+                 local cache = package.loaded._innova_oidc_cache;
+                 if not cache then
+                   cache = {};
+                   package.loaded._innova_oidc_cache = cache;
+                 end
+                 local now = ngx.now();
+                 local entry = cache[audience];
+                 local id_token = entry and now < entry.expires_at and entry.token or nil;
+                 if not id_token then
+                   local http = require('resty.http');
+                   local httpc = http.new();
+                   httpc:set_timeout(2000);
+                   local res, err = httpc:request_uri('${GCP_METADATA_IDENTITY_URL}?audience=' .. ngx.escape_uri(audience), {
+                     method = 'GET',
+                     headers = {
+                       ['Metadata-Flavor'] = 'Google',
+                       ['Host'] = 'metadata.google.internal'
+                     }
+                   });
+                   if not res or res.status ~= 200 or not res.body or res.body == '' then
+                     ngx.log(ngx.ERR, 'Failed to acquire GCP OIDC ID token for ', audience, ': ', err or (res and res.status) or 'empty');
+                     ngx.status = 502;
+                     ngx.header['Content-Type'] = 'application/json';
+                     ngx.say('{\"error\":{\"code\":\"UPSTREAM_AUTH_ERROR\",\"message\":\"Failed to acquire upstream identity token\"}}');
+                     ngx.exit(502);
+                   end
+                   id_token = string.gsub(res.body, '^%s*(.-)%s*$', '%1');
+                   if id_token == '' then
+                     ngx.log(ngx.ERR, 'Empty GCP OIDC ID token for ', audience);
+                     ngx.status = 502;
+                     ngx.header['Content-Type'] = 'application/json';
+                     ngx.say('{\"error\":{\"code\":\"UPSTREAM_AUTH_ERROR\",\"message\":\"Failed to acquire upstream identity token\"}}');
+                     ngx.exit(502);
+                   end
+                   cache[audience] = { token = id_token, expires_at = now + 3000 };
+                 end
+                 ngx.req.set_header('X-Serverless-Authorization', 'Bearer ' .. id_token);
+                 if not ngx.var.http_authorization or ngx.var.http_authorization == '' then
+                   ngx.req.set_header('Authorization', 'Bearer ' .. id_token);
+                 end
+               end
              end"
 
       serverless-post-function:
@@ -419,6 +554,51 @@ routes:
                    if new_cookie ~= cookie then
                      ngx.req.set_header('Cookie', new_cookie);
                    end
+                 end
+               end
+
+               ngx.req.clear_header('X-Serverless-Authorization');
+               if '${UPSTREAM_IAM_AUTH}' == 'true' then
+                 local audience = '${UPSTREAM_LEARNING_SCHEME}://${UPSTREAM_LEARNING_HOST}';
+                 local cache = package.loaded._innova_oidc_cache;
+                 if not cache then
+                   cache = {};
+                   package.loaded._innova_oidc_cache = cache;
+                 end
+                 local now = ngx.now();
+                 local entry = cache[audience];
+                 local id_token = entry and now < entry.expires_at and entry.token or nil;
+                 if not id_token then
+                   local http = require('resty.http');
+                   local httpc = http.new();
+                   httpc:set_timeout(2000);
+                   local res, err = httpc:request_uri('${GCP_METADATA_IDENTITY_URL}?audience=' .. ngx.escape_uri(audience), {
+                     method = 'GET',
+                     headers = {
+                       ['Metadata-Flavor'] = 'Google',
+                       ['Host'] = 'metadata.google.internal'
+                     }
+                   });
+                   if not res or res.status ~= 200 or not res.body or res.body == '' then
+                     ngx.log(ngx.ERR, 'Failed to acquire GCP OIDC ID token for ', audience, ': ', err or (res and res.status) or 'empty');
+                     ngx.status = 502;
+                     ngx.header['Content-Type'] = 'application/json';
+                     ngx.say('{\"error\":{\"code\":\"UPSTREAM_AUTH_ERROR\",\"message\":\"Failed to acquire upstream identity token\"}}');
+                     ngx.exit(502);
+                   end
+                   id_token = string.gsub(res.body, '^%s*(.-)%s*$', '%1');
+                   if id_token == '' then
+                     ngx.log(ngx.ERR, 'Empty GCP OIDC ID token for ', audience);
+                     ngx.status = 502;
+                     ngx.header['Content-Type'] = 'application/json';
+                     ngx.say('{\"error\":{\"code\":\"UPSTREAM_AUTH_ERROR\",\"message\":\"Failed to acquire upstream identity token\"}}');
+                     ngx.exit(502);
+                   end
+                   cache[audience] = { token = id_token, expires_at = now + 3000 };
+                 end
+                 ngx.req.set_header('X-Serverless-Authorization', 'Bearer ' .. id_token);
+                 if not ngx.var.http_authorization or ngx.var.http_authorization == '' then
+                   ngx.req.set_header('Authorization', 'Bearer ' .. id_token);
                  end
                end
              end"
