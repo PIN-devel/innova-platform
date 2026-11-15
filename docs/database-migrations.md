@@ -72,6 +72,7 @@ dev 정리: 접근·비용·유지 기간, 담당자·정리 시점
 
 ## 관련 기준과 참고
 
+- [백업·복원 및 도메인별 복구 기준](backup-and-recovery.md)
 - [문서 관리 정책](documentation-policy.md)
 - [Linear 운영 정책](linear-workflow.md)
 - [Git 운영 정책](git-workflow.md)
