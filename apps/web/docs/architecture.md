@@ -39,7 +39,7 @@ PIN-57/58은 기존 가져오기 뒤 서버 비즈니스 반영과 독립 readba
 | `features/auth/route-session.ts` | middleware 접근 snapshot/context와 순수 returnTo 검사 |
 | auth session/commands, `features/start-lesson/model/import-bank.ts` 등 feature commands | epoch·전환/변경 잠금, 보호 cache 정리, domain parsing/merge, 성공 응답의 cache 반영 |
 | `entities/*/queries.ts` | key, queryFn, freshness, GC/retry. 별도 변경 실행 경로 없음 |
-| `entities/*/api.ts`, `shared/api/client.ts` | HTTP·credentials·signal·공통 오류/Contracts |
+| `entities/*/api.ts`, `shared/api/client.ts` | HTTP·SSE·에셋 경로(`resolveApiUrl`, 운영 `VITE_API_BASE_URL`로 Cloud Run `innova-api-gateway` 직접 호출 일원화)·credentials·signal·공통 오류/Contracts |
 | page | 캐시 구독, fetcher, 사용자 입력, local 학습 상태 |
 | `shared/lib/router-query/` | 도메인 비의존 QueryObserver bridge·Loader fallback·명시적 key invalidation → Router revalidation·generic ActionResult |
 | API/Contracts | 최종 인증·인가 및 wire schema. 이번 작업에서 변경 없음 |

@@ -24,7 +24,11 @@ export class ApiError extends Error {
   }
 }
 
-const baseUrl = (import.meta.env?.VITE_API_BASE_URL ?? "/api").replace(/\/$/, "");
+export const apiBaseUrl = (import.meta.env?.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+
+export function resolveApiUrl(path: string): string {
+  return `${apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 async function request<T>(path: string, init: RequestInit = {}, format: "json" | "blob" = "json"): Promise<T> {
   const headers = new Headers(init.headers);
@@ -32,7 +36,7 @@ async function request<T>(path: string, init: RequestInit = {}, format: "json" |
   if (init.body !== undefined && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  const response = await fetch(`${baseUrl}${path.startsWith("/") ? path : `/${path}`}`, {
+  const response = await fetch(resolveApiUrl(path), {
     ...init,
     credentials: "include",
     headers,

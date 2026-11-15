@@ -40,6 +40,34 @@ routes:
         phase: rewrite
         functions:
           - "return function(conf, ctx)
+               local origin = ngx.var.http_origin;
+               local allowed_csv = '${ALLOWED_ORIGINS}';
+               local origin_allowed = false;
+               if origin and origin ~= '' then
+                 for item in string.gmatch(allowed_csv, '([^,]+)') do
+                   local trimmed = string.gsub(item, '^%s*(.-)%s*$', '%1');
+                   if trimmed == origin then
+                     origin_allowed = true;
+                     break;
+                   end
+                 end
+               end
+               if ngx.req.get_method() == 'OPTIONS' then
+                 if origin_allowed then
+                   ngx.header['Access-Control-Allow-Origin'] = origin;
+                   ngx.header['Access-Control-Allow-Credentials'] = 'true';
+                   ngx.header['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+                   ngx.header['Access-Control-Allow-Headers'] = 'Content-Type, Accept, Authorization, X-Expected-User, X-Finance-Request, X-Request-Id';
+                   ngx.header['Access-Control-Max-Age'] = '86400';
+                   ngx.header['Vary'] = 'Origin';
+                   ngx.status = 204;
+                   ngx.exit(204);
+                 else
+                   ngx.status = 403;
+                   ngx.exit(403);
+                 end
+               end
+
                local cookie = ngx.var.http_cookie;
                if cookie then
                  local m, err = ngx.re.match(cookie, '(?:^|;\\\\s*)__session=([^;]+)', 'jo');
@@ -62,6 +90,21 @@ routes:
         phase: header_filter
         functions:
           - "return function(conf, ctx)
+               local origin = ngx.var.http_origin;
+               local allowed_csv = '${ALLOWED_ORIGINS}';
+               if origin and origin ~= '' then
+                 for item in string.gmatch(allowed_csv, '([^,]+)') do
+                   local trimmed = string.gsub(item, '^%s*(.-)%s*$', '%1');
+                   if trimmed == origin then
+                     ngx.header['Access-Control-Allow-Origin'] = origin;
+                     ngx.header['Access-Control-Allow-Credentials'] = 'true';
+                     ngx.header['Access-Control-Expose-Headers'] = 'X-Request-Id, Retry-After, retry-after-ms, Content-Disposition';
+                     ngx.header['Vary'] = 'Origin, Cookie';
+                     break;
+                   end
+                 end
+               end
+
                local headers = ngx.resp.get_headers();
                local set_cookies = headers['Set-Cookie'];
                if not set_cookies then return end;
@@ -77,9 +120,9 @@ routes:
                  if m and m[1] then
                    local session_cookie;
                    if m[1] == '' or string.find(sc, 'Max%-Age=0') or string.find(sc, '1970') then
-                     session_cookie = '__session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=Lax; Secure; HttpOnly';
+                     session_cookie = '__session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=None; Secure; HttpOnly; Partitioned';
                    else
-                     session_cookie = '__session=' .. m[1] .. '; Max-Age=900; Path=/; SameSite=Lax; Secure; HttpOnly';
+                     session_cookie = '__session=' .. m[1] .. '; Max-Age=900; Path=/; SameSite=None; Secure; HttpOnly; Partitioned';
                    end
                    table.insert(new_cookies, session_cookie);
                  end
@@ -109,6 +152,34 @@ routes:
         phase: rewrite
         functions:
           - "return function(conf, ctx)
+               local origin = ngx.var.http_origin;
+               local allowed_csv = '${ALLOWED_ORIGINS}';
+               local origin_allowed = false;
+               if origin and origin ~= '' then
+                 for item in string.gmatch(allowed_csv, '([^,]+)') do
+                   local trimmed = string.gsub(item, '^%s*(.-)%s*$', '%1');
+                   if trimmed == origin then
+                     origin_allowed = true;
+                     break;
+                   end
+                 end
+               end
+               if ngx.req.get_method() == 'OPTIONS' then
+                 if origin_allowed then
+                   ngx.header['Access-Control-Allow-Origin'] = origin;
+                   ngx.header['Access-Control-Allow-Credentials'] = 'true';
+                   ngx.header['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+                   ngx.header['Access-Control-Allow-Headers'] = 'Content-Type, Accept, Authorization, X-Expected-User, X-Finance-Request, X-Request-Id';
+                   ngx.header['Access-Control-Max-Age'] = '86400';
+                   ngx.header['Vary'] = 'Origin';
+                   ngx.status = 204;
+                   ngx.exit(204);
+                 else
+                   ngx.status = 403;
+                   ngx.exit(403);
+                 end
+               end
+
                local cookie = ngx.var.http_cookie;
                if cookie then
                  local m, err = ngx.re.match(cookie, '(?:^|;\\\\s*)__session=([^;]+)', 'jo');
@@ -131,6 +202,21 @@ routes:
         phase: header_filter
         functions:
           - "return function(conf, ctx)
+               local origin = ngx.var.http_origin;
+               local allowed_csv = '${ALLOWED_ORIGINS}';
+               if origin and origin ~= '' then
+                 for item in string.gmatch(allowed_csv, '([^,]+)') do
+                   local trimmed = string.gsub(item, '^%s*(.-)%s*$', '%1');
+                   if trimmed == origin then
+                     ngx.header['Access-Control-Allow-Origin'] = origin;
+                     ngx.header['Access-Control-Allow-Credentials'] = 'true';
+                     ngx.header['Access-Control-Expose-Headers'] = 'X-Request-Id, Retry-After, retry-after-ms, Content-Disposition';
+                     ngx.header['Vary'] = 'Origin, Cookie';
+                     break;
+                   end
+                 end
+               end
+
                local headers = ngx.resp.get_headers();
                local set_cookies = headers['Set-Cookie'];
                if not set_cookies then return end;
@@ -146,9 +232,9 @@ routes:
                  if m and m[1] then
                    local session_cookie;
                    if m[1] == '' or string.find(sc, 'Max%-Age=0') or string.find(sc, '1970') then
-                     session_cookie = '__session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=Lax; Secure; HttpOnly';
+                     session_cookie = '__session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=None; Secure; HttpOnly; Partitioned';
                    else
-                     session_cookie = '__session=' .. m[1] .. '; Max-Age=900; Path=/; SameSite=Lax; Secure; HttpOnly';
+                     session_cookie = '__session=' .. m[1] .. '; Max-Age=900; Path=/; SameSite=None; Secure; HttpOnly; Partitioned';
                    end
                    table.insert(new_cookies, session_cookie);
                  end
@@ -171,13 +257,41 @@ routes:
         verify: false
       timeout:
         connect: 60
-        send: 60
-        read: 120
+        send: 600
+        read: 600
     plugins:
       serverless-pre-function:
         phase: rewrite
         functions:
           - "return function(conf, ctx)
+               local origin = ngx.var.http_origin;
+               local allowed_csv = '${ALLOWED_ORIGINS}';
+               local origin_allowed = false;
+               if origin and origin ~= '' then
+                 for item in string.gmatch(allowed_csv, '([^,]+)') do
+                   local trimmed = string.gsub(item, '^%s*(.-)%s*$', '%1');
+                   if trimmed == origin then
+                     origin_allowed = true;
+                     break;
+                   end
+                 end
+               end
+               if ngx.req.get_method() == 'OPTIONS' then
+                 if origin_allowed then
+                   ngx.header['Access-Control-Allow-Origin'] = origin;
+                   ngx.header['Access-Control-Allow-Credentials'] = 'true';
+                   ngx.header['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+                   ngx.header['Access-Control-Allow-Headers'] = 'Content-Type, Accept, Authorization, X-Expected-User, X-Finance-Request, X-Request-Id';
+                   ngx.header['Access-Control-Max-Age'] = '86400';
+                   ngx.header['Vary'] = 'Origin';
+                   ngx.status = 204;
+                   ngx.exit(204);
+                 else
+                   ngx.status = 403;
+                   ngx.exit(403);
+                 end
+               end
+
                local cookie = ngx.var.http_cookie;
                if cookie then
                  local m, err = ngx.re.match(cookie, '(?:^|;\\\\s*)__session=([^;]+)', 'jo');
@@ -200,6 +314,21 @@ routes:
         phase: header_filter
         functions:
           - "return function(conf, ctx)
+               local origin = ngx.var.http_origin;
+               local allowed_csv = '${ALLOWED_ORIGINS}';
+               if origin and origin ~= '' then
+                 for item in string.gmatch(allowed_csv, '([^,]+)') do
+                   local trimmed = string.gsub(item, '^%s*(.-)%s*$', '%1');
+                   if trimmed == origin then
+                     ngx.header['Access-Control-Allow-Origin'] = origin;
+                     ngx.header['Access-Control-Allow-Credentials'] = 'true';
+                     ngx.header['Access-Control-Expose-Headers'] = 'X-Request-Id, Retry-After, retry-after-ms, Content-Disposition';
+                     ngx.header['Vary'] = 'Origin, Cookie';
+                     break;
+                   end
+                 end
+               end
+
                local headers = ngx.resp.get_headers();
                local set_cookies = headers['Set-Cookie'];
                if not set_cookies then return end;
@@ -215,9 +344,9 @@ routes:
                  if m and m[1] then
                    local session_cookie;
                    if m[1] == '' or string.find(sc, 'Max%-Age=0') or string.find(sc, '1970') then
-                     session_cookie = '__session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=Lax; Secure; HttpOnly';
+                     session_cookie = '__session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=None; Secure; HttpOnly; Partitioned';
                    else
-                     session_cookie = '__session=' .. m[1] .. '; Max-Age=900; Path=/; SameSite=Lax; Secure; HttpOnly';
+                     session_cookie = '__session=' .. m[1] .. '; Max-Age=900; Path=/; SameSite=None; Secure; HttpOnly; Partitioned';
                    end
                    table.insert(new_cookies, session_cookie);
                  end
@@ -248,6 +377,34 @@ routes:
         phase: rewrite
         functions:
           - "return function(conf, ctx)
+               local origin = ngx.var.http_origin;
+               local allowed_csv = '${ALLOWED_ORIGINS}';
+               local origin_allowed = false;
+               if origin and origin ~= '' then
+                 for item in string.gmatch(allowed_csv, '([^,]+)') do
+                   local trimmed = string.gsub(item, '^%s*(.-)%s*$', '%1');
+                   if trimmed == origin then
+                     origin_allowed = true;
+                     break;
+                   end
+                 end
+               end
+               if ngx.req.get_method() == 'OPTIONS' then
+                 if origin_allowed then
+                   ngx.header['Access-Control-Allow-Origin'] = origin;
+                   ngx.header['Access-Control-Allow-Credentials'] = 'true';
+                   ngx.header['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+                   ngx.header['Access-Control-Allow-Headers'] = 'Content-Type, Accept, Authorization, X-Expected-User, X-Finance-Request, X-Request-Id';
+                   ngx.header['Access-Control-Max-Age'] = '86400';
+                   ngx.header['Vary'] = 'Origin';
+                   ngx.status = 204;
+                   ngx.exit(204);
+                 else
+                   ngx.status = 403;
+                   ngx.exit(403);
+                 end
+               end
+
                local cookie = ngx.var.http_cookie;
                if cookie then
                  local m, err = ngx.re.match(cookie, '(?:^|;\\\\s*)__session=([^;]+)', 'jo');
@@ -270,6 +427,21 @@ routes:
         phase: header_filter
         functions:
           - "return function(conf, ctx)
+               local origin = ngx.var.http_origin;
+               local allowed_csv = '${ALLOWED_ORIGINS}';
+               if origin and origin ~= '' then
+                 for item in string.gmatch(allowed_csv, '([^,]+)') do
+                   local trimmed = string.gsub(item, '^%s*(.-)%s*$', '%1');
+                   if trimmed == origin then
+                     ngx.header['Access-Control-Allow-Origin'] = origin;
+                     ngx.header['Access-Control-Allow-Credentials'] = 'true';
+                     ngx.header['Access-Control-Expose-Headers'] = 'X-Request-Id, Retry-After, retry-after-ms, Content-Disposition';
+                     ngx.header['Vary'] = 'Origin, Cookie';
+                     break;
+                   end
+                 end
+               end
+
                local headers = ngx.resp.get_headers();
                local set_cookies = headers['Set-Cookie'];
                if not set_cookies then return end;
@@ -285,9 +457,9 @@ routes:
                  if m and m[1] then
                    local session_cookie;
                    if m[1] == '' or string.find(sc, 'Max%-Age=0') or string.find(sc, '1970') then
-                     session_cookie = '__session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=Lax; Secure; HttpOnly';
+                     session_cookie = '__session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=None; Secure; HttpOnly; Partitioned';
                    else
-                     session_cookie = '__session=' .. m[1] .. '; Max-Age=900; Path=/; SameSite=Lax; Secure; HttpOnly';
+                     session_cookie = '__session=' .. m[1] .. '; Max-Age=900; Path=/; SameSite=None; Secure; HttpOnly; Partitioned';
                    end
                    table.insert(new_cookies, session_cookie);
                  end

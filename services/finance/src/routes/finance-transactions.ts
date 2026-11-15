@@ -6,7 +6,7 @@ import {AppError,invalidInput} from '../errors.js';
 export async function financeTransactionRoutes(app:FastifyInstance,{manual,transactions,exporter,requireAuth,allowedOrigins}:{manual:FinanceManualRepository;transactions:FinanceTransactionRepository;exporter:(owner:string,input:unknown)=>Promise<Uint8Array>;requireAuth:(request:FastifyRequest)=>Promise<void>;allowedOrigins:string[]}){
  app.addHook('onRequest',async(request,reply)=>{
   reply.header('Cache-Control','no-store').header('Vary','Cookie');await requireAuth(request);
-  if(request.headers['x-expected-user']!==request.authUser!.id||request.headers['sec-fetch-site']==='cross-site')throw new AppError(403,'FORBIDDEN','Session changed');
+  if(request.headers['x-expected-user']!==request.authUser!.id||(request.headers['sec-fetch-site']==='cross-site'&&!allowedOrigins.includes(String(request.headers.origin))))throw new AppError(403,'FORBIDDEN','Session changed');
   if(request.method!=='GET'&&(!allowedOrigins.includes(String(request.headers.origin))||request.headers['x-finance-request']!=='1'||!request.headers['content-type']?.startsWith('application/json')))throw new AppError(403,'FORBIDDEN','Origin not allowed');
  });
  app.setErrorHandler((error,_request,reply)=>{const safe=error instanceof AppError?error:invalidInput('Transaction request failed');return reply.code(safe.statusCode).send({error:{code:safe.code,message:safe.message}});});

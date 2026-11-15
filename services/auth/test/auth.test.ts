@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
+import { authCookieOptions, clearAuthCookieOptions } from "@innova/auth-kit";
 import { authResponseSchema } from "@innova/contracts";
 import { buildApp } from "../src/app.js";
 import type { UserRecord, UserRepository } from "../src/db/users.js";
@@ -161,4 +162,53 @@ test("logout clears cookie and is idempotent", async (t) => {
 
   const me = await app.inject({ method: "GET", url: "/api/auth/me" });
   assert.equal(me.statusCode, 401);
+});
+
+test("production cookies enforce SameSite=None, Secure, HttpOnly, Partitioned for cross-origin gateway requests", async (t) => {
+  const prevEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
+  try {
+    const issueOpts = authCookieOptions();
+    assert.equal(issueOpts.sameSite, "none");
+    assert.equal(issueOpts.secure, true);
+    assert.equal(issueOpts.httpOnly, true);
+    assert.equal(issueOpts.partitioned, true);
+
+    const clearOpts = clearAuthCookieOptions();
+    assert.equal(clearOpts.sameSite, "none");
+    assert.equal(clearOpts.secure, true);
+    assert.equal(clearOpts.httpOnly, true);
+    assert.equal(clearOpts.partitioned, true);
+
+    const { app } = fixture();
+    t.after(() => app.close());
+
+    const signup = await app.inject({
+      method: "POST",
+      url: "/api/auth/signup",
+      payload: { email: "prod-cookie@example.com", password: "validpass123" },
+    });
+    assert.equal(signup.statusCode, 201);
+    const setCookie = String(signup.headers["set-cookie"]);
+    assert.match(setCookie, /SameSite=None/i);
+    assert.match(setCookie, /Secure/i);
+    assert.match(setCookie, /HttpOnly/i);
+    assert.match(setCookie, /Partitioned/i);
+
+    const logout = await app.inject({
+      method: "POST",
+      url: "/api/auth/logout",
+      headers: { cookie: cookieFrom(signup) },
+    });
+    assert.equal(logout.statusCode, 204);
+    const clearHeader = String(logout.headers["set-cookie"]);
+    assert.match(clearHeader, /SameSite=None/i);
+    assert.match(clearHeader, /Partitioned/i);
+  } finally {
+    if (prevEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = prevEnv;
+    }
+  }
 });

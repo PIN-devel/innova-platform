@@ -101,6 +101,9 @@ export UPSTREAM_LEARNING_PORT="$LEARNING_PORT"
 
 echo "==> [innova-api-gateway] Learning upstream configured: ${UPSTREAM_LEARNING_SCHEME}://${UPSTREAM_LEARNING_HOST}:${UPSTREAM_LEARNING_PORT}"
 
+ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-http://localhost:5174,http://127.0.0.1:5174}"
+export ALLOWED_ORIGINS
+
 # 5. Substitute environment variables in apisix.yaml.template
 CONF_DIR="/usr/local/apisix/conf"
 mkdir -p "$CONF_DIR"
@@ -110,7 +113,7 @@ if [ -f "/app/conf/config.yaml" ]; then
 fi
 
 if [ -f "/app/conf/apisix.yaml.template" ]; then
-  envsubst '${UPSTREAM_AUTH_SCHEME} ${UPSTREAM_AUTH_HOST} ${UPSTREAM_AUTH_PORT} ${UPSTREAM_FINANCE_SCHEME} ${UPSTREAM_FINANCE_HOST} ${UPSTREAM_FINANCE_PORT} ${UPSTREAM_AI_SCHEME} ${UPSTREAM_AI_HOST} ${UPSTREAM_AI_PORT} ${UPSTREAM_LEARNING_SCHEME} ${UPSTREAM_LEARNING_HOST} ${UPSTREAM_LEARNING_PORT}' \
+  envsubst '${UPSTREAM_AUTH_SCHEME} ${UPSTREAM_AUTH_HOST} ${UPSTREAM_AUTH_PORT} ${UPSTREAM_FINANCE_SCHEME} ${UPSTREAM_FINANCE_HOST} ${UPSTREAM_FINANCE_PORT} ${UPSTREAM_AI_SCHEME} ${UPSTREAM_AI_HOST} ${UPSTREAM_AI_PORT} ${UPSTREAM_LEARNING_SCHEME} ${UPSTREAM_LEARNING_HOST} ${UPSTREAM_LEARNING_PORT} ${ALLOWED_ORIGINS}' \
     < /app/conf/apisix.yaml.template > "$CONF_DIR/apisix.yaml"
   echo "==> [innova-api-gateway] Generated $CONF_DIR/apisix.yaml successfully."
 fi

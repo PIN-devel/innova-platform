@@ -95,19 +95,38 @@ test("access control gates /api/ai/chat/stream", async (t) => {
   assert.equal(rejectedRes.statusCode, 403);
   assert.equal(rejectedRes.json().error.code, "SIGNUP_REJECTED");
 
-  // 4. Cross-site request blocked (CSRF defense)
+  // 4. Cross-site request blocked unless origin is explicitly allowed (CSRF defense)
   const adminToken = app.jwt.sign({ sub: adminUser.id });
-  const crossSiteRes = await app.inject({
+  for (const extraHeaders of [
+    {},
+    { origin: "https://evil.invalid" },
+  ] as Record<string, string>[]) {
+    const crossSiteRes = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat/stream",
+      headers: {
+        cookie: `innova_auth=${adminToken}`,
+        "sec-fetch-site": "cross-site",
+        ...extraHeaders,
+      },
+      payload: { messages: [{ role: "user", content: "안녕" }] },
+    });
+    assert.equal(crossSiteRes.statusCode, 403);
+    assert.equal(crossSiteRes.json().error.code, "FORBIDDEN");
+  }
+
+  // Allowed cross-site origin passes CSRF guard and reaches body validation
+  const allowedCrossSiteRes = await app.inject({
     method: "POST",
     url: "/api/ai/chat/stream",
     headers: {
       cookie: `innova_auth=${adminToken}`,
       "sec-fetch-site": "cross-site",
+      origin: "http://localhost:5174",
     },
-    payload: { messages: [{ role: "user", content: "안녕" }] },
+    payload: {},
   });
-  assert.equal(crossSiteRes.statusCode, 403);
-  assert.equal(crossSiteRes.json().error.code, "FORBIDDEN");
+  assert.equal(allowedCrossSiteRes.statusCode, 400);
 });
 
 test("request body validation on /api/ai/chat/stream", async (t) => {
@@ -563,7 +582,7 @@ test("streamTimeoutMs aborts slow upstream stream, emits timeout SSE error, and 
   assert.equal(lines.length, 1);
   assert.equal(lines[0].type, "error");
   assert.equal(lines[0].code, "INTERNAL_ERROR");
-  assert.match(lines[0].message, /55초/);
+  assert.match(lines[0].message, /1초/);
 
   // Lock was released on timeout; once cooldown passes, next request succeeds
   now += 1_500;
