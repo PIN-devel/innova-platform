@@ -1,6 +1,6 @@
 # MOTIFIN 은행·카드 비즈니스 반영
 
-상태: PIN-57/58 로컬 구현·dev 검증 대상. 운영 적용·월간 분석·투자 자산 관리를 뜻하지 않는다. 입력·기본 가져오기는 [Raw 적재](finance-raw-ingestion.md), 제품 경계는 [MOTIFIN](../../web/docs/motifin-product.md), 테이블 메타는 [신규 테이블 기준](../../../docs/database-table-metadata.md)을 따른다.
+상태: PIN-57/58 로컬 구현·dev 검증 대상. 운영 적용·월간 분석·투자 자산 관리를 뜻하지 않는다. 입력·기본 가져오기는 [Raw 적재](finance-raw-ingestion.md), 제품 경계는 [MOTIFIN](../../../apps/web/docs/motifin-product.md), 테이블 메타는 [신규 테이블 기준](../../../docs/database-table-metadata.md)을 따른다.
 
 ## 원천에서 해석 결과로
 

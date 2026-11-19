@@ -1,15 +1,29 @@
 # ==============================================================================
 # Innova Platform - Cloud Exit Package (docker-compose.yml)
-# Reference: ADR-0004 (Database-per-Service & Multi-container Orchestration)
+# Reference: ADR-0004 (Database-per-Service & Multi-container Orchestration),
+#            ADR-0005 (Serverless Cache/Lock & HTTP Fan-out Fallback)
+#
+# Note: Multi-container orchestration here replaces the legacy single-container
+#       `SERVICE_DOMAINS=all` mode defined in ADR-0002 (superseded by ADR-0004).
 #
 # Usage:
 #   1. Prepare environment variables in .env (or export them):
-#      - AUTH_DATABASE_URL (Neon dev branch connection string for innova_auth)
-#      - LEARNING_DATABASE_URL (Neon dev branch connection string for innova_learning)
-#      - FINANCE_DATABASE_URL (Neon dev branch connection string for innova_finance)
+#      Required:
+#      - AUTH_DATABASE_URL (Neon dev or self-hosted PostgreSQL URL for innova_auth)
+#      - LEARNING_DATABASE_URL (PostgreSQL URL for innova_learning)
+#      - FINANCE_DATABASE_URL (PostgreSQL URL for innova_finance)
 #      - JWT_SECRET (32+ character random secret)
 #      - FINANCE_RAW_ENCRYPTION_KEY (64-char hex key for raw data encryption)
-#      - EXAONE_API_KEY (optional, for AI service)
+#      Optional:
+#      - FINANCE_PDF_PASSWORD_KEYRING (JSON key map {"v1":"<64-hex>"})
+#      - FINANCE_PDF_PASSWORD_ACTIVE_KEY_VERSION (e.g. v1)
+#      - INTERNAL_EVENT_TOKEN (shared token protecting /internal/events/* webhooks)
+#      - UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN (defaults to InMemory fallback when unset)
+#      - CURRICULUM_ASSET_ROOT (local filesystem path for private curriculum assets)
+#      - CURRICULUM_ASSET_BUCKET (GCS bucket; keep unset outside GCP to use CURRICULUM_ASSET_ROOT)
+#      - EXAONE_API_KEY / EXAONE_API_BASE_URL (for AI service)
+#      - ALLOWED_ORIGINS (comma-separated browser origins)
+#      - NODE_ENV (defaults to production; set development for plain HTTP local cookie testing)
 #   2. Run:
 #      docker compose up --build -d
 #   3. Access API Gateway at:
@@ -34,6 +48,8 @@ services:
       - UPSTREAM_LEARNING_URL=http://learning-service:8080
       - UPSTREAM_FINANCE_URL=http://finance-service:8080
       - UPSTREAM_AI_URL=http://ai-service:8080
+      - UPSTREAM_IAM_AUTH=${UPSTREAM_IAM_AUTH:-false}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:8080}
     depends_on:
       - auth-service
       - learning-service
@@ -51,11 +67,17 @@ services:
     ports:
       - "8081:8080"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
+      - HOST=0.0.0.0
       - PORT=8080
       - AUTH_COOKIE_NAME=innova_auth
       - DATABASE_URL=${AUTH_DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
+      - GCP_IAM_AUTH_ENABLED=${GCP_IAM_AUTH_ENABLED:-false}
+      - EVENT_SUBSCRIBER_URLS=${EVENT_SUBSCRIBER_URLS:-http://learning-service:8080/internal/events/user-status,http://finance-service:8080/internal/events/user-status,http://ai-service:8080/internal/events/user-status}
+      - INTERNAL_EVENT_TOKEN=${INTERNAL_EVENT_TOKEN:-}
+      - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL:-}
+      - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN:-}
     networks:
       - innova-network
 
@@ -68,14 +90,19 @@ services:
     ports:
       - "8082:8080"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
+      - HOST=0.0.0.0
       - PORT=8080
       - AUTH_COOKIE_NAME=innova_auth
       - DATABASE_URL=${LEARNING_DATABASE_URL}
       - AUTH_SERVICE_URL=http://auth-service:8080
       - JWT_SECRET=${JWT_SECRET}
-      - CURRICULUM_ASSET_BUCKET=${CURRICULUM_ASSET_BUCKET:-innova-assets}
+      - GCP_IAM_AUTH_ENABLED=${GCP_IAM_AUTH_ENABLED:-false}
+      - CURRICULUM_ASSET_BUCKET=${CURRICULUM_ASSET_BUCKET:-}
       - CURRICULUM_ASSET_ROOT=${CURRICULUM_ASSET_ROOT:-}
+      - INTERNAL_EVENT_TOKEN=${INTERNAL_EVENT_TOKEN:-}
+      - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL:-}
+      - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN:-}
     networks:
       - innova-network
 
@@ -88,14 +115,21 @@ services:
     ports:
       - "8083:8080"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
+      - HOST=0.0.0.0
       - PORT=8080
       - AUTH_COOKIE_NAME=innova_auth
       - DATABASE_URL=${FINANCE_DATABASE_URL}
       - AUTH_SERVICE_URL=http://auth-service:8080
       - JWT_SECRET=${JWT_SECRET}
+      - GCP_IAM_AUTH_ENABLED=${GCP_IAM_AUTH_ENABLED:-false}
       - FINANCE_RAW_ENCRYPTION_KEY=${FINANCE_RAW_ENCRYPTION_KEY}
-      - FINANCE_ALLOWED_ORIGINS=${FINANCE_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:8080}
+      - FINANCE_ALLOWED_ORIGINS=${FINANCE_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:8080}
+      - FINANCE_PDF_PASSWORD_KEYRING=${FINANCE_PDF_PASSWORD_KEYRING:-}
+      - FINANCE_PDF_PASSWORD_ACTIVE_KEY_VERSION=${FINANCE_PDF_PASSWORD_ACTIVE_KEY_VERSION:-}
+      - INTERNAL_EVENT_TOKEN=${INTERNAL_EVENT_TOKEN:-}
+      - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL:-}
+      - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN:-}
     networks:
       - innova-network
 
@@ -108,12 +142,19 @@ services:
     ports:
       - "8084:8080"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
+      - HOST=0.0.0.0
       - PORT=8080
       - AUTH_COOKIE_NAME=innova_auth
       - AUTH_SERVICE_URL=http://auth-service:8080
       - JWT_SECRET=${JWT_SECRET}
+      - GCP_IAM_AUTH_ENABLED=${GCP_IAM_AUTH_ENABLED:-false}
+      - AI_ALLOWED_ORIGINS=${AI_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:8080}
       - EXAONE_API_KEY=${EXAONE_API_KEY:-}
+      - EXAONE_API_BASE_URL=${EXAONE_API_BASE_URL:-https://api.exaone.ai/v1}
+      - INTERNAL_EVENT_TOKEN=${INTERNAL_EVENT_TOKEN:-}
+      - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL:-}
+      - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN:-}
     networks:
       - innova-network
 

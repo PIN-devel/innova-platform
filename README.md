@@ -29,7 +29,7 @@ Google Cloud Run 및 Firebase Hosting 기반으로 운영되며, 벤더 락인�
 | **Finance** | `services/finance` (`@innova/finance`) | 개인 금융(MOTIFIN) 원천 데이터 암호화 및 분석 (Cloud Run) |
 | **AI** | `services/ai` (`@innova/ai`) | K-EXAONE 2.5 기반 AI 챗 스트리밍 (Cloud Run) |
 | **공유 계약** | `packages/contracts` (`@innova/contracts`) | 프런트엔드·백엔드 공유 Zod 스키마 및 타입 인터페이스 |
-| **공통 킷** | `packages/auth-kit` (`@innova/auth-kit`) | Fastify 공통 가드, Graceful Shutdown, 구조화 로거, 에러 핸들러 |
+| **공통 킷** | `packages/auth-kit` (`@innova/auth-kit`) | Fastify 공통 가드, 서버리스 캐시·분산 락·Push 이벤트 추상화, Graceful Shutdown, 구조화 로거, 에러 핸들러 |
 
 ---
 
@@ -69,7 +69,7 @@ pnpm dev:web
 ```sh
 # .env 파일에 DB Connection string 및 JWT_SECRET 등을 설정한 후
 pnpm docker:up
-# 또는: docker compose up -d
+# 최초 이미지 빌드 포함 시: docker compose up --build -d
 
 # API Gateway 진입점: http://localhost:8080/health
 # 종료: pnpm docker:down
