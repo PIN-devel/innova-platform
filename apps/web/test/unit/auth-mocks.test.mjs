@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 import { adminApprovalResponseSchema, adminRejectionResponseSchema, apiErrorResponseSchema, authResponseSchema, pendingUsersResponseSchema } from "@innova/contracts";
 import { setupServer } from "msw/node";
-import { handlers, resetAuthMock } from "../src/mocks/handlers.ts";
+import { handlers, resetAuthMock } from "../../src/mocks/handlers.ts";
 
 const server = setupServer(...handlers);
 const baseUrl = "http://localhost";

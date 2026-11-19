@@ -66,5 +66,6 @@
 - 앱별 명령을 직접 실행할 때 `@innova/contracts`나 `@innova/auth-kit`의 빌드 결과가 없거나 공유 패키지가 바뀌었다면 먼저 `pnpm build:shared`(또는 해당 패키지 `build`, 예: `pnpm --filter @innova/contracts build`)를 실행한다.
 - 변경 범위에 맞는 검증을 먼저 실행한다. 전체 통합 확인이 필요한 경우 루트에서 `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm lint`를 실행한다.
 - 문서만 변경한 경우 링크·앵커·경로·diff와 빌드 입력 여부를 검사한다. Tailwind 스캔처럼 문서가 입력이면 관련 생성물/빌드를 검증하고, 아니면 앱 빌드·테스트·브라우저 QA를 반복하지 않는다.
-- 루트 `pnpm test`는 Contracts를 빌드한 뒤 API와 Web 테스트를 모두 실행한다. 새 앱의 테스트를 추가할 때 공용 검증에서 누락되지 않도록 한다.
+- 루트 `pnpm test`는 Contracts를 빌드한 뒤 API와 Web 단위·통합 테스트를 모두 실행한다. 새 앱의 테스트를 추가할 때 공용 검증에서 누락되지 않도록 한다.
+- 브라우저 E2E(`pnpm test:e2e`)는 주요 사용자 여정만 검증한다. AI 에이전트 사용량 절감을 위해 매 작업마다 필수 실행하지 않으며, UI·라우팅·세션·MOTIFIN 변경이나 출시 검증 등 필요 시에만 명시적으로 실행한다(PR CI에서는 `.github/workflows/web-e2e.yml`이 웹/계약 변경 시 자동 실행한다).
 - 테스트나 빌드가 실패하면 원인과 범위를 확인한다. 실행하지 못한 검증은 통과했다고 보고하지 않는다.

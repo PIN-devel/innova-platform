@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {setupServer} from 'msw/node';
-import {createFinanceRawHandlers} from '../src/mocks/finance-raw-handlers.ts';
+import {createFinanceRawHandlers} from '../../src/mocks/finance-raw-handlers.ts';
 import {bankRawColumns} from '@innova/contracts';
 import {createServer} from 'vite';
 

@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {setupServer} from 'msw/node';
 import {createServer} from 'vite';
-import {createFinanceRawHandlers} from '../src/mocks/finance-raw-handlers.ts';
-import {cardSource} from '../../../services/finance/test/fixtures/finance-raw.ts';
+import {createFinanceRawHandlers} from '../../src/mocks/finance-raw-handlers.ts';
+import {cardSource} from '../../../../services/finance/test/fixtures/finance-raw.ts';
 test('transaction mock manual projection/delete/reimport follows owner and privacy lifecycle',async t=>{
  let user={id:crypto.randomUUID(),email:'synthetic@example.invalid',role:'member',approvalStatus:'approved'};const server=setupServer(...createFinanceRawHandlers(()=>user));server.listen({onUnhandledRequest:'error'});t.after(()=>server.close());
  const headers=()=>({'x-expected-user':user.id,'x-finance-request':'1',origin:'http://localhost','content-type':'application/json'}),call=(path,body)=>fetch('http://localhost/api/finance/'+path,{headers:headers(),method:body?'POST':'GET',...(body?{body:JSON.stringify(body)}:{})});
@@ -18,4 +18,31 @@ test('transaction command clears source caches after confirmed delete even if re
  const native=globalThis.fetch;t.after(()=>globalThis.fetch=native);let calls=0;globalThis.fetch=async()=>{if(calls++)throw Error('synthetic readback interruption');return new Response(JSON.stringify({id,deleted:true,revision:2}),{headers:{'content-type':'application/json'}});};const command={type:'delete',value:{id,operationId:crypto.randomUUID(),expectedRevision:1,confirmed:true}};
  assert.deepEqual(await runTransactionCommand(client,owner,0,command,new AbortController().signal),{saved:true,deleted:true,verified:false});assert.equal(client.getQueryData(sourceKey),undefined);assert.deepEqual(client.getQueryData(key).fileTransactions,[]);
  let release,start;const started=new Promise(r=>start=r);globalThis.fetch=()=>{start();return new Promise(r=>release=r);};const pending=runTransactionCommand(client,owner,0,{type:'impact',id},new AbortController().signal);await started;clearProtectedQueries(client);release(new Response(JSON.stringify({id,source:'manual',revision:1,month:'2026-01',relatedEventIds:[],scheduleCount:0,rawRowRemoved:false,warning:'synthetic'}),{headers:{'content-type':'application/json'}}));await assert.rejects(pending);assert.equal(client.getQueryData(key),undefined);
+});
+test('transaction command preserves the active QueryObserver subscription on manual save and delete',async t=>{
+ const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'});t.after(()=>vite.close());
+ const {QueryClient,QueryObserver}=await import('@tanstack/react-query'),client=new QueryClient();t.after(()=>client.clear());
+ const {runTransactionCommand}=await vite.ssrLoadModule('/src/features/finance-transactions/commands.ts'),{transactionQuery}=await vite.ssrLoadModule('/src/entities/finance-transactions/queries.ts');
+ const owner=crypto.randomUUID(),manualId=crypto.randomUUID(),sourceKey=['finance-classification',owner,0];
+ const initial={revision:0,categories:[{id:'unclassified',name:'미분류'}],manual:[],fileTransactions:[],duplicateCandidates:[]};
+ const manualRecord={id:manualId,source:'manual',date:'2026-01-25',type:'expense',amount:'15000',description:'합성수기지출',categoryId:'unclassified',note:'',revision:1,createdAt:'2026-01-25T00:00:00Z',updatedAt:'2026-01-25T00:00:00Z'};
+ client.setQueryData(transactionQuery(client,owner,0).queryKey,initial);
+ client.setQueryData(sourceKey,{stale:true});
+ const observer=new QueryObserver(client,{...transactionQuery(client,owner,0),enabled:false});
+ const stop=observer.subscribe(()=>{});t.after(()=>stop());
+ const native=globalThis.fetch;t.after(()=>{globalThis.fetch=native;});
+ let stored=[];
+ globalThis.fetch=async(input)=>{
+  const url=String(input);
+  if(url.endsWith('/manual')){stored=[manualRecord];return new Response(JSON.stringify(manualRecord),{headers:{'content-type':'application/json'}});}
+  if(url.endsWith('/delete')){stored=[];return new Response(JSON.stringify({id:manualId,deleted:true,revision:1}),{headers:{'content-type':'application/json'}});}
+  if(url.includes('/deletion'))return new Response(JSON.stringify({id:manualId,deleted:true,revision:1}),{headers:{'content-type':'application/json'}});
+  return new Response(JSON.stringify({...initial,revision:stored.length,manual:stored}),{headers:{'content-type':'application/json'}});
+ };
+ await runTransactionCommand(client,owner,0,{type:'manual',value:{id:manualId,operationId:crypto.randomUUID(),expectedRevision:0,input:{date:'2026-01-25',type:'expense',amount:'15000',description:'합성수기지출',categoryId:'unclassified',note:''}}},new AbortController().signal);
+ assert.equal(client.getQueryData(sourceKey),undefined);
+ assert.equal(observer.getCurrentResult().data.manual.length,1);
+ assert.equal(observer.getCurrentResult().data.manual[0].description,'합성수기지출');
+ await runTransactionCommand(client,owner,0,{type:'delete',value:{id:manualId,operationId:crypto.randomUUID(),expectedRevision:1,confirmed:true}},new AbortController().signal);
+ assert.equal(observer.getCurrentResult().data.manual.length,0);
 });

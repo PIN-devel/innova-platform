@@ -10,4 +10,5 @@
 - 공통 Shell·탐색·단일 main은 RootLayout/content layout이 소유한다. 기능·오류·로딩 화면에서 Shell을 복제하지 않는다. 최초 Skeleton, 기존 데이터의 보조 재조회 상태, 일반 오류 재시도와 인증·권한 오류의 보호 콘텐츠 제거를 유지한다.
 - HTTP는 `shared/api/client.ts`, 계약은 `@innova/contracts`를 사용한다. API 변경 시 MSW도 접근 제어·상태 전이·오류를 동일하게 재현하고 양쪽 회귀를 확인한다.
 - React symbol은 PascalCase, 파일은 kebab-case를 사용한다. 단일 hook은 `use-*.ts(x)`, 관련 hook 묶음은 `hooks.ts`를 허용한다. shadcn 생성 파일은 도구 규칙을 유지한다.
-- Web 검증은 루트 기준에서 범위에 맞게 선택한다. Oxlint가 layer 방향과 cycle을 검사한다. lint 구성·버전 변경은 실제 lint와 `test/fsd-lint.test.mjs`를 함께 검증한다. slice public API나 모든 cross-slice 제한을 선제 도입하지 않는다.
+- Web 검증은 루트 기준에서 범위에 맞게 선택한다. Oxlint가 layer 방향과 cycle을 검사한다. lint 구성·버전 변경은 실제 lint와 `test/unit/fsd-lint.test.mjs`를 함께 검증한다. slice public API나 모든 cross-slice 제한을 선제 도입하지 않는다.
+- 테스트는 `test/unit/`(Node 단위·통합 테스트, `pnpm test`)과 `test/e2e/`(Playwright 브라우저 E2E, `pnpm test:e2e`)로 분리한다. E2E는 주요 스토리만 검증하며, AI 에이전트 사용량 절감을 위해 기본 필수 검증으로 매번 실행하지 않고 UI·라우팅·세션·MOTIFIN 변경 검증 등 필요 시에만 실행한다.

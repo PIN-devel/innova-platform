@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ApiError, apiBaseUrl, apiClient, resolveApiUrl } from "../src/shared/api/client.ts";
+import { ApiError, apiBaseUrl, apiClient, resolveApiUrl } from "../../src/shared/api/client.ts";
 
 test("resolveApiUrl normalizes leading slashes against apiBaseUrl", () => {
   assert.equal(apiBaseUrl, "/api");
