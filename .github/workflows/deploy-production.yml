@@ -34,6 +34,7 @@ jobs:
         uses: dorny/paths-filter@v4
         id: filter
         with:
+          predicate-quantifier: 'some-with-excludes'
           base: ${{ github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || '' }}
           filters: |
             auth:
@@ -44,6 +45,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - '.github/workflows/deploy-production.yml'
+              - '.github/scripts/**'
               - '!services/auth/**/*.md'
               - '!**/*.md'
               - '!docs/**'
@@ -55,6 +57,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - '.github/workflows/deploy-production.yml'
+              - '.github/scripts/**'
               - '!services/learning/**/*.md'
               - '!**/*.md'
               - '!docs/**'
@@ -66,6 +69,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - '.github/workflows/deploy-production.yml'
+              - '.github/scripts/**'
               - '!services/finance/**/*.md'
               - '!**/*.md'
               - '!docs/**'
@@ -77,6 +81,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - '.github/workflows/deploy-production.yml'
+              - '.github/scripts/**'
               - '!services/ai/**/*.md'
               - '!**/*.md'
               - '!docs/**'
@@ -86,6 +91,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - '.github/workflows/deploy-production.yml'
+              - '.github/scripts/**'
               - '!apps/api-gateway/**/*.md'
               - '!**/*.md'
               - '!docs/**'
@@ -221,15 +227,6 @@ jobs:
           done
           UNIQUE_CALLER_SAS=$(printf '%s\n' ${CALLER_SAS} | grep -v '^$' | sort -u)
 
-          for SA in ${UNIQUE_CALLER_SAS}; do
-            gcloud run services add-iam-policy-binding innova-auth-api \
-              --project="${GCP_PROJECT_ID}" \
-              --region="${GCP_REGION}" \
-              --member="serviceAccount:${SA}" \
-              --role="roles/run.invoker" \
-              --quiet >/dev/null 2>&1 || true
-          done
-
           gcloud run deploy innova-auth-api \
             --project="${GCP_PROJECT_ID}" \
             --region="${GCP_REGION}" \
@@ -244,12 +241,7 @@ jobs:
             --set-env-vars="${ENV_VARS}"
 
           for SA in ${UNIQUE_CALLER_SAS}; do
-            gcloud run services add-iam-policy-binding innova-auth-api \
-              --project="${GCP_PROJECT_ID}" \
-              --region="${GCP_REGION}" \
-              --member="serviceAccount:${SA}" \
-              --role="roles/run.invoker" \
-              --quiet
+            bash .github/scripts/ensure-run-invoker.sh "${GCP_PROJECT_ID}" "${GCP_REGION}" innova-auth-api "${SA}"
           done
 
           AUTH_URL=$(gcloud run services describe innova-auth-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
@@ -409,19 +401,8 @@ jobs:
           LEARNING_SA=$(gcloud run services describe innova-learning-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
           LEARNING_SA="${LEARNING_SA:-${DEFAULT_COMPUTE_SA}}"
 
-          gcloud run services add-iam-policy-binding innova-learning-api \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
-            --member="serviceAccount:${GW_SA}" \
-            --role="roles/run.invoker" \
-            --quiet
-
-          gcloud run services add-iam-policy-binding innova-auth-api \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
-            --member="serviceAccount:${LEARNING_SA}" \
-            --role="roles/run.invoker" \
-            --quiet
+          bash .github/scripts/ensure-run-invoker.sh "${GCP_PROJECT_ID}" "${GCP_REGION}" innova-learning-api "${GW_SA}"
+          bash .github/scripts/ensure-run-invoker.sh "${GCP_PROJECT_ID}" "${GCP_REGION}" innova-auth-api "${LEARNING_SA}"
 
           LEARNING_URL=$(gcloud run services describe innova-learning-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "learning_url=${LEARNING_URL}" >> "$GITHUB_OUTPUT"
@@ -590,19 +571,8 @@ jobs:
           FINANCE_SA=$(gcloud run services describe innova-finance-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
           FINANCE_SA="${FINANCE_SA:-${DEFAULT_COMPUTE_SA}}"
 
-          gcloud run services add-iam-policy-binding innova-finance-api \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
-            --member="serviceAccount:${GW_SA}" \
-            --role="roles/run.invoker" \
-            --quiet
-
-          gcloud run services add-iam-policy-binding innova-auth-api \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
-            --member="serviceAccount:${FINANCE_SA}" \
-            --role="roles/run.invoker" \
-            --quiet
+          bash .github/scripts/ensure-run-invoker.sh "${GCP_PROJECT_ID}" "${GCP_REGION}" innova-finance-api "${GW_SA}"
+          bash .github/scripts/ensure-run-invoker.sh "${GCP_PROJECT_ID}" "${GCP_REGION}" innova-auth-api "${FINANCE_SA}"
 
           FINANCE_URL=$(gcloud run services describe innova-finance-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "finance_url=${FINANCE_URL}" >> "$GITHUB_OUTPUT"
@@ -756,19 +726,8 @@ jobs:
           AI_SA=$(gcloud run services describe innova-ai-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
           AI_SA="${AI_SA:-${DEFAULT_COMPUTE_SA}}"
 
-          gcloud run services add-iam-policy-binding innova-ai-api \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
-            --member="serviceAccount:${GW_SA}" \
-            --role="roles/run.invoker" \
-            --quiet
-
-          gcloud run services add-iam-policy-binding innova-auth-api \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
-            --member="serviceAccount:${AI_SA}" \
-            --role="roles/run.invoker" \
-            --quiet
+          bash .github/scripts/ensure-run-invoker.sh "${GCP_PROJECT_ID}" "${GCP_REGION}" innova-ai-api "${GW_SA}"
+          bash .github/scripts/ensure-run-invoker.sh "${GCP_PROJECT_ID}" "${GCP_REGION}" innova-auth-api "${AI_SA}"
 
           AI_URL=$(gcloud run services describe innova-ai-api --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
           echo "ai_url=${AI_URL}" >> "$GITHUB_OUTPUT"
@@ -923,12 +882,7 @@ jobs:
           GW_SA="${GW_SA:-${DEFAULT_COMPUTE_SA}}"
 
           for BACKEND_SVC in innova-auth-api innova-learning-api innova-finance-api innova-ai-api; do
-            gcloud run services add-iam-policy-binding "${BACKEND_SVC}" \
-              --project="${GCP_PROJECT_ID}" \
-              --region="${GCP_REGION}" \
-              --member="serviceAccount:${GW_SA}" \
-              --role="roles/run.invoker" \
-              --quiet
+            bash .github/scripts/ensure-run-invoker.sh "${GCP_PROJECT_ID}" "${GCP_REGION}" "${BACKEND_SVC}" "${GW_SA}"
           done
 
           GATEWAY_URL=$(gcloud run services describe innova-api-gateway --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')
