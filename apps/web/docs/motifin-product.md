@@ -38,7 +38,7 @@ Investments, 타계좌 상세·예적금·전체 순자산, 금융기관 실시�
 | 이 문서 | 제품 목적·브랜드·최신 첫 출시 범위. 병합 전 로컬 인수본 |
 | [PIN-37](https://linear.app/pin-dev/issue/PIN-37) | 최신 사용자 결정과 상세 수용 기준. 사용자 의미·월간 부담 검증은 잔여 과제 |
 | [와이어프레임](motifin-wireframe.md), [PIN-52](https://linear.app/pin-dev/issue/PIN-52) | 사용자 승인된 합성 UX·여정·화면/액션 교체 지점. 서비스 구현의 증거가 아님 |
-| [금융 아키텍처](../../api/docs/personal-finance-architecture.md), [PIN-40](https://linear.app/pin-dev/issue/PIN-40) | 소유권·계약·Raw/business·정정·암호·검증의 검토 초안. 물리 schema/API 확정이나 보안 검증 완료가 아님 |
+| [금융 아키텍처](../../../services/finance/docs/personal-finance-architecture.md), [PIN-40](https://linear.app/pin-dev/issue/PIN-40) | 소유권·계약·Raw/business·정정·암호·검증의 검토 초안. 물리 schema/API 확정이나 보안 검증 완료가 아님 |
 | [PIN-39](https://linear.app/pin-dev/issue/PIN-39) | 제공 PDF·카드 XLSX의 로컬 브라우저 판독 완료 기록. 실제 Android·교차 파일 중복/정정·월 완전성·제품 반영은 미검증 |
 | [Web 아키텍처](architecture.md), [디자인](design.md) | 현행 앱 구조·세션·공통 UI 기준 |
 | [PIN-54](https://linear.app/pin-dev/issue/PIN-54), [PIN-55](https://linear.app/pin-dev/issue/PIN-55) | 구현 slice별 AC·선행 조건과 미확정 사항, 시작 branch/commit·미커밋 보존·실행 결과 기록 |
@@ -47,7 +47,7 @@ Investments, 타계좌 상세·예적금·전체 순자산, 금융기관 실시�
 
 실제 파일 형식은 확장자만으로 정하지 않는다. PIN-39에서 판독한 카드 표본은 ZIP/OOXML XLSX이며 모든 XLS 형식 지원을 입증하지 않는다. 교차 문서의 날짜+금액 일치만으로 고유 거래를 확정하지 않고 모호하면 확인 대상으로 남긴다. 구현 및 출시 검증은 PIN-56~64가 각각 소유하며 상세 설계를 먼저 전면 재작성하지 않는다.
 
-현재 로컬 Cash Flow 구현의 실제 가져오기·리뷰·분류·분석·일정·선택 암호 경로와 출시 잔여 조건은 [출시 검증·운영 전환](../../api/docs/finance-release.md) 및 PIN-64/54를 따른다. 합성 검증 통과와 실제 Android 사용자 인수·운영 출시는 구분한다.
+현재 로컬 Cash Flow 구현의 실제 가져오기·리뷰·분류·분석·일정·선택 암호 경로와 출시 잔여 조건은 [출시 검증·운영 전환](../../../services/finance/docs/finance-release.md) 및 PIN-64/54를 따른다. 합성 검증 통과와 실제 Android 사용자 인수·운영 출시는 구분한다.
 
 ## 수기 거래·영구 삭제·AI 내보내기
 

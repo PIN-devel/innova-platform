@@ -11,7 +11,7 @@ PIN-20의 데이터 흐름과 PIN-29의 책임 배치 기준이다. UI는 [디�
 
 ## 1. 현행 감사와 교체 결과
 
-PIN-56은 `/motifin/import`에 approved 접근·route loader/action을 연결한다. `entities/finance-raw`는 owner/epoch별 이력 query와 API, `features/finance-raw-import`는 파일 worker·수동 암호·파일별 저장/readback command를 소유한다. Query에는 안전한 이력만 두고 Raw/암호/파일은 넣지 않는다. `finance-raw` key를 보호 cache 제거에 등록하고 `X-Expected-User`로 다른 탭의 쿠키 전환을 서버에서 차단한다. 승인 시안의 합성 어댑터는 운영에 사용하지 않는다. 실행·계약·제한은 [Raw 적재 안내](../../api/docs/finance-raw-ingestion.md)를 따른다.
+PIN-56은 `/motifin/import`에 approved 접근·route loader/action을 연결한다. `entities/finance-raw`는 owner/epoch별 이력 query와 API, `features/finance-raw-import`는 파일 worker·수동 암호·파일별 저장/readback command를 소유한다. Query에는 안전한 이력만 두고 Raw/암호/파일은 넣지 않는다. `finance-raw` key를 보호 cache 제거에 등록하고 `X-Expected-User`로 다른 탭의 쿠키 전환을 서버에서 차단한다. 승인 시안의 합성 어댑터는 운영에 사용하지 않는다. 실행·계약·제한은 [Raw 적재 안내](../../../services/finance/docs/finance-raw-ingestion.md)를 따른다.
 
 PIN-21 기준 Router는 createBrowserRouter/RouterProvider만 사용하고 loader/action/lazy는 없었다. Shell·guard·page의 staleTime 0 Hook이 순차 mount에서 중복 요청할 수 있었다. 관리자 변경은 useMutation, import는 page의 imperative POST였다. 선택 은행은 계정 공용 localStorage에 저장되었다.
 
@@ -27,7 +27,7 @@ PIN-21 기준 Router는 createBrowserRouter/RouterProvider만 사용하고 loade
 
 PIN-8의 Shell/콘텐츠 layout 및 단일 main, PIN-9의 최초 Skeleton/기존 데이터 갱신/오류·빈 결과 구분, PIN-10의 entity query key/options와 성공 응답 우선 cache patch를 유지했다. 접근 검사와 재검증의 시작 책임은 Router로 옮겼고 기존 useMutation 실행 경로와 은행 localStorage 선택은 제거했다.
 
-PIN-57/58은 기존 가져오기 뒤 서버 비즈니스 반영과 독립 readback을 연결한다. `entities/finance-business`의 owner/epoch별 목록·상세 key를 보호 cache에 등록하고 `features/finance-business`가 처리 command와 성공 반영을 소유한다. 문서 중첩·정정 의심은 새 반영 보류이며 합성 시안의 계산을 재사용하지 않는다. 화면은 같은 `/motifin/import`에서 자료·거래·원천 행을 연결한다. 상세 의미와 한계는 [비즈니스 반영](../../api/docs/finance-business-ingestion.md)을 따른다.
+PIN-57/58은 기존 가져오기 뒤 서버 비즈니스 반영과 독립 readback을 연결한다. `entities/finance-business`의 owner/epoch별 목록·상세 key를 보호 cache에 등록하고 `features/finance-business`가 처리 command와 성공 반영을 소유한다. 문서 중첩·정정 의심은 새 반영 보류이며 합성 시안의 계산을 재사용하지 않는다. 화면은 같은 `/motifin/import`에서 자료·거래·원천 행을 연결한다. 상세 의미와 한계는 [비즈니스 반영](../../../services/finance/docs/finance-business-ingestion.md)을 따른다.
 
 ## 2. 책임과 파일 배치
 
@@ -187,23 +187,23 @@ PIN-52의 승인 디자인을 `/motifin/*` 실제 페이지에 적용했다. `ap
 
 ### 저장된 카드 소비 분류
 
-`/motifin/spending`의 page route가 분류 workspace 조회·수정과 재검증을 조정한다. `entities/finance-classification`은 owner/epoch query/API, `features/finance-classification`은 operation/revision command·성공 cache 반영·독립 readback과 세션 fence를 소유한다. 카테고리와 거래 선택은 URL로 유지하고 카드 Raw/business 원본과 사용자 수정 이력을 분리한다. `finance-classification` key도 보호 cache 제거에 등록한다. 실제 동작·환불/분할·이력/원천 정정 경계는 [카드 소비 분류·보정](../../api/docs/finance-classification.md)을 따른다.
+`/motifin/spending`의 page route가 분류 workspace 조회·수정과 재검증을 조정한다. `entities/finance-classification`은 owner/epoch query/API, `features/finance-classification`은 operation/revision command·성공 cache 반영·독립 readback과 세션 fence를 소유한다. 카테고리와 거래 선택은 URL로 유지하고 카드 Raw/business 원본과 사용자 수정 이력을 분리한다. `finance-classification` key도 보호 cache 제거에 등록한다. 실제 동작·환불/분할·이력/원천 정정 경계는 [카드 소비 분류·보정](../../../services/finance/docs/finance-classification.md)을 따른다.
 
 ### 저장된 월간 리뷰
 
-`/motifin/review`의 loader와 `entities/finance-review` query/API가 월별 응답을 준비한다. Shell의 MOTIFIN 진입점은 월간 리뷰이며 가져오기·분류는 보조 탐색이다. 공유 `monthly-review-v1` 계산은 서버/MSW가 사용하고 Web은 원 단위 응답과 근거를 표시한다. owner/epoch/month key를 세션 보호 제거에 등록하고, 분류 command는 기존 review GET 취소·invalidation으로 다음 진입의 재계산을 준비한다. 경계/기간/비교 정책은 [월간 리뷰](../../api/docs/finance-monthly-review.md)를 따른다.
+`/motifin/review`의 loader와 `entities/finance-review` query/API가 월별 응답을 준비한다. Shell의 MOTIFIN 진입점은 월간 리뷰이며 가져오기·분류는 보조 탐색이다. 공유 `monthly-review-v1` 계산은 서버/MSW가 사용하고 Web은 원 단위 응답과 근거를 표시한다. owner/epoch/month key를 세션 보호 제거에 등록하고, 분류 command는 기존 review GET 취소·invalidation으로 다음 진입의 재계산을 준비한다. 경계/기간/비교 정책은 [월간 리뷰](../../../services/finance/docs/finance-monthly-review.md)를 따른다.
 
 ### 관측 소비 분석
 
-`/motifin/analysis`는 `entities/finance-analysis`와 loader를 통해 공유 `spending-analysis-v1` read model을 읽는다. 관점/정렬/카테고리/월은 URL에 유지하고 보정 화면의 내부 returnTo로 되돌아온다. date 선택 해석은 `shared/lib/finance-month`로 재사용한다. query는 owner/epoch/month로 분리하고 보호 cache 제거 및 보정 후 취소/invalidation에 포함한다. 전체 월 비율과 확보된 거래의 비율·평균·추이 경계는 [관측 소비 분석](../../api/docs/finance-spending-analysis.md)을 따른다.
+`/motifin/analysis`는 `entities/finance-analysis`와 loader를 통해 공유 `spending-analysis-v1` read model을 읽는다. 관점/정렬/카테고리/월은 URL에 유지하고 보정 화면의 내부 returnTo로 되돌아온다. date 선택 해석은 `shared/lib/finance-month`로 재사용한다. query는 owner/epoch/month로 분리하고 보호 cache 제거 및 보정 후 취소/invalidation에 포함한다. 전체 월 비율과 확보된 거래의 비율·평균·추이 경계는 [관측 소비 분석](../../../services/finance/docs/finance-spending-analysis.md)을 따른다.
 
 ### 자금 일정과 발견
 
-`/motifin/schedule`은 page loader/action과 `entities/finance-schedule`, `features/finance-schedule` command로 저장된 계획을 다룬다. owner/epoch/month query와 revision/operation 재시도를 사용하고 성공 결과 우선 patch·독립 readback·다른 월 invalidation 및 보호 cache 제거를 유지한다. 계획 버전/회차와 실제 근거는 공유 모델에서 분리하며 원천 숫자·실제 잔액을 바꾸지 않는다. 조건과 예외는 [자금 일정](../../api/docs/finance-schedule.md)을 따른다.
+`/motifin/schedule`은 page loader/action과 `entities/finance-schedule`, `features/finance-schedule` command로 저장된 계획을 다룬다. owner/epoch/month query와 revision/operation 재시도를 사용하고 성공 결과 우선 patch·독립 readback·다른 월 invalidation 및 보호 cache 제거를 유지한다. 계획 버전/회차와 실제 근거는 공유 모델에서 분리하며 원천 숫자·실제 잔액을 바꾸지 않는다. 조건과 예외는 [자금 일정](../../../services/finance/docs/finance-schedule.md)을 따른다.
 
 ### PDF 암호 선택 저장
 
-`entities/finance-pdf-password` Query는 상태 메타만 보관한다. `features/finance-raw-import/import-with-pdf-password`가 실제 파일 signature·단기 시도·재인증·1회 반환을 조정하고 평문은 실행 지역 변수로만 parser에 전달한다. 카드 worker에는 전달하지 않는다. 계정 저장은 PDF가 암호를 실제 요구했고 지원 양식 파싱을 마친 경우에만 별도로 실행한다. Raw POST의 optional 시도/revision은 서버 DB gate로 삭제/변경/세션/만료 경합을 제한한다. 설정 route의 명시적 삭제 command와 탭 간 무내용 변경 신호, owner/epoch 보호 cache 제거를 유지한다. 한계/키/회전은 [PDF 암호](../../api/docs/finance-pdf-password.md)를 따른다.
+`entities/finance-pdf-password` Query는 상태 메타만 보관한다. `features/finance-raw-import/import-with-pdf-password`가 실제 파일 signature·단기 시도·재인증·1회 반환을 조정하고 평문은 실행 지역 변수로만 parser에 전달한다. 카드 worker에는 전달하지 않는다. 계정 저장은 PDF가 암호를 실제 요구했고 지원 양식 파싱을 마친 경우에만 별도로 실행한다. Raw POST의 optional 시도/revision은 서버 DB gate로 삭제/변경/세션/만료 경합을 제한한다. 설정 route의 명시적 삭제 command와 탭 간 무내용 변경 신호, owner/epoch 보호 cache 제거를 유지한다. 한계/키/회전은 [PDF 암호](../../../services/finance/docs/finance-pdf-password.md)를 따른다.
 
 ## 거래 생애주기 경계 — PIN-68/69/70
 
