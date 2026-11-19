@@ -24,7 +24,7 @@
 .exam-head strong { color: var(--primary); font-size: 19px; }
 .exam-head span { color: var(--muted-foreground); font-size: 13px; }
 .exam-main { padding-top: 24px; }
-.exam-stack { display: grid; gap: 24px; }
+.exam-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 .exam-stack h1 { margin: 3px 0 10px; font-size: clamp(26px, 4vw, 38px); line-height: 1.24; letter-spacing: -0.035em; }
 .exam-stack h2 { margin: 0 0 14px; font-size: 19px; }
 .exam-stack p { margin: 0; color: var(--muted-foreground); }
@@ -103,14 +103,17 @@
 .exam-list p { margin: 0; }
 .exam-panel {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 16px;
   padding: 24px;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--card);
 }
-.exam-panel label { display: flex; align-items: center; gap: 10px; }
+.exam-panel label { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .exam-panel select, .exam-panel input {
+  min-width: 0;
   max-width: 100%;
   padding: 8px;
   border: 1px solid var(--input);
@@ -119,6 +122,7 @@
   color: var(--foreground);
   font: inherit;
 }
+.exam-panel input[type="file"] { width: 100%; }
 .exam-panel .exam-danger { justify-self: start; border-color: var(--destructive); color: var(--destructive); }
 .exam-message {
   display: flex;

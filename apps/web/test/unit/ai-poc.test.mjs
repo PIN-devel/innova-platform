@@ -120,7 +120,7 @@ test("non-admin (member) user does not see AI Lab nav and gets 403 Forbidden scr
   const aiHtml = await renderRoute("/ai", member);
   assert.match(aiHtml, /접근 권한이 없습니다 \(403 Forbidden\)/);
   assert.match(aiHtml, /AI Lab \(K-EXAONE 2\.5 PoC\)은 관리자 전용 서비스입니다\./);
-  assert.match(aiHtml, /홈으로 이동/);
-  assert.match(aiHtml, /Exam Drill 열기/);
+  assert.match(aiHtml, /<a\b[^>]*href="\/"[^>]*>홈으로 이동<\/a>/);
+  assert.match(aiHtml, /<a\b[^>]*href="\/exam"[^>]*>Exam Drill 열기<\/a>/);
   assert.doesNotMatch(aiHtml, /k-exaone_v2\.5/);
 });
