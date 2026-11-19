@@ -219,7 +219,7 @@ PIN-49와 이미 related 관계다. 공통 **조건**을 첫 slice에 적용하�
 
 후속 Investments용 급여→이체→매수→지출→잔액/보유량 검증은 격리된 합성 계약 시나리오로만 정의한다. 반대 계좌 기초 0, 입금 500, 가격 20×10주 매수 200, 수수료 0이면 현금 300/10주이며 포트폴리오가 선택된 뒤 구현한다. 재처리·정정·가격 결측이 현금/수량을 중복 변경하지 않아야 한다. 현재 Cash Flow 출시 조건에 증권 importer를 추가하지 않는다.
 
-실제 구현 검증 순서는 Contracts 빌드 → 변경 API/Web 집중 검증 → 루트 typecheck/test/lint/build(공유 계약 변경 포함) → 합성 브라우저 QA → 별도 허가된 dev migration/제약·동시성·복구 검증 → 실제 Android/사용자 의미 QA → 운영 보안·배포 readback이다. 로컬·MSW·실DB·브라우저·사용자 QA·운영 결과는 각각 기록한다. DB 실행은 [DB 변경 지침](database-migrations.md)의 사용자 dev 대상 확인과 복구 준비를 따른다.
+실제 구현 검증 순서는 Contracts 빌드 → 변경 API/Web 집중 검증 → 루트 typecheck/test/lint/build(공유 계약 변경 포함) → 합성 브라우저 QA → 별도 허가된 dev migration/제약·동시성·복구 검증 → 실제 Android/사용자 의미 QA → 운영 보안·배포 readback이다. 로컬·MSW·실DB·브라우저·사용자 QA·운영 결과는 각각 기록한다. DB 실행은 [DB 변경 지침](../../../docs/database-migrations.md)의 사용자 dev 대상 확인과 복구 준비를 따른다.
 
 ## 별도 구현 요청 후의 작은 작업 단위
 

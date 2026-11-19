@@ -12,7 +12,7 @@
 | `apps/<app>/AGENTS.md`, `services/<service>/AGENTS.md` | 해당 앱/서비스에만 적용하는 구현·검증 지침 |
 | `docs/*.md` | 여러 앱에 공통인 문서·AI·Git·Linear 운영 정책 |
 | `docs/adr/*.md` | 아키텍처 의사결정 기록(ADR)과 변경 이력 (시계열 보존) |
-| `apps/<app>/docs/*.md` | 해당 앱의 상세 설계·운영 절차·디자인·측정 기록 |
+| `apps/<app>/docs/*.md`, `services/<service>/docs/*.md` | 해당 앱·서비스의 상세 설계·운영 절차·디자인·측정 기록 |
 
 앱 문서를 루트로 모으거나 같은 규칙을 여러 문서에 복사하지 않는다. 내용이 없는 디렉터리와 목록만 중복하는 README는 만들지 않는다. DB 변경·복구 상세 절차는 `docs/database-migrations.md`가 소유하고 README/AGENTS는 진입점을 제공한다.
 
@@ -61,7 +61,7 @@ PIN-31 이동표(과거 경로 기록):
 | --- | --- |
 | 반복 적용할 공통 정책 | 해당 `docs/*.md`에 현행 기준을 기록 |
 | 중대 아키텍처 결정과 대안 비교 | `docs/adr/`에 ADR로 기록 (ADR-0001 준수) |
-| 앱에 한정된 상세 절차 | 해당 `apps/<app>/docs/*.md`에 기록 |
+| 앱·서비스에 한정된 상세 절차 | 해당 `apps/<app>/docs/*.md` 또는 `services/<service>/docs/*.md`에 기록 |
 | 작업 시 읽을 조건 | 관련 AGENTS에 짧은 조건·링크를 추가하고 README에 탐색 경로 제공 |
 | 변경별 계획·완료 기준·검증·운영 결과 | 해당 변경을 소유한 Linear 이슈에 기록; 미실행 항목과 구분 |
 | SQL·구현·테스트와 검토 요약 | 원문은 저장소, PR은 변경·검증 요약과 정책·Linear 링크 |
