@@ -44,7 +44,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
-        run: pnpm --filter @innova/web exec playwright install --with-deps chromium
+        run: pnpm --filter @innova/web exec playwright install chromium
 
       - name: Run Web Browser E2E
         run: pnpm test:e2e
