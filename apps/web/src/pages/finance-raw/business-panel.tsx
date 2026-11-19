@@ -21,7 +21,7 @@ const kindLabel:Record<BusinessEvent['kind'],string>={'manual-expense':'수기 �
 const cashLabel:Record<NonNullable<BusinessEvent['cashRole']>,string>={'salary-candidate':'급여 표시 · 분류 확인 필요','card-settlement-candidate':'카드대금 출금 후보 · 소비 재합산 제외','transfer-candidate':'계좌 이동 후보 · 상대 계좌 잔액 미확인','unclassified':'입출금 성격 확인 필요'};
 export function ProcessRawButton({rawFileId}:{rawFileId:string}){
  const fetcher=useFetcher<{businessState?:BusinessState;error?:string}>();
- return <fetcher.Form method="post" className="mt-2 space-y-1"><input type="hidden" name="intent" value="process-business"/><input type="hidden" name="rawFileId" value={rawFileId}/><Button type="submit" variant="outline" className="min-h-11" disabled={fetcher.state!=='idle'}>{fetcher.state==='idle'?'거래 반영 확인':'확인 중…'}</Button>{fetcher.data?.businessState&&<p role="status" className="text-sm">{stateLabel(fetcher.data.businessState)}</p>}{fetcher.data?.error&&<p role="alert">{fetcher.data.error}</p>}</fetcher.Form>;
+ return <fetcher.Form method="post" className="mt-2 space-y-1"><input type="hidden" name="intent" value="process-business"/><input type="hidden" name="rawFileId" value={rawFileId}/><Button type="submit" variant="outline" disabled={fetcher.state!=='idle'}>{fetcher.state==='idle'?'거래 반영 확인':'확인 중…'}</Button>{fetcher.data?.businessState&&<p role="status" className="text-sm">{stateLabel(fetcher.data.businessState)}</p>}{fetcher.data?.error&&<p role="alert">{fetcher.data.error}</p>}</fetcher.Form>;
 }
 function Detail({detail}:{detail:BusinessDetail}){
  const [count,setCount]=useState(100),doc=detail.document;
