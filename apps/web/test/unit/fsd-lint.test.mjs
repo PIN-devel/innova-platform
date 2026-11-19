@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
 const require = createRequire(import.meta.url);
-const webRoot = fileURLToPath(new URL("../", import.meta.url));
+const webRoot = fileURLToPath(new URL("../../", import.meta.url));
 const layers = ["app", "pages", "features", "entities", "shared"];
 
 function lint(files) {

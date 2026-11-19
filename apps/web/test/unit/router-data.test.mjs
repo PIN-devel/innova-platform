@@ -5,7 +5,7 @@ import { QueryObserver } from "@tanstack/react-query";
 import { createServer } from "vite";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
-import { handlers, resetAuthMock } from "../src/mocks/handlers.ts";
+import { handlers, resetAuthMock } from "../../src/mocks/handlers.ts";
 
 const server = setupServer(...handlers);
 const nativeFetch = globalThis.fetch;

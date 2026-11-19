@@ -14,7 +14,10 @@ function LiveAccessBoundary({ access }: { access: Access }) {
   const currentUser = useCurrentUser();
   const { epoch, transitioning } = useSessionScope();
   const refresh = useRouteRefresh([authKeys.me]);
-  if (transitioning) return <LoadingState label="계정을 변경하고 있습니다." />;
+  if (transitioning) {
+    if (access === "public") return <Outlet />;
+    return <LoadingState label="계정을 변경하고 있습니다." />;
+  }
   if (currentUser.isPending) return <LoadingState label="계정 정보를 확인하고 있습니다." />;
   if (currentUser.isError) {
     if (access === "public") return <Outlet />;

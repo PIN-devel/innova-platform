@@ -5,7 +5,7 @@ import {
   getApprovalPendingRedirect,
   getExamRedirect,
   getPostAuthPath,
-} from "../src/features/auth/route-access.ts";
+} from "../../src/features/auth/route-access.ts";
 
 const memberPending = { id: "1", email: "pending@example.com", approvalStatus: "pending", role: "member" };
 const memberApproved = { ...memberPending, approvalStatus: "approved" };
