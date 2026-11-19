@@ -1,6 +1,7 @@
-import { isRouteErrorResponse, useNavigate, useRouteError } from "react-router";
+import { isRouteErrorResponse, Link, useRouteError } from "react-router";
 import { useRouteRefresh } from "@/shared/lib/router-query/use-route-refresh";
 import { Button } from "@/shared/ui/button";
+import { buttonVariants } from "@/shared/ui/button-variants";
 import { ErrorState } from "@/shared/ui/error-state";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
 import {MotifinContentLayout} from "./motifin-content-layout";
@@ -10,7 +11,6 @@ import { ExamContentLayout, StandardContentLayout } from "./content-layouts";
 function RouteErrorBoundary({ exam = false }: { exam?: boolean }) {
   const error = useRouteError();
   const refresh = useRouteRefresh();
-  const navigate = useNavigate();
 
   if (!exam && isRouteErrorResponse(error) && error.status === 404) {
     return <NotFoundPage />;
@@ -23,8 +23,8 @@ function RouteErrorBoundary({ exam = false }: { exam?: boolean }) {
       action={(
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => void refresh()}>다시 시도</Button>
-          {exam && <Button variant="outline" onClick={() => void navigate("/exam")}>기본 은행 열기</Button>}
-          <Button variant="outline" onClick={() => void navigate("/")}>홈으로</Button>
+          {exam && <Link to="/exam" className={buttonVariants({ variant: "outline" })}>기본 은행 열기</Link>}
+          <Link to="/" className={buttonVariants({ variant: "outline" })}>홈으로</Link>
         </div>
       )}
     />

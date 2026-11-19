@@ -1,5 +1,6 @@
-import { Navigate, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, Navigate, Outlet, useLocation } from "react-router";
 import { Button } from "@/shared/ui/button";
+import { buttonVariants } from "@/shared/ui/button-variants";
 import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
 import { useRouteRefresh } from "@/shared/lib/router-query/use-route-refresh";
@@ -38,7 +39,6 @@ export const PublicOnly = () => <LiveAccessBoundary access="public" />;
 
 export function RequireAiAdmin() {
   const location = useLocation();
-  const navigate = useNavigate();
   const currentUser = useCurrentUser();
   const { epoch, transitioning } = useSessionScope();
   const refresh = useRouteRefresh([authKeys.me]);
@@ -67,12 +67,12 @@ export function RequireAiAdmin() {
         description="AI Lab (K-EXAONE 2.5 PoC)은 관리자 전용 서비스입니다."
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={() => void navigate("/")}>
+            <Link to="/" className={buttonVariants({ variant: "outline" })}>
               홈으로 이동
-            </Button>
-            <Button onClick={() => void navigate("/exam")}>
+            </Link>
+            <Link to="/exam" className={buttonVariants()}>
               Exam Drill 열기
-            </Button>
+            </Link>
           </div>
         }
       />

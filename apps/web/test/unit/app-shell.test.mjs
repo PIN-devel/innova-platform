@@ -167,7 +167,8 @@ test("auth check and nested route errors render within the common shell", async 
     return { loaderData: {}, errors: { "exam-layout": new Error("exam failed") } };
   });
   assert.match(examFailed, /페이지를 표시하지 못했습니다/);
-  assert.match(examFailed, /기본 은행 열기/);
+  assert.match(examFailed, /<a\b[^>]*href="\/exam"[^>]*>기본 은행 열기<\/a>/);
+  assert.match(examFailed, /<a\b[^>]*href="\/"[^>]*>홈으로<\/a>/);
   assert.match(examFailed, /aria-label="주요 탐색"/);
   assert.equal((examFailed.match(/<main\b/g) ?? []).length, 1);
 
