@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {financeMockOrigin} from '../src/mocks/finance-request-origin.ts';
+import {financeMockOrigin} from '../../src/mocks/finance-request-origin.ts';
 test('MSW accepts browser same-origin referrer only when Origin is absent; cross-origin and missing evidence fail',()=>{
  const request=(headers={},referrer)=>new Request('http://localhost/api/finance/raw/imports',{method:'POST',headers,referrer});
  assert.equal(financeMockOrigin(request()),false);

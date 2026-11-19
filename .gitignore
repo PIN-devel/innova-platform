@@ -13,3 +13,7 @@ node_modules/
 **/.env
 **/.env.*
 !**/.env.example
+# Browser E2E local fixture cache and failure artifacts
+apps/web/test/e2e/.fixtures/
+apps/web/test-results/
+apps/web/playwright-report/

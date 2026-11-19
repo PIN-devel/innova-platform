@@ -9,7 +9,11 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "lint": "oxlint",
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test test/unit/*.test.mjs",
+    "test:e2e": "playwright test",
+    "e2e:install": "playwright install chromium",
+    "e2e:fixtures": "node test/e2e/fixtures/generate-fixtures.mjs",
+    "e2e:clean": "node test/e2e/fixtures/generate-fixtures.mjs --clean",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -31,6 +35,7 @@
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@rolldown/plugin-babel": "^0.2.3",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/eslint-plugin-query": "^5.103.2",
     "@types/babel__core": "^7.20.5",

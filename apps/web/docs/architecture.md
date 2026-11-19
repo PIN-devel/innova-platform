@@ -145,11 +145,11 @@ App의 공통 Route boundary는 도메인 key를 추측하지 않고 Router reva
 - `fsd/layer-direction`: 기존 Oxlint `jsPlugins` API로 실행하는 단일 로컬 규칙(`lint/fsd-plugin.mjs`). `@/`, 상대경로, Vite `/src/` 경로를 정규화한 뒤 source/target layer를 비교한다. native `no-restricted-imports`는 문자열만 검사하므로 `@/shared/../app` 같은 우회와 layer 이름을 가진 허용된 내부 폴더의 오탐을 함께 피하려고 이 작은 규칙을 사용했다. import/export, literal dynamic import/require, type-only import와 TypeScript import type도 검사한다.
 - native `import/no-cycle`: import plugin을 활성화하고 외부 패키지는 제외한다. `ignoreTypes: false`로 type-only cycle도 검사하며 깊이를 인위적으로 제한하지 않는다. 현재 tsconfig의 `@/*` 해석은 fixture로 검증한다.
 
-`test/fsd-lint.test.mjs`는 실제 Web config/로컬 규칙을 임시 프로젝트에서 Oxlint로 실행한다. 모든 허용 방향·같은 layer, 10개의 역방향 edge와 alias/relative/dot-segment 경로, type/import/export 형태, alias/relative/type-only cycle의 통과·실패를 검사한다. 임시 위반 코드는 테스트 종료 시 삭제된다. 구성 변경 뒤 `pnpm --filter @innova/web test`와 `lint`를 함께 실행한다.
+`test/unit/fsd-lint.test.mjs`는 실제 Web config/로컬 규칙을 임시 프로젝트에서 Oxlint로 실행한다. 모든 허용 방향·같은 layer, 10개의 역방향 edge와 alias/relative/dot-segment 경로, type/import/export 형태, alias/relative/type-only cycle의 통과·실패를 검사한다. 임시 위반 코드는 테스트 종료 시 삭제된다. 구성 변경 뒤 `pnpm --filter @innova/web test`와 `lint`를 함께 실행한다.
 
 범위는 현재 5개 layer의 의존 방향과 cycle이다. slice public API 강제·모든 cross-slice 제한·parent relative 금지·새 alias 자동 지원은 추가하지 않는다. 계산된 dynamic import/require 경로는 정적으로 검증할 수 없으므로 route lazy와 내부 모듈 참조에는 literal 경로를 사용한다. Oxlint JS plugin API는 alpha이므로 버전 변경 시 guard fixture를 반드시 실행한다.
 
-`test/router-data.test.mjs`는 실제 createMemoryRouter + MSW로 접근 표, query freshness/중복 요청, action/revalidation, concurrent fetcher, 세션 fence, navigation abort 공유, StrictMode 구독 해제, 오래된 GET과 성공 patch 경합, multipart import, URL history/retry를 검증한다. 기존 query-cache와 static Shell 회귀 테스트를 함께 유지한다. 정적 markup harness는 handler를 제거해 UI만 검사하고 별도 실제 Router 테스트가 실행 책임을 검증한다.
+`test/unit/router-data.test.mjs`는 실제 createMemoryRouter + MSW로 접근 표, query freshness/중복 요청, action/revalidation, concurrent fetcher, 세션 fence, navigation abort 공유, StrictMode 구독 해제, 오래된 GET과 성공 patch 경합, multipart import, URL history/retry를 검증한다. 기존 query-cache와 static Shell 회귀 테스트를 함께 유지한다. 정적 markup harness는 handler를 제거해 UI만 검사하고 별도 실제 Router 테스트가 실행 책임을 검증한다.
 
 PIN-29에서 도메인별 refresh의 비관련 cache 유지, concepts/scenarios merge 우선순위와 incoming metadata, 동시 import 거부 및 세션 전환 중 늦은 파일 읽기의 POST 차단을 추가로 검증한다. 공통 boundary의 missing-bank retry는 기존 Router 테스트를 유지한다.
 

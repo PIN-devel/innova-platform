@@ -15,6 +15,7 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm build:shared && pnpm -r --filter './apps/**' --filter './services/**' --filter @innova/auth-kit --filter @innova/contracts typecheck",
     "test": "pnpm build:shared && pnpm -r --filter './apps/**' --filter './services/**' --filter @innova/auth-kit test",
+    "test:e2e": "pnpm --filter @innova/contracts build && pnpm --filter @innova/web test:e2e",
     "lint": "pnpm -r lint"
   },
   "devDependencies": {

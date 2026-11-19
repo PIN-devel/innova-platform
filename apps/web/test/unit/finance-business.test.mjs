@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {setupServer} from 'msw/node';
 import {createServer} from 'vite';
-import {createFinanceRawHandlers} from '../src/mocks/finance-raw-handlers.ts';
-import {bankSource,cardSource} from '../../../services/finance/test/fixtures/finance-raw.ts';
+import {createFinanceRawHandlers} from '../../src/mocks/finance-raw-handlers.ts';
+import {bankSource,cardSource} from '../../../../services/finance/test/fixtures/finance-raw.ts';
 
 test('business mocks preserve Raw links, repeated processing, pending overlaps and actor isolation',async t=>{
  let user={id:crypto.randomUUID(),email:'synthetic@example.invalid',role:'member',approvalStatus:'approved'};

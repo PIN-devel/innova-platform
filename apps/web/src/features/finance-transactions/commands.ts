@@ -16,9 +16,10 @@ export async function runTransactionCommand(client:QueryClient,owner:string,epoc
   // Cancel all finance reads before a destructive write so late source results
   // cannot repopulate a deleted record after its successful response.
   const finance=(q:{queryKey:readonly unknown[]})=>String(q.queryKey[0]).startsWith('finance-');
+  const otherFinance=(q:{queryKey:readonly unknown[]})=>finance(q)&&!(q.queryKey[0]===transactionKeys.all[0]&&q.queryKey[1]===owner&&q.queryKey[2]===epoch);
   await client.cancelQueries({predicate:finance});check();
   const saved=command.type==='manual'?await saveManual(owner,command.value,controller.signal):await deleteTransaction(owner,command.value,controller.signal);check();
-  client.removeQueries({predicate:finance});
+  client.removeQueries({predicate:otherFinance});
   if(previous){const id=saved.id;client.setQueryData(key,{...previous,revision:'deleted' in saved?saved.revision:previous.revision,manual:'deleted' in saved?previous.manual.filter(t=>t.id!==id):[saved,...previous.manual.filter(t=>t.id!==id)],fileTransactions:previous.fileTransactions.filter(t=>!('deleted' in saved)||t.id!==id),duplicateCandidates:[]});}
   try{if(command.type==='delete'){await readDeletion(owner,saved.id,controller.signal);check();}const workspace=await readTransactions(owner,controller.signal);check();client.setQueryData(key,workspace);return {saved:true,deleted:command.type==='delete',verified:true};}
   catch(error){check();if(handleSessionApiError(client,error))throw error;return {saved:true,deleted:command.type==='delete',verified:false};}
