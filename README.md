@@ -38,7 +38,8 @@ Google Cloud Run 및 Firebase Hosting 기반으로 운영되며, 벤더 락인�
 | 목적 | 문서 |
 | --- | --- |
 | AI 공통·앱별 지침 | [공통 AGENTS](./AGENTS.md), [Web AGENTS](./apps/web/AGENTS.md), [Gateway AGENTS](./apps/api-gateway/AGENTS.md), [Auth AGENTS](./services/auth/AGENTS.md), [Learning AGENTS](./services/learning/AGENTS.md), [Finance AGENTS](./services/finance/AGENTS.md), [AI AGENTS](./services/ai/AGENTS.md) |
-| 문서 위치·파일명·참조 관리 | [문서 정책](./docs/documentation-policy.md) |
+| 서비스 카탈로그·제품/기능 스펙·리포트 | [Innova Platform Notion 허브](https://app.notion.com/p/42369ba4b33081fca91cf9d63f44208e?pvs=204) (`Products` · `Components` · `Knowledge`) |
+| 문서 위치·원천·정량 채점 기준 | [문서 정책](./docs/documentation-policy.md) |
 | 필요한 정보만 읽고 조사·검증·전달하기 | [AI 작업 흐름](./docs/ai-workflow.md) |
 | 브랜치·PR·릴리스 | [Git 운영](./docs/git-workflow.md) |
 | Label·Milestone·Issue 역할, 개선 Inbox, 상태 자동화 | [Linear 운영](./docs/linear-workflow.md) |
