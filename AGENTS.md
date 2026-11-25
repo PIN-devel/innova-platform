@@ -44,6 +44,7 @@
 | 개인 데이터 도메인의 접근·세션·오류/로그·보존 경계 및 검증 행렬 | [개인 데이터 경계 기준](docs/personal-data-boundaries.md) |
 | 신규 테이블의 식별·감사·소유권·추적 메타 설계 | [테이블 메타데이터 기준](docs/database-table-metadata.md) |
 | 중대 아키텍처 결정 확인·작성, 설계 변경 맥락 | `docs/adr/` 내 관련 결정 ([ADR-0001](docs/adr/0001-record-architecture-decisions.md) 체계 준수) |
+| 제품 기획·기능 스펙·컴포넌트 영향도·릴리스/감사 조회 | [Innova Platform Notion 허브](https://app.notion.com/p/42369ba4b33081fca91cf9d63f44208e?pvs=204) |
 
 ## Linear 작업 관리
 
