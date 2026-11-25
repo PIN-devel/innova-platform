@@ -62,8 +62,8 @@ test('business API keeps owner/expected actor/Origin boundaries and no-store res
  const app=buildApp({logger:false,userLookup:users,financeRawRepository:f.raw,financeBusinessRepository:f.business,jwtSecret:'test-only-secret-at-least-thirty-two-characters'});t.after(()=>app.close());await app.ready();
  const headers=(id=f.owner)=>({cookie:`innova_auth=${app.jwt.sign({sub:id})}`,'x-expected-user':id,'x-finance-request':'1',origin:'http://localhost:5174'});
  const id=await f.save(bankSource());
- assert.equal((await app.inject({url:'/api/finance/business/documents'})).statusCode,401);
- const result=await app.inject({method:'POST',url:'/api/finance/business/process',headers:headers(),payload:{rawFileId:id}});assert.equal(result.statusCode,200,result.body);assert.equal(result.headers['cache-control'],'no-store');
+ const noauth=await app.inject({url:'/api/finance/business/documents'});assert.equal(noauth.statusCode,401);assert.equal(noauth.headers['cache-control'],'no-store');assert.match(String(noauth.headers.vary),/Cookie/i);
+ const result=await app.inject({method:'POST',url:'/api/finance/business/process',headers:headers(),payload:{rawFileId:id}});assert.equal(result.statusCode,200,result.body);assert.equal(result.headers['cache-control'],'no-store');assert.match(String(result.headers.vary),/Cookie/i);
  const doc=result.json().document.id;
  for(const user of [f.other,f.admin]){assert.equal((await app.inject({url:`/api/finance/business/documents/${doc}`,headers:headers(user)})).statusCode,404);assert.equal((await app.inject({method:'POST',url:'/api/finance/business/process',headers:headers(user),payload:{rawFileId:id}})).statusCode,404);}
  assert.equal((await app.inject({method:'POST',url:'/api/finance/business/process',headers:{...headers(),'x-expected-user':f.other},payload:{rawFileId:id}})).statusCode,403);

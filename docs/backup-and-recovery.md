@@ -94,7 +94,7 @@
 
 1. **6시간 RPO 수용 여부 판정**: 사용자가 6시간 초과 유실 시 복구 불가를 수용할 수 있는 데이터인가? 수용할 수 없다면 기능 출시 전에 Neon 플랜 상향(장기 PITR·스냅샷) 또는 별도 암호화 외부 백업을 먼저 구축하고 본 문서의 RPO/RTO·비용 표를 갱신한다.
 2. **도메인 격리 및 재삭제 계약**: `innova_auth`·기존 도메인 데이터에 영향 없이 해당 도메인/오너만 선택 복원할 수 있는 키(`owner_id` 범위)와, 복원 시 삭제 부활을 막는 최소 tombstone 대조 절차가 정의되어 있는가?
-3. **공통 접근·세션·암호화 경계**: `PIN-49`의 owner 격리, 캐시·로그·오류 보호, 키 회전 및 복구 시 attempt/nonce 처리 기준이 반영되어 있는가?
+3. **공통 접근·세션·암호화 경계**: [개인 데이터 경계 기준](personal-data-boundaries.md)의 owner 격리, 캐시·로그·오류 보호, 키 회전 및 복구 시 attempt/nonce 처리 기준이 반영되어 있는가?
 
 ---
 
@@ -110,6 +110,7 @@
 ## 관련 문서
 
 - [DB 스키마 변경과 복구 지침](database-migrations.md)
+- [개인 데이터 경계 기준](personal-data-boundaries.md)
 - [문서 관리 정책](documentation-policy.md)
 - [PDF 암호 선택 저장·복원 조건](../services/finance/docs/finance-pdf-password.md)
 - [MOTIFIN 출시 검증과 운영 전환](../services/finance/docs/finance-release.md)

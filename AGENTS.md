@@ -41,6 +41,7 @@
 | Linear 조회·생성·분류·갱신·종료, 공통 개선 후보 기록 | [Linear 운영](docs/linear-workflow.md) |
 | DB 스키마·migration 변경과 복구 준비 | [DB 스키마 변경과 복구 지침](docs/database-migrations.md) |
 | 백업·복원, RPO/RTO, 도메인별 격리 복구, 신규 유일 원본 게이트 | [백업·복원 및 도메인별 복구 기준](docs/backup-and-recovery.md) |
+| 개인 데이터 도메인의 접근·세션·오류/로그·보존 경계 및 검증 행렬 | [개인 데이터 경계 기준](docs/personal-data-boundaries.md) |
 | 신규 테이블의 식별·감사·소유권·추적 메타 설계 | [테이블 메타데이터 기준](docs/database-table-metadata.md) |
 | 중대 아키텍처 결정 확인·작성, 설계 변경 맥락 | `docs/adr/` 내 관련 결정 ([ADR-0001](docs/adr/0001-record-architecture-decisions.md) 체계 준수) |
 

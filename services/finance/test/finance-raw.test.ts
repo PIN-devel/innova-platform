@@ -49,7 +49,7 @@ test('Raw route requires approved owner and expected actor/Origin; errors never 
  
  const app=buildApp({logger:false,userLookup:users,financeRawRepository:repo,jwtSecret:'test-only-secret-at-least-thirty-two-characters'});t.after(()=>app.close());await app.ready();
  const headers=(id=owner)=>({cookie:`innova_auth=${app.jwt.sign({sub:id})}`,'x-expected-user':id,'x-finance-request':'1',origin:'http://localhost:5174'});
- const noauth=await app.inject({url:'/api/finance/raw/files'});assert.equal(noauth.statusCode,401);assert.equal(noauth.headers['cache-control'],'no-store');
+ const noauth=await app.inject({url:'/api/finance/raw/files'});assert.equal(noauth.statusCode,401);assert.equal(noauth.headers['cache-control'],'no-store');assert.match(String(noauth.headers.vary),/Cookie/i);
  const data=input();const saved=await app.inject({method:'POST',url:'/api/finance/raw/imports',payload:data,headers:headers()});assert.equal(saved.statusCode,200,saved.body);
  const id=saved.json().file.id;
  for(const actor of [other,admin]){const r=await app.inject({url:`/api/finance/raw/files/${id}`,headers:headers(actor)});assert.equal(r.statusCode,404);}
@@ -59,7 +59,7 @@ test('Raw route requires approved owner and expected actor/Origin; errors never 
  assert.equal((await app.inject({url:'/api/finance/raw/files',headers:{...headers(),'sec-fetch-site':'cross-site'}})).statusCode,200);
  for(const h of [{...headers(),origin:'https://evil.invalid','sec-fetch-site':'cross-site'},{...headers(),origin:'','sec-fetch-site':'cross-site'}])assert.equal((await app.inject({url:'/api/finance/raw/files',headers:h})).statusCode,403);
  const invalid=await app.inject({method:'POST',url:'/api/finance/raw/imports',headers:headers(),payload:{...data,privateMarker:'SYNTHETIC_PRIVATE_MARKER'}});assert.equal(invalid.statusCode,400);assert.equal(invalid.body.includes('SYNTHETIC_PRIVATE_MARKER'),false);
- const readback=await app.inject({url:`/api/finance/raw/files/${id}`,headers:headers()});assert.equal(readback.statusCode,200);assert.equal(readback.headers['cache-control'],'no-store');assert.equal(readback.body.includes(data.document.fileHash),false);
+ const readback=await app.inject({url:`/api/finance/raw/files/${id}`,headers:headers()});assert.equal(readback.statusCode,200);assert.equal(readback.headers['cache-control'],'no-store');assert.match(String(readback.headers.vary),/Cookie/i);assert.equal(readback.body.includes(data.document.fileHash),false);
 });
 test('AEAD rejects tampering and different owner/file/row purpose',()=>{
  const cipher=createRawCipher('bc'.repeat(32)),sealed=cipher.seal({private:'synthetic'},'owner:file:1');
