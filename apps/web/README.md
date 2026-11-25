@@ -11,6 +11,7 @@ MOTIFIN은 `/motifin/review`에서 시작한다. `pnpm dev:web`은 합성 MSW를
 
 | 필요한 작업 | 기준 |
 | --- | --- |
+| 서비스 카탈로그·제품/기능 스펙 | [@innova/web (Notion)](https://app.notion.com/p/42369ba4b330810496eeffc448ff9ec0?pvs=204) · [Innova Platform 허브](https://app.notion.com/p/42369ba4b33081fca91cf9d63f44208e?pvs=204) |
 | MOTIFIN 목적·브랜드·최신 범위와 구현 인수 | [제품 기준](./docs/motifin-product.md) |
 | MOTIFIN 실제 파일 Raw 가져오기 | [적재 안내](../../services/finance/docs/finance-raw-ingestion.md) — 로컬 API 연동 → `/motifin/import` |
 | Web 구현·검증 | [Web AGENTS](./AGENTS.md) |

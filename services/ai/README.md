@@ -19,3 +19,8 @@ pnpm --filter @innova/ai test
 pnpm --filter @innova/ai typecheck
 pnpm --filter @innova/ai lint
 ```
+
+## 문서 및 카탈로그
+
+- AI 구현·검증 지침: [AGENTS.md](./AGENTS.md)
+- 서비스 카탈로그: [@innova/ai (Notion)](https://app.notion.com/p/42369ba4b33081a19bd6f7324bc8a8d2?pvs=204) · [Innova Platform 허브](https://app.notion.com/p/42369ba4b33081fca91cf9d63f44208e?pvs=204)

@@ -1,6 +1,6 @@
 # AI 에이전트 @innova/api-gateway 지침
 
-이 파일은 `apps/api-gateway/` 작업에 적용되며 루트 `AGENTS.md`를 함께 따른다.
+이 파일은 `apps/api-gateway/` 작업에 적용되며 루트 `AGENTS.md`를 함께 따른다. 컴포넌트 카탈로그는 [api-gateway](https://app.notion.com/p/42369ba4b33081c89c3bea53846a2cf7?pvs=204)에서 확인한다.
 
 - **엔진 및 런타임**: Apache APISIX 3.19.x 기반이며, 분산 저장소(`etcd`) 없는 **Stand-alone 모드**로 동작한다. Node.js/pnpm 패키지가 아니므로 `package.json`이나 `node_modules`를 두지 않고 순수 Docker 및 선언적 설정 파일로 관리한다.
 - **GitOps 및 라우팅 선언**:

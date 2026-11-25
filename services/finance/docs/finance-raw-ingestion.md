@@ -1,6 +1,6 @@
 # MOTIFIN Raw 파일 적재
 
-상태: PIN-56 로컬 구현, Neon dev 검증 대상. 운영 배포·비즈니스 거래 생성·월 완전성 판정은 포함하지 않는다. 제품 기준은 [MOTIFIN](../../../apps/web/docs/motifin-product.md), 신규 테이블 기준은 [메타데이터 기준](../../../docs/database-table-metadata.md)을 따른다. 상세 설계 초안의 전체 기능을 이번에 구현한 것으로 해석하지 않는다.
+상태: PIN-56 로컬 구현, Neon dev 검증 대상. 운영 배포·비즈니스 거래 생성·월 완전성 판정은 포함하지 않는다. 제품 기준은 [MOTIFIN](../../../apps/web/docs/motifin-product.md), 신규 테이블 기준은 [메타데이터 기준](../../../docs/database-migrations.md#신규-테이블-메타데이터-기준)을 따른다. 상세 설계 초안의 전체 기능을 이번에 구현한 것으로 해석하지 않는다.
 
 ## 저장 구조와 원천 보존
 
