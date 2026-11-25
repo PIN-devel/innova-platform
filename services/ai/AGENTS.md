@@ -1,6 +1,6 @@
 # AI 에이전트 @innova/ai 지침
 
-이 파일은 `services/ai/` 작업에 적용되며 루트 `AGENTS.md`를 함께 따른다.
+이 파일은 `services/ai/` 작업에 적용되며 루트 `AGENTS.md`를 함께 따른다. 컴포넌트 카탈로그는 [@innova/ai](https://app.notion.com/p/42369ba4b33081a19bd6f7324bc8a8d2?pvs=204)에서 확인한다.
 
 - Fastify 앱 구성은 `src/app.ts`, 라우트는 `src/routes/`, LLM 프로바이더 및 스트리밍은 `src/providers/`, 사용자 조달은 `src/users.ts`의 분리를 따른다. 라우트 테스트는 `buildApp`에 테스트용 `userLookup`과 `fetchImpl`을 주입해 외부 통신 없이 실행한다.
 - 요청과 응답의 타입 및 스키마는 `@innova/contracts`를 기준으로 하며, 공통 오류·로거·쿠키/JWT 가드는 `@innova/auth-kit`을 사용한다.

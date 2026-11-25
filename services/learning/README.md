@@ -44,3 +44,8 @@ Curriculum 삽화/다이어그램 에셋은 비공개 GCS 버킷(`gs://innova-as
 - `pnpm typecheck`, `pnpm lint`
 - `pnpm db:generate`, `pnpm db:migrate`
 - `pnpm db:seed:exam`, `pnpm db:verify:exam`
+
+## 문서 및 카탈로그
+
+- AI 구현·검증 지침: [AGENTS.md](./AGENTS.md)
+- 서비스 카탈로그: [@innova/learning (Notion)](https://app.notion.com/p/42369ba4b33081308471c1fa5826fd44?pvs=204) · [Innova Platform 허브](https://app.notion.com/p/42369ba4b33081fca91cf9d63f44208e?pvs=204)

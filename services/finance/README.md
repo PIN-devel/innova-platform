@@ -38,3 +38,8 @@ Innova 플랫폼의 개인 금융(MOTIFIN) 마이크로서비스입니다. Cloud
 - `pnpm test`: PGlite 기반 합성 데이터 테스트
 - `pnpm typecheck`, `pnpm lint`
 - `pnpm db:generate`, `pnpm db:migrate`
+
+## 문서 및 카탈로그
+
+- AI 구현·검증 지침: [AGENTS.md](./AGENTS.md)
+- 서비스 카탈로그: [@innova/finance (Notion)](https://app.notion.com/p/42369ba4b33081d58ee5ea9862c01667?pvs=204) · [Innova Platform 허브](https://app.notion.com/p/42369ba4b33081fca91cf9d63f44208e?pvs=204)

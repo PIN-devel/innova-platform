@@ -45,3 +45,8 @@ Cloud Run(`innova-auth-api`)으로 배포되며, API Gateway(APISIX)를 통해 `
 - `pnpm lint`: 코드 스타일 검사 (`oxlint`)
 - `pnpm db:generate`: Drizzle 마이그레이션 생성
 - `pnpm db:migrate`: Drizzle 마이그레이션 적용
+
+## 문서 및 카탈로그
+
+- AI 구현·검증 지침: [AGENTS.md](./AGENTS.md)
+- 서비스 카탈로그: [@innova/auth (Notion)](https://app.notion.com/p/42369ba4b3308127a323d80d98a3646c?pvs=204) · [Innova Platform 허브](https://app.notion.com/p/42369ba4b33081fca91cf9d63f44208e?pvs=204)

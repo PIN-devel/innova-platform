@@ -1,6 +1,6 @@
 # AI 에이전트 @innova/web 지침
 
-루트 `AGENTS.md`에 추가로 적용한다. 구현 경로는 `apps/web/src/`, 테스트·설정 경로는 `apps/web/` 기준이다.
+루트 `AGENTS.md`에 추가로 적용한다. 구현 경로는 `apps/web/src/`, 테스트·설정 경로는 `apps/web/` 기준이며, 컴포넌트 카탈로그는 [@innova/web](https://app.notion.com/p/42369ba4b330810496eeffc448ff9ec0?pvs=204)에서 확인한다.
 
 - 구조·라우팅·데이터·세션 변경은 [아키텍처](docs/architecture.md)의 관련 절을 읽고 구현과 함께 갱신한다. UI 변경은 [디자인](docs/design.md)을 따른다. 과거 측정 기록은 비교·재현할 때만 읽는다.
 - `app → pages → features → entities → shared` 방향을 유지한다. app은 composition·Provider·layout·global lifecycle, `pages/<route>/route.ts`는 route adapter, features는 command, entities는 query/API를 소유한다. 구현·타입 모두 역방향 import를 금지하며 중앙 app 파일에 route-specific 동작을 누적하지 않는다.
