@@ -9,7 +9,7 @@ export async function financeRawRoutes(app: FastifyInstance, { repository, requi
   repository: FinanceRawRepository; requireAuth: (request: FastifyRequest) => Promise<void>; allowedOrigins: string[];
 }) {
   app.addHook("onRequest", async (request, reply) => {
-    reply.header("Cache-Control", "no-store");
+    reply.header("Cache-Control", "no-store").header("Vary", "Cookie");
     await requireAuth(request);
     if (request.headers["x-expected-user"] !== request.authUser!.id) throw new AppError(403, "FORBIDDEN", "Session changed");
     if (request.headers["sec-fetch-site"] === "cross-site" && !allowedOrigins.includes(String(request.headers.origin))) throw new AppError(403, "FORBIDDEN", "Origin not allowed");

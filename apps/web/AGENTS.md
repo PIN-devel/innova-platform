@@ -6,7 +6,7 @@
 - `app → pages → features → entities → shared` 방향을 유지한다. app은 composition·Provider·layout·global lifecycle, `pages/<route>/route.ts`는 route adapter, features는 command, entities는 query/API를 소유한다. 구현·타입 모두 역방향 import를 금지하며 중앙 app 파일에 route-specific 동작을 누적하지 않는다.
 - Router가 route-linked 조회·변경·재검증을 조정하고 단일 QueryClient가 server-state를 소유한다. 도메인 query key/options를 재사용하고 generic Router × Query helper는 `shared/lib/router-query/`에 둔다. 도메인별 invalidation 대상은 page/feature가 정한다.
 - 변경 성공은 확정 결과를 먼저 cache에 반영한다. 재조회 실패로 완료 항목을 되살리지 않는다. freshness는 데이터별로 정하고 인증·관리자 데이터에 장기 캐시를 일괄 적용하지 않는다.
-- 인증 경계의 session epoch·보호 cache 제거·GET signal 전달·비동기 command의 이전 세션 결과 격리를 유지한다. 계정·권한 변경과 만료 시 보호 UI/cache/local 세션을 격리하고 문항 본문·정답은 영구 저장하지 않는다.
+- 인증 경계의 session epoch·보호 cache 제거·GET signal 전달·비동기 command의 이전 세션 결과 격리를 유지한다. 계정·권한 변경과 만료 시 보호 UI/cache/local 세션을 격리하고 문항 본문·정답은 영구 저장하지 않는다. 신규 개인 데이터 도메인의 보호 Query·`safeReturnTo`·BFCache 재검증 기준은 [개인 데이터 경계 기준](../../docs/personal-data-boundaries.md)을 함께 따른다.
 - 공통 Shell·탐색·단일 main은 RootLayout/content layout이 소유한다. 기능·오류·로딩 화면에서 Shell을 복제하지 않는다. 최초 Skeleton, 기존 데이터의 보조 재조회 상태, 일반 오류 재시도와 인증·권한 오류의 보호 콘텐츠 제거를 유지한다.
 - HTTP는 `shared/api/client.ts`, 계약은 `@innova/contracts`를 사용한다. API 변경 시 MSW도 접근 제어·상태 전이·오류를 동일하게 재현하고 양쪽 회귀를 확인한다.
 - React symbol은 PascalCase, 파일은 kebab-case를 사용한다. 단일 hook은 `use-*.ts(x)`, 관련 hook 묶음은 `hooks.ts`를 허용한다. shadcn 생성 파일은 도구 규칙을 유지한다.
