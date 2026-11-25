@@ -6,14 +6,38 @@ import { LogoutButton } from "@/features/auth/logout-button";
 const navigationClass = "rounded-sm font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 const primaryNavigationClass = ({ isActive }: { isActive: boolean }) => `${navigationClass}${isActive ? " underline underline-offset-4" : ""}`;
 
+/** Revalidates the active session on tab focus, network recovery, visibility return, and BFCache restore. */
+export function attachSessionRevalidationListeners(
+  win: Pick<Window, "addEventListener" | "removeEventListener">,
+  doc: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener">,
+  onRevalidate: () => void,
+) {
+  const refreshIfVisible = () => {
+    if (doc.visibilityState === "visible") onRevalidate();
+  };
+  const refreshOnBFCacheRestore = (event: Pick<PageTransitionEvent, "persisted">) => {
+    if (event.persisted) onRevalidate();
+  };
+  win.addEventListener("focus", refreshIfVisible);
+  win.addEventListener("online", refreshIfVisible);
+  doc.addEventListener("visibilitychange", refreshIfVisible);
+  win.addEventListener("pageshow", refreshOnBFCacheRestore);
+  return () => {
+    win.removeEventListener("focus", refreshIfVisible);
+    win.removeEventListener("online", refreshIfVisible);
+    doc.removeEventListener("visibilitychange", refreshIfVisible);
+    win.removeEventListener("pageshow", refreshOnBFCacheRestore);
+  };
+}
+
 export default function RootLayout({ children }: { children?: ReactNode }) {
   const currentUser = useCurrentUser();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   useEffect(() => {
-    const refresh = () => { if (document.visibilityState === "visible") void revalidator.revalidate(); };
-    window.addEventListener("focus", refresh); window.addEventListener("online", refresh);
-    return () => { window.removeEventListener("focus", refresh); window.removeEventListener("online", refresh); };
+    return attachSessionRevalidationListeners(window, document, () => {
+      void revalidator.revalidate();
+    });
   }, [revalidator]);
 
   return (

@@ -13,10 +13,12 @@ let currentUserQuery;
 let examBankQuery;
 let pendingUsersQuery;
 let ApiError;
+let attachSessionRevalidationListeners;
 
 before(async () => {
   vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: "custom" });
   ({ createAppRoutes } = await vite.ssrLoadModule("/src/app/router.tsx"));
+  ({ attachSessionRevalidationListeners } = await vite.ssrLoadModule("/src/app/root-layout.tsx"));
   ({ currentUserQuery } = await vite.ssrLoadModule("/src/entities/auth/queries.ts"));
   ({ examBankQuery } = await vite.ssrLoadModule("/src/entities/exam-bank/queries.ts"));
   ({ pendingUsersQuery } = await vite.ssrLoadModule("/src/entities/admin-users/queries.ts"));
@@ -218,4 +220,55 @@ test('MOTIFIN data-backed review, analysis and schedule render their main conten
   assert.ok(html.includes(text),page);
   assert.doesNotMatch(html,/페이지를 표시하지 못했습니다/);
  }
+});
+
+test("session revalidation listeners fire on visible focus/online/visibilitychange and persisted pageshow only", () => {
+  const winListeners = new Map();
+  const docListeners = new Map();
+  const fakeWindow = {
+    addEventListener: (type, fn) => {
+      if (!winListeners.has(type)) winListeners.set(type, new Set());
+      winListeners.get(type).add(fn);
+    },
+    removeEventListener: (type, fn) => {
+      winListeners.get(type)?.delete(fn);
+    },
+  };
+  const fakeDocument = {
+    visibilityState: "visible",
+    addEventListener: (type, fn) => {
+      if (!docListeners.has(type)) docListeners.set(type, new Set());
+      docListeners.get(type).add(fn);
+    },
+    removeEventListener: (type, fn) => {
+      docListeners.get(type)?.delete(fn);
+    },
+  };
+  let calls = 0;
+  const detach = attachSessionRevalidationListeners(fakeWindow, fakeDocument, () => {
+    calls += 1;
+  });
+
+  for (const fn of winListeners.get("focus")) fn();
+  for (const fn of winListeners.get("online")) fn();
+  for (const fn of docListeners.get("visibilitychange")) fn();
+  assert.equal(calls, 3);
+
+  fakeDocument.visibilityState = "hidden";
+  for (const fn of winListeners.get("focus")) fn();
+  for (const fn of docListeners.get("visibilitychange")) fn();
+  assert.equal(calls, 3);
+
+  for (const fn of winListeners.get("pageshow")) fn({ persisted: false });
+  assert.equal(calls, 3);
+  for (const fn of winListeners.get("pageshow")) fn({ persisted: true });
+  assert.equal(calls, 4);
+
+  detach();
+  fakeDocument.visibilityState = "visible";
+  for (const fn of winListeners.get("focus") ?? []) fn();
+  for (const fn of winListeners.get("online") ?? []) fn();
+  for (const fn of winListeners.get("pageshow") ?? []) fn({ persisted: true });
+  for (const fn of docListeners.get("visibilitychange") ?? []) fn();
+  assert.equal(calls, 4);
 });

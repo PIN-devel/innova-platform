@@ -9,6 +9,6 @@
 - `POST /internal/events/user-status` 및 `/dlq`(`src/routes/internal-events.ts`)는 APISIX에 노출하지 않는 내부 Pub/Sub Push 웹훅이며, `INTERNAL_EVENT_TOKEN` 검증·`eventId` 멱등성 가드 후 `auth:user:<userId>` 캐시를 무효화하고 `currentStatus === "rejected"`일 때 미소비 PDF 재인증 시도(`consumed_at IS NULL`)를 즉시 폐기한다.
 - 승인 철회는 요청 진입 시 검사한다. 이미 진입한 쓰기 요청과의 경합은 DB가 막지 않는다(분리 전 `FOR SHARE` 보호는 제거됨).
 - 암호화 키(`FINANCE_RAW_ENCRYPTION_KEY`, `FINANCE_PDF_PASSWORD_KEYRING`)는 이 서비스에만 주입한다. Raw/JWT 키 재사용을 금지하며 비밀 값은 `.env`와 배포 Secrets에만 둔다. 변수 이름과 예시 형식은 `.env.example`에 반영한다.
-- 금융 응답의 `Cache-Control: no-store`, `X-Expected-User`/Origin/`X-Finance-Request` 검사와 쿠키(`innova_auth`) 기반 응답 분리를 유지한다.
+- 금융 응답의 `Cache-Control: no-store`, `Vary: Cookie`, `X-Expected-User`/Origin/`X-Finance-Request` 검사 및 [개인 데이터 경계 기준](../../docs/personal-data-boundaries.md)의 소유권·오류·로그 보호를 유지한다.
 - DB 스키마·migration 변경은 `drizzle/` 마이그레이션 체인을 따르고 [DB 스키마 변경과 복구 지침](../../docs/database-migrations.md)의 기록 양식을 사용한다. 이미 적용한 migration은 수정하지 않는다. 작업 전 로컬 `services/finance/.env`의 `DATABASE_URL`이 검증용 Neon dev 브랜치 Connection string인지 사용자가 확인해야 하며, **운영(`production`) 자격증명을 조회·취득·저장하거나 터미널 명령어·스크립트에 인라인으로 노출하는 행위를 엄격히 금지한다**. 운영 DB 마이그레이션은 오직 GitHub Actions CI/CD 파이프라인을 통해서만 실행한다.
 - `services/finance` 변경 후 루트에서 `pnpm --filter @innova/finance typecheck`, `pnpm --filter @innova/finance test`, `pnpm --filter @innova/finance lint`를 실행한다.

@@ -18,6 +18,7 @@ import {createFinanceExport} from '../src/finance-export/export.js';
 import {createRawCipher} from '../src/finance-raw-crypto.js';
 import {buildApp} from '../src/app.js';
 import type {UserLookup} from '../src/db/users.js';
+import {createApplicationLogger} from '@innova/auth-kit';
 import {cardSource,bankSource} from './fixtures/finance-raw.js';
 async function fixture(){
  const pg=new PGlite(),journal=JSON.parse(await readFile(new URL('../drizzle/meta/_journal.json',import.meta.url),'utf8'));
@@ -63,6 +64,39 @@ test('XLSX has four sheets, exact typed text, opt-in notes and session/owner/Ori
  const app=buildApp({logger:false,userLookup:users,financeManualRepository:f.manual,financeTransactionRepository:f.transactions,financeExporter:f.exporter,jwtSecret:'test-only-secret-at-least-thirty-two-characters'});t.after(()=>app.close());await app.ready();
  const headers={cookie:`innova_auth=${app.jwt.sign({sub:f.owner})}`,'x-expected-user':f.owner,'x-finance-request':'1',origin:'http://localhost:5174'};
  assert.equal((await app.inject({url:'/api/finance/transactions/'})).statusCode,401);assert.equal((await app.inject({url:'/api/finance/transactions/',headers:{...headers,'x-expected-user':f.other}})).statusCode,403);
- const download=await app.inject({method:'POST',url:'/api/finance/transactions/export',headers,payload:{from:'2026-01',to:'2026-01'}});assert.equal(download.statusCode,200,download.body);assert.equal(download.headers['cache-control'],'no-store');assert.ok(String(download.headers['content-type']).includes('spreadsheetml'));
+ const download=await app.inject({method:'POST',url:'/api/finance/transactions/export',headers,payload:{from:'2026-01',to:'2026-01'}});assert.equal(download.statusCode,200,download.body);assert.equal(download.headers['cache-control'],'no-store');assert.match(String(download.headers.vary),/Cookie/i);assert.ok(String(download.headers['content-type']).includes('spreadsheetml'));
  assert.equal((await app.inject({method:'POST',url:'/api/finance/transactions/export',headers:{...headers,origin:'https://evil.invalid'},payload:{from:'2026-01',to:'2026-01'}})).statusCode,403);
+});
+test('unexpected transaction/export errors return 500 INTERNAL_ERROR without leaking details to logs or response',async t=>{
+ const f=await fixture();t.after(()=>f.pg.close());
+ let logs='';
+ const logger=createApplicationLogger({destination:{write(chunk:string){logs+=chunk;}}});
+ const users={findById:async(id:string)=>({id,email:'synthetic@example.invalid',passwordHash:'unused',role:'member',approvalStatus:'approved'})} as UserLookup;
+ const app=buildApp({
+  logger,
+  userLookup:users,
+  financeManualRepository:f.manual,
+  financeTransactionRepository:{...f.transactions,read:async()=>{throw new Error('SYNTHETIC_SECRET_TX_ERROR');}},
+  financeExporter:async()=>{throw new Error('SYNTHETIC_SECRET_EXPORT_ERROR');},
+  jwtSecret:'test-only-secret-at-least-thirty-two-characters',
+ });
+ t.after(()=>app.close());await app.ready();
+ const headers={cookie:`innova_auth=${app.jwt.sign({sub:f.owner})}`,'x-expected-user':f.owner,'x-finance-request':'1',origin:'http://localhost:5174'};
+ const readRes=await app.inject({url:'/api/finance/transactions/',headers});
+ assert.equal(readRes.statusCode,500);
+ assert.equal(readRes.json().error.code,'INTERNAL_ERROR');
+ assert.equal(readRes.headers['cache-control'],'no-store');
+ assert.match(String(readRes.headers.vary),/Cookie/i);
+ assert.equal(readRes.body.includes('SYNTHETIC_SECRET_TX_ERROR'),false);
+ assert.equal(logs.includes('SYNTHETIC_SECRET_TX_ERROR'),false);
+ const exportRes=await app.inject({method:'POST',url:'/api/finance/transactions/export',headers,payload:{from:'2026-01',to:'2026-01'}});
+ assert.equal(exportRes.statusCode,500);
+ assert.equal(exportRes.json().error.code,'INTERNAL_ERROR');
+ assert.equal(exportRes.headers['cache-control'],'no-store');
+ assert.match(String(exportRes.headers.vary),/Cookie/i);
+ assert.equal(exportRes.body.includes('SYNTHETIC_SECRET_EXPORT_ERROR'),false);
+ assert.equal(logs.includes('SYNTHETIC_SECRET_EXPORT_ERROR'),false);
+ const malformed=await app.inject({method:'POST',url:'/api/finance/transactions/manual',headers:{...headers,'content-type':'application/json'},payload:'{invalid-json'});
+ assert.equal(malformed.statusCode,400);
+ assert.equal(malformed.json().error.code,'INVALID_INPUT');
 });
