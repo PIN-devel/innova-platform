@@ -51,10 +51,9 @@
 | `docs/personal-data-boundaries.md` | 개인 데이터 도메인의 공통 접근·세션·오류/로그·보존 경계 및 검증 행렬 |
 | `apps/web/docs/architecture.md` | 현행 Web 구조; 앱이 소유 |
 | `apps/web/docs/design.md` | 현행 Web UI 기준; 앱이 소유 |
-| `apps/web/docs/motifin-*`, `platform-buttons.md`, `architecture-baseline.md` | `PIN-94`에서 Notion으로 통합·아카이브 이관 예정 |
-| `services/finance/docs/finance-*.md`, `personal-finance-architecture.md` | `PIN-94`에서 기능 스펙·릴리스는 Notion으로 이관, 서비스 기술 아키텍처만 저장소 정제 예정 |
+| `services/finance/docs/personal-finance-architecture.md` | 현행 금융 서비스 기술 아키텍처; 서비스가 소유 (기능 스펙·출시는 Notion) |
 
-PIN-31 / PIN-93 이동·통합표(과거 경로 기록):
+PIN-31 / PIN-93 / PIN-94 이동·통합표(과거 경로 기록):
 
 | 이전 | 현재 |
 | --- | --- |
@@ -62,6 +61,8 @@ PIN-31 / PIN-93 이동·통합표(과거 경로 기록):
 | `apps/web/DESIGN.md` | `apps/web/docs/design.md` |
 | `apps/web/architecture-baseline.md` | `apps/web/docs/architecture-baseline.md` |
 | `docs/database-table-metadata.md` | `docs/database-migrations.md#신규-테이블-메타데이터-기준` (`PIN-93` 통합) |
+| `apps/web/docs/motifin-*`, `platform-buttons.md`, `architecture-baseline.md` | Notion `Knowledge` DB 이관 완료 (`PIN-94`) |
+| `services/finance/docs/finance-*.md` (7기능 + `finance-release.md`) | Notion `Knowledge` DB 통합 이관 완료 (`PIN-94`) |
 
 ## 변경과 검증
 

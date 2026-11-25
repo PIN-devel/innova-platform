@@ -1,6 +1,6 @@
 # AI 에이전트 @innova/finance 지침
 
-이 파일은 `services/finance/` 작업에 적용되며 루트 `AGENTS.md`를 함께 따른다. 금융 도메인 설계·암호·개인정보 기준은 `services/finance/docs/finance-*.md`와 `personal-finance-architecture.md`, 컴포넌트 카탈로그는 [@innova/finance](https://app.notion.com/p/42369ba4b33081d58ee5ea9862c01667?pvs=204)를 따른다.
+이 파일은 `services/finance/` 작업에 적용되며 루트 `AGENTS.md`를 함께 따른다. 금융 기술 아키텍처는 [personal-finance-architecture.md](docs/personal-finance-architecture.md), 컴포넌트 카탈로그 및 기능 스펙은 [@innova/finance (Notion)](https://app.notion.com/p/42369ba4b33081d58ee5ea9862c01667?pvs=204)를 따른다.
 
 - Fastify 앱 구성은 `src/app.ts`, 라우트는 `src/routes/`, DB 연결과 저장소 코드는 `src/db/`의 분리를 따른다. 라우트 테스트는 `buildApp`에 테스트용 `userLookup`과 저장소를 주입해 실제 DB 없이 실행한다.
 - 요청과 응답의 타입 및 스키마는 `@innova/contracts`를 기준으로 하며, 공통 오류·로거·쿠키/JWT 가드는 `@innova/auth-kit`을 사용한다.

@@ -112,5 +112,5 @@
 - [DB 스키마 변경과 복구 지침](database-migrations.md)
 - [개인 데이터 경계 기준](personal-data-boundaries.md)
 - [문서 관리 정책](documentation-policy.md)
-- [PDF 암호 선택 저장·복원 조건](../services/finance/docs/finance-pdf-password.md)
-- [MOTIFIN 출시 검증과 운영 전환](../services/finance/docs/finance-release.md)
+- [PDF 암호 선택 저장·복원 조건(Notion)](https://app.notion.com/p/42369ba4b33081a5981df304b5598177)
+- [MOTIFIN 출시 검증과 운영 전환(Notion)](https://app.notion.com/p/42369ba4b33081b7ae75d4a7332f53f3)
